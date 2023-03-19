@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "gan-sr-wind-field"
+version = "0.1.0"
+description = ""
+authors = ["jacobwulffwold <61497974+jacobwulffwold@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "gan_sr_wind_field"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+torch = "^1.13.1"
+torchvision = "^0.14.1"
+torchaudio = "^0.13.1"
+mayavi = "^4.8.1"
+matplotlib = "^3.7.1"
+netcdf4 = "^1.6.3"
+tqdm = "^4.65.0"
+pyqt5 = "^5.15.9"
+scipy = "^1.10.1"
+llvmlite = "^0.39.1"
+scikit-learn = "^1.2.2"
+black = "^23.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
