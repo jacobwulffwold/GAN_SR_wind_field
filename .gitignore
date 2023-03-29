@@ -1,0 +1,7 @@
+saved_interpolated_data/
+combined_downloaded_bessaker_data/
+downloaded_raw_bessaker_data/
+log/
+tensorboard_log/
+runs/
+.vscode/
