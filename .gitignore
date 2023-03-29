@@ -5,3 +5,5 @@ log/
 tensorboard_log/
 runs/
 .vscode/
+__pycache__/
+OLD/

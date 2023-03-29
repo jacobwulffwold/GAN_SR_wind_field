@@ -8,18 +8,22 @@ packages = [{include = "gan_sr_wind_field"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-torch = "^1.13.1"
-torchvision = "^0.14.1"
-torchaudio = "^0.13.1"
 mayavi = "^4.8.1"
 matplotlib = "^3.7.1"
 netcdf4 = "^1.6.3"
 tqdm = "^4.65.0"
-pyqt5 = "^5.15.9"
 scipy = "^1.10.1"
 llvmlite = "^0.39.1"
 scikit-learn = "^1.2.2"
 black = "^23.1.0"
+graphviz = "^0.20.1"
+torchviz = "^0.0.2"
+tensorboardx = "^2.6"
+progressbar2 = "^4.2.0"
+opencv-python = "^4.7.0.72"
+torch-tb-profiler = "^0.4.1"
+torchvision = "^0.15.1"
+torchaudio = "^2.0.1"
 
 
 [build-system]
