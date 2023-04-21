@@ -49,6 +49,6 @@ def instance_noise(
     sigma_base: float, shape: torch.Size, it: int, niter: int
 ) -> torch.Tensor:
     noise = torch.rand(shape)  # N(0,1)
-    var_desired = sigma_base * (1 - (it-1) / niter)
+    var_desired = sigma_base * (1 - (it - 1) / niter)
 
     return noise * math.sqrt(var_desired)

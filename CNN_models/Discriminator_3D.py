@@ -6,16 +6,15 @@ Apache License
 Implements VGG-style discriminators for different input resolutions.
 """
 
-import torch
 import torch.nn as nn
 
 from CNN_models.torch_blocks import create_discriminator_block
 import tools.loggingclass as lc
 
 
-class Discriminator_2D(nn.Module, lc.GlobalLoggingClass):
+class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
     """
-    VGG Style discriminator for 128x128 images
+    VGG Style discriminator
     Based on,
     Recovering Realistic Texture in Image Super-resolution
      by Deep Spatial Feature Transform (Wang et al.)
@@ -30,9 +29,11 @@ class Discriminator_2D(nn.Module, lc.GlobalLoggingClass):
         act_type: str = "leakyrelu",
         mode="CNA",
         # device=torch.device("mps" if torch.backends.mps.is_available() else "cpu"),
-        device = "cpu"
+        device="cpu",
+        number_of_z_layers=10,
+        conv_mode:str="3D",
     ):
-        super(Discriminator_2D, self).__init__()
+        super(Discriminator_3D, self).__init__()
         self.base_number_of_features = base_number_of_features
         slope = 0
         if act_type == "leakyrelu":
@@ -47,59 +48,74 @@ class Discriminator_2D(nn.Module, lc.GlobalLoggingClass):
 
         features = []
 
-        # 128x128 -> 64x64
+        # 128x128x10 -> 64x64x10
         features.append(
             create_discriminator_block(
                 in_channels,
                 base_number_of_features,
                 feat_kern_size=feat_kern_size,
-                lrelu_neg_slope=slope,
+                lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=True,
+                halve_z_dim=False,
+                number_of_z_layers=number_of_z_layers,
+                mode=conv_mode,
             )
         )
-        # 64x64 -> 32x32
+        # 64x64x10 -> 32x32x5
         features.append(
             create_discriminator_block(
                 base_number_of_features,
                 base_number_of_features * 2,
                 feat_kern_size=feat_kern_size,
-                lrelu_neg_slope=slope,
+                lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=False,
+                halve_z_dim=True,
+                number_of_z_layers=number_of_z_layers,
+                mode=conv_mode,
             )
         )
-        # 32x32 -> 16x16
+        # 32x32x5 -> 16x16x3
         features.append(
             create_discriminator_block(
                 base_number_of_features * 2,
                 base_number_of_features * 4,
                 feat_kern_size=feat_kern_size,
-                lrelu_neg_slope=slope,
+                lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=False,
+                halve_z_dim=True,
+                number_of_z_layers=number_of_z_layers//2,
+                mode=conv_mode,
             )
         )
-        # 16x16 -> 8x8
+        # 16x16x3 -> 8x8x2
         features.append(
             create_discriminator_block(
                 base_number_of_features * 4,
                 base_number_of_features * 8,
                 feat_kern_size=feat_kern_size,
-                lrelu_neg_slope=slope,
+                lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=False,
+                halve_z_dim=True,
+                number_of_z_layers=number_of_z_layers//2,
+                mode=conv_mode,
             )
         )
-        # 8x8 -> 4x4
+        # 8x8x2 -> 4x4x1
         features.append(
             create_discriminator_block(
                 base_number_of_features * 8,
                 base_number_of_features * 8,
                 feat_kern_size=feat_kern_size,
-                lrelu_neg_slope=slope,
+                lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=False,
+                halve_z_dim=True,
+                number_of_z_layers=number_of_z_layers//4,
+                mode=conv_mode,
             )
         )
         # Chans: base_nf*8

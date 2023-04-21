@@ -28,6 +28,21 @@ class IniConfig:
 
         return s
 
+class GANConfig(IniConfig):
+    include_pressure:bool = True
+    include_z_channel:bool = True
+    number_of_z_layers:int = 10
+    conv_mode:str = "3D"
+    start_date = [2018, 4, 1]
+    end_date = [2018, 4, 4]
+
+    def setGANConfig(self, gan_config):
+        self.include_pressure = gan_config.getboolean("include_pressure")
+        self.include_z_channel = gan_config.getboolean("include_z_channel")
+        self.number_of_z_layers = gan_config.getint("number_of_z_layers")
+        self.conv_mode = gan_config.get("conv_mode")
+        self.start_date = safe_list_from_string(gan_config.get("start_date"), int)
+        self.end_date = safe_list_from_string(gan_config.get("end_date"), int)
 
 class EnvConfig(IniConfig):
     root_path: str = "~/GAN_SR_wind_field_"
@@ -47,7 +62,6 @@ class EnvConfig(IniConfig):
         self.discriminator_load_path = env_config.get("discriminator_load_path")
         self.state_load_path = env_config.get("state_load_path")
 
-
 class GeneratorConfig(IniConfig):
     norm_type: str = "none"
     act_type: str = "leakyrelu"
@@ -64,6 +78,8 @@ class GeneratorConfig(IniConfig):
     hr_kern_size: int = 3
     weight_init_scale: float = 1.0
     lff_kern_size: int = 3
+    number_of_z_layers: int = 1
+    conv_mode:str ="2D"
 
     def setGeneratorConfig(self, gen_config):
         self.norm_type = gen_config.get("norm_type")
@@ -80,6 +96,8 @@ class GeneratorConfig(IniConfig):
         self.hr_kern_size = gen_config.getint("hr_kern_size")
         self.weight_init_scale = gen_config.getfloat("weight_init_scale")
         self.lff_kern_size = gen_config.getint("lff_kern_size")
+        self.number_of_z_layers = gen_config.getint("number_of_z_layers")
+        self.conv_mode = gen_config.get("conv_mode")
 
 
 class DiscriminatorConfig(IniConfig):
@@ -90,6 +108,8 @@ class DiscriminatorConfig(IniConfig):
     in_num_ch: int = 3
     feat_kern_size: int = 3
     weight_init_scale: float = 1.0
+    number_of_z_layers: int = 10
+    conv_mode: str = "3D"
 
     def setDiscriminatorConfig(self, disc_config):
         self.norm_type = disc_config.get("norm_type")
@@ -99,6 +119,8 @@ class DiscriminatorConfig(IniConfig):
         self.in_num_ch = disc_config.getint("in_num_ch")
         self.feat_kern_size = disc_config.getint("feat_kern_size")
         self.weight_init_scale = disc_config.getfloat("weight_init_scale")
+        self.number_of_z_layers = disc_config.getint("number_of_z_layers")
+        self.conv_mode = disc_config.get("conv_mode")
 
 
 class FeatureExtractorConfig(IniConfig):
@@ -181,7 +203,7 @@ class TrainingConfig(IniConfig):
     flip_labels: bool = False
     use_instance_noise: bool = False
 
-    niter: int = 25 # 5e5
+    niter: int = 25  # 5e5
     val_period: int = 2e3
     save_model_period: int = 2e3
     log_period: int = 1e2
@@ -202,10 +224,10 @@ class TrainingConfig(IniConfig):
         )
         self.lr_gamma = train_config.getfloat("lr_gamma")
         self.gan_type = train_config.get("gan_type")
-        self.adversarial_loss_weight = train_config.getfloat("gan_weight")
+        self.adversarial_loss_weight = train_config.getfloat("adversarial_loss_weight")
         self.d_g_train_ratio = train_config.getint("d_g_train_ratio")
         self.pixel_criterion = train_config.get("pixel_criterion")
-        self.pixel_loss_weight = train_config.getfloat("pixel_weight")
+        self.pixel_loss_weight = train_config.getfloat("pixel_loss_weight")
         self.feature_criterion = train_config.get("feature_criterion")
         self.feature_weight = train_config.getfloat("feature_weight")
         self.use_noisy_labels = train_config.getboolean("use_noisy_labels")
@@ -218,6 +240,8 @@ class TrainingConfig(IniConfig):
         self.val_period = train_config.getint("val_period")
         self.save_model_period = train_config.getint("save_model_period")
         self.log_period = train_config.getint("log_period")
+        self.number_of_z_layers = train_config.getint("number_of_z_layers")
+        self.conv_mode = train_config.get("conv_mode")
 
 
 class Config(IniConfig):
@@ -231,6 +255,7 @@ class Config(IniConfig):
     display_bar = True
 
     env: EnvConfig = EnvConfig()
+    gan_config: GANConfig = GANConfig()
     generator: GeneratorConfig = GeneratorConfig()
     discriminator: DiscriminatorConfig = DiscriminatorConfig()
     feature_extractor: FeatureExtractorConfig = FeatureExtractorConfig()
@@ -249,6 +274,9 @@ class Config(IniConfig):
         base_config = config["DEFAULT"]
         self.setBaseConfig(base_config)
 
+        gan_config = config["GAN"]
+        self.gan_config.setGANConfig(gan_config)
+
         env_config = config["ENV"]
         self.env.setEnvConfig(env_config)
 
@@ -257,9 +285,6 @@ class Config(IniConfig):
 
         disc_config = config["DISCRIMINATOR"]
         self.discriminator.setDiscriminatorConfig(disc_config)
-
-        feat_config = config["FEATUREEXTRACTOR"]
-        self.feature_extractor.setFeatureExtractorConfig(feat_config)
 
         training_config = config["TRAINING"]
         self.training.setTrainingConfig(training_config)

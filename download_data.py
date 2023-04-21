@@ -27,6 +27,27 @@ from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 
 EARTH_RADIUS = 6371009
 
+def plot_images(filename, 
+    terrain,
+    X,
+    Y,
+    Z,
+    x_dict={"start": 4, "max": -3, "step": 1},
+    z_dict={"start": 1, "max": 10, "step": 5},
+    z_plot_scale=1,):
+
+    with open(filename, "rb") as f:
+        images = pickle.load(f)
+    
+    i=0
+    for key, value in images.items():
+        print(key)
+        u, v, w = slice_only_dim_dicts(x_dict, z_dict, value[0], value[1], value[2])
+        
+        plot_field(np.squeeze(X), np.squeeze(Y), np.squeeze(Z), u,v,w, z_plot_scale=z_plot_scale, fig=i, terrain=terrain)
+        
+        i+=1
+
 
 def check(url):
     try:
@@ -171,14 +192,14 @@ def extract_XY_plane(data_code, start_date, end_date, iz):
                 nc_fid.close()
     return time, latitude, longitude, terrain, x, y, z, u, v, w, theta, tke, td
 
+
 def quick_append(var, key, nc_fid, transpose_indices=[0, 2, 3, 1]):
     return np.ma.append(
-                    var,
-                    np.transpose(
-                        nc_fid[key][1:13, :, :, :], (transpose_indices)
-                    )[:, :, :, ::-1],
-                    axis=0,
-                )
+        var,
+        np.transpose(nc_fid[key][1:13, :, :, :], (transpose_indices))[:, :, :, ::-1],
+        axis=0,
+    )
+
 
 def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
     delta = end_date - start_date
@@ -196,7 +217,8 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
                 longitude = nc_fid["latitude"][:]
                 x = nc_fid["x"][:]
                 y = nc_fid["y"][:]
-                z = np.transpose(nc_fid["geopotential_height_ml"][:], (transpose_indices)
+                z = np.transpose(
+                    nc_fid["geopotential_height_ml"][:], (transpose_indices)
                 )[:, :, :, ::-1]
                 terrain = nc_fid["surface_altitude"][:]
                 theta = np.transpose(
@@ -230,10 +252,18 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
                 u = quick_append(u, "x_wind_ml", nc_fid, transpose_indices)
                 v = quick_append(v, "y_wind_ml", nc_fid, transpose_indices)
                 w = quick_append(w, "upward_air_velocity_ml", nc_fid, transpose_indices)
-                pressure = quick_append(pressure, "air_pressure_ml", nc_fid, transpose_indices)
-                theta = quick_append(theta, "air_potential_temperature_ml", nc_fid, transpose_indices)
-                tke = quick_append(tke, "turbulence_index_ml", nc_fid, transpose_indices)
-                td = quick_append(td, "turbulence_dissipation_ml", nc_fid, transpose_indices)
+                pressure = quick_append(
+                    pressure, "air_pressure_ml", nc_fid, transpose_indices
+                )
+                theta = quick_append(
+                    theta, "air_potential_temperature_ml", nc_fid, transpose_indices
+                )
+                tke = quick_append(
+                    tke, "turbulence_index_ml", nc_fid, transpose_indices
+                )
+                td = quick_append(
+                    td, "turbulence_dissipation_ml", nc_fid, transpose_indices
+                )
                 z = quick_append(z, "geopotential_height_ml", nc_fid, transpose_indices)
                 nc_fid.close()
     return (
@@ -253,6 +283,32 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
         pressure,
     )
 
+def slice_only_dim_dicts(
+    x_dict={"start": 4, "max": -3, "step": 1},
+    z_dict={"start": 1, "max": 10, "step": 5},
+*args):
+    value_list = []
+    for val in args:
+        if val.ndim == 3:
+            value_list.append(val[
+                x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
+                x_dict["start"] : x_dict["max"] : x_dict["step"],
+                z_dict["start"] : z_dict["max"] : z_dict["step"],
+            ])
+        elif val.ndim == 2:
+            value_list.append(val[
+                x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
+                x_dict["start"] : x_dict["max"] : x_dict["step"],
+            ])
+        elif val.ndim == 4:
+            value_list.append(val[
+                :,
+                x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
+                x_dict["start"] : x_dict["max"] : x_dict["step"],
+                z_dict["start"] : z_dict["max"] : z_dict["step"],
+            ])
+    
+    return value_list
 
 def slice_data(
     terrain,
@@ -364,7 +420,7 @@ def interpolate_cartesian_3D(
     return X_cartesian, Y_cartesian, Z_cartesian, u_cart, v_cart, w_cart
 
 
-def plot_field(X, Y, Z, z_plot_scale, u, v, w, terrain=np.asarray([]), fig=1):
+def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1):
     mlab.figure(fig)
     mlab.quiver3d(
         X,
@@ -376,9 +432,15 @@ def plot_field(X, Y, Z, z_plot_scale, u, v, w, terrain=np.asarray([]), fig=1):
     )
 
     if terrain.any():
-        mlab.surf(
-            X[:, :, 0].T, Y[:, :, 0].T, z_plot_scale * terrain.T, colormap="black-white"
-        )
+        try:
+            mlab.surf(
+                X[:, :, 0].T, Y[:, :, 0].T, z_plot_scale * terrain.T, colormap="black-white"
+            )
+        except:
+            mlab.surf(
+                X.T, Y.T, z_plot_scale * terrain.T, colormap="black-white"
+            )
+
 
     mlab.show()
 
@@ -442,6 +504,8 @@ def preprosess_and_plot(
         terrain, x, y, z, u, v, w, pressure, x_dict, z_dict
     )
 
+    plot_images("./runs/3D_full_conv_test/images/val_imgs__it_44.pkl", terrain, X, Y, z[time_index], X_DICT, Z_DICT, z_plot_scale)
+
     if interpolate:
         filename = (
             "./saved_interpolated_data/2018_apr_xy"
@@ -492,11 +556,11 @@ def preprosess_and_plot(
                 X_cartesian,
                 Y_cartesian,
                 Z_cartesian,
-                z_plot_scale,
                 u_cart,
                 v_cart,
                 w_cart,
                 terrain,
+                z_plot_scale,
                 fig=3,
             )
 
@@ -504,13 +568,14 @@ def preprosess_and_plot(
         X,
         Y,
         z[time_index],
-        z_plot_scale,
         u[time_index],
         v[time_index],
         w[time_index],
         terrain,
+        z_plot_scale,
         fig=1,
     )
+    
 
     # plot_pressure(X, Y, z, z_plot_scale, pressure[time_index], fig=2)
 
@@ -560,34 +625,40 @@ def download_and_combine(data_code, start_date, end_date):
 if __name__ == "__main__":
     data_code = "simra_BESSAKER_"
     start_date = date(2018, 4, 1)  # 1,2
-    end_date = date(2018, 4, 10)  #
+    end_date = date(2018, 4, 2)  #
 
     time, terrain, x, y, z, u, v, w, theta, tke, td, pressure = download_and_combine(
         data_code, start_date, end_date
     )
 
-    z_plot_scale = 3
+    z_plot_scale = 1
     time_index = 3
-    X_DICT = {"start": 4, "max": -3, "step": 1}
-    Z_DICT = {"start": 0, "max": 41, "step": 5}
+    X_DICT = {"start": 4, "max": 30, "step": 1}
+    Z_DICT = {"start": 1, "max": 2, "step": 1}
 
+    terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
+        terrain, x, y, z, u, v, w, pressure, X_DICT, Z_DICT
+    )
+
+    plot_images("./runs/larger_pix_loss/images/val_imgs__it_200.pkl", terrain, X, Y, z[time_index], X_DICT, Z_DICT, z_plot_scale)
+    
     # z = (z.transpose(2,0,1)-terrain).transpose((1,2,0))
 
-    preprosess_and_plot(
-        terrain,
-        x,
-        y,
-        z,
-        u,
-        v,
-        w,
-        pressure,
-        X_DICT,
-        Z_DICT,
-        z_plot_scale,
-        time_index,
-        interpolate=False,
-    )
+    # preprosess_and_plot(
+    #     terrain,
+    #     x,
+    #     y,
+    #     z,
+    #     u,
+    #     v,
+    #     w,
+    #     pressure,
+    #     X_DICT,
+    #     Z_DICT,
+    #     z_plot_scale,
+    #     time_index,
+    #     interpolate=False,
+    # )
 
     # mlab.quiver3d(X[:,:, z_start:z_lim:z_step],Y[:,:, z_start:z_lim:z_step],z_scale*z[:,:, z_start:z_lim:z_step],u_nomask[time_index][:, :, z_start:z_lim:z_step], v_nomask[time_index][:, :, z_start:z_lim:z_step], w_nomask[time_index][:,:, z_start:z_lim:z_step], mask_points=1)
     # mlab.surf(X_2D, Y_2D, z_scale*terrain_nomask.transpose(), colormap="black-white")

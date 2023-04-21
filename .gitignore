@@ -7,3 +7,4 @@ runs/
 .vscode/
 __pycache__/
 OLD/
+CNN_models/OLD

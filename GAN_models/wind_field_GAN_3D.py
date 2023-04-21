@@ -18,19 +18,19 @@ import torch.optim
 
 import config.config as config
 from GAN_models.baseGAN import BaseGAN
-from CNN_models.OLD.Discriminator_2D import Discriminator_3D
-from CNN_models.OLD.Generator_2D import Generator_2D
+from CNN_models.Discriminator_3D import Discriminator_3D
+from CNN_models.Generator_3D import Generator_3D
 import tools.initialization as initialization
 import tools.loggingclass as loggingclass
 import tools.trainingtricks as trainingtricks
 
 
-class wind_field_GAN_2D(BaseGAN):
+class wind_field_GAN_3D(BaseGAN):
     # feature extractor. Generator and discriminator are defined in BaseGAN
     # F: nn.Module = None
 
     def __init__(self, cfg: config.Config):
-        super(wind_field_GAN_2D, self).__init__(cfg)  # BaseGAN
+        super(wind_field_GAN_3D, self).__init__(cfg)  # BaseGAN
         self.optimizers = []
         self.schedulers = []
         self.loss_dict = {
@@ -69,9 +69,10 @@ class wind_field_GAN_2D(BaseGAN):
         # Define generator, discriminator, feature extractor
         ###################
         cfg_g: config.GeneratorConfig = cfg.generator
-        self.G = Generator_2D(
-            cfg_g.in_num_ch,
-            cfg_g.out_num_ch,
+        cfg_gan: config.GANConfig = cfg.gan_config
+        self.G = Generator_3D(
+            cfg_g.in_num_ch + cfg_gan.include_pressure +cfg_gan.include_z_channel,
+            cfg_g.out_num_ch + cfg_gan.include_pressure,
             cfg_g.num_features,
             cfg_g.num_RRDB,
             upscale=cfg.scale,
@@ -83,21 +84,26 @@ class wind_field_GAN_2D(BaseGAN):
             RRDB_residual_scaling=cfg_g.RRDB_res_scaling,
             act_type=cfg_g.act_type,
             device=self.device,
+            number_of_z_layers=cfg_gan.number_of_z_layers,
+            conv_mode=cfg_gan.conv_mode,
         )
         self.G = self.G.to(cfg.device)
         initialization.init_weights(self.G, scale=cfg_g.weight_init_scale)
+        self.conv_mode = cfg_g.conv_mode
 
         if cfg.is_train:
             cfg_d: config.DiscriminatorConfig = cfg.discriminator
             if cfg.dataset_train.hr_img_size == 128:
                 self.D = Discriminator_3D(
-                    cfg_d.in_num_ch,
+                    cfg_d.in_num_ch + cfg_gan.include_pressure,
                     cfg_d.num_features,
                     feat_kern_size=cfg_d.feat_kern_size,
                     normalization_type=cfg_d.norm_type,
                     act_type=cfg_d.act_type,
                     mode=cfg_d.layer_mode,
                     device=self.device,
+                    number_of_z_layers=cfg_gan.number_of_z_layers,
+                    conv_mode=cfg_gan.conv_mode,
                 )
             else:
                 raise NotImplementedError(
@@ -299,10 +305,18 @@ class wind_field_GAN_2D(BaseGAN):
                 self.loss_dict["val_loss_G_adversarial"] = loss_G_adversarial.item()
                 # self.loss_dict["val_loss_G_feat"] = loss_G_feat.item()
                 self.loss_dict["val_loss_G_pix"] = loss_G_pix.item()
-                grad_start = self.G.model[0].weight.grad.cpu().detach()
-                grad_end = self.G.model[-1].weight.grad.cpu().detach()
-                weight_start = self.G.model[0].weight.cpu().detach()
-                weight_end = self.G.model[-1].weight.cpu().detach()
+                if self.conv_mode == "horizontal_3D":
+                    grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
+                    grad_end = self.G.model[-1].convs[-1][-1].weight.grad.cpu().detach()
+                    weight_start = self.G.model[0].convs[0][0].weight.cpu().detach()
+                    weight_end = self.G.model[-1].convs[-1][-1].weight.cpu().detach()
+                else:
+                    grad_start = self.G.model[0][0].weight.grad.cpu().detach()
+                    grad_end = self.G.model[-1].weight.grad.cpu().detach()
+                    weight_start = self.G.model[0][0].weight.cpu().detach()
+                    weight_end = self.G.model[-1].weight.cpu().detach()
+
+
                 self.hist_dict["val_grad_G_first_layer"] = grad_start.numpy()
                 self.hist_dict["val_grad_G_last_layer"] = grad_end.numpy()
                 self.hist_dict["val_weight_G_first_layer"] = weight_start.numpy()
@@ -371,11 +385,17 @@ class wind_field_GAN_2D(BaseGAN):
             self.optimizer_D.step()
         else:
             # features[0] is StridedDownConv2x, whose first elem is a nn.Conv2D
-            grad_start = self.D.features[0][0][0].weight.grad.detach().cpu()
-            weight_start = self.D.features[0][0][0].weight.detach().cpu()
-            # classifier[-1] is nn.Linear, whose first elem is a nn.Conv2D
-            grad_end = self.D.classifier[-1].weight.grad.detach().cpu()
-            weight_end = self.D.classifier[-1].weight.detach().cpu()
+            if self.conv_mode == "horizontal_3D":
+                grad_start = self.D.features[0][0].convs[0][0].weight.grad.detach().cpu()
+                weight_start = self.D.features[0][0].convs[0][0].weight.detach().cpu()
+                grad_end = self.D.classifier[-1].weight.grad.detach().cpu()
+                weight_end = self.D.classifier[-1].weight.detach().cpu()
+            else:
+                grad_start = self.D.features[0][0][0].weight.grad.detach().cpu()
+                weight_start = self.D.features[0][0][0].weight.detach().cpu()
+                grad_end = self.D.classifier[-1].weight.grad.detach().cpu()
+                weight_end = self.D.classifier[-1].weight.detach().cpu()
+            
             self.hist_dict["val_grad_D_first_layer"] = grad_start.numpy()
             self.hist_dict["val_grad_D_last_layer"] = grad_end.numpy()
             self.hist_dict["val_weight_D_first_layer"] = weight_start.numpy()
