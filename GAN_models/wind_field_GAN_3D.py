@@ -23,6 +23,7 @@ from CNN_models.Generator_3D import Generator_3D
 import tools.initialization as initialization
 import tools.loggingclass as loggingclass
 import tools.trainingtricks as trainingtricks
+from process_data import calculate_gradient_of_wind_field
 
 
 class wind_field_GAN_3D(BaseGAN):
@@ -37,12 +38,16 @@ class wind_field_GAN_3D(BaseGAN):
             "train_loss_D": 0.0,
             "train_loss_G": 0.0,
             "train_loss_G_adversarial": 0.0,
-            # "train_loss_G_feat": 0.0,
             "train_loss_G_pix": 0.0,
+            "train_loss_G_xy_gradient": 0.0,
+            "train_loss_G_z_gradient": 0.0,
+            "train_loss_G_divergence": 0.0,
+            "val_loss_G_xy_gradient": 0.0,
+            "val_loss_G_z_gradient": 0.0,
+            "val_loss_G_divergence": 0.0,
             "val_loss_D": 0.0,
             "val_loss_G": 0.0,
             "val_loss_G_adversarial": 0.0,
-            # "val_loss_G_feat": 0.0,
             "val_loss_G_pix": 0.0,
         }
         self.hist_dict = {
@@ -71,7 +76,7 @@ class wind_field_GAN_3D(BaseGAN):
         cfg_g: config.GeneratorConfig = cfg.generator
         cfg_gan: config.GANConfig = cfg.gan_config
         self.G = Generator_3D(
-            cfg_g.in_num_ch + cfg_gan.include_pressure +cfg_gan.include_z_channel,
+            cfg_g.in_num_ch + cfg_gan.include_pressure + cfg_gan.include_z_channel,
             cfg_g.out_num_ch + cfg_gan.include_pressure,
             cfg_g.num_features,
             cfg_g.num_RRDB,
@@ -150,6 +155,10 @@ class wind_field_GAN_3D(BaseGAN):
                 self.schedulers.append(self.scheduler_D)
 
             # pixel loss
+            self.gradient_xy_criterion = nn.MSELoss()
+            self.gradient_z_criterion = nn.MSELoss()
+            self.divergence_criterion = nn.MSELoss()
+
             if cfg_t.pixel_criterion is None or cfg_t.pixel_criterion == "none":
                 self.pixel_criterion = None
             elif cfg_t.pixel_criterion == "l1":
@@ -180,9 +189,21 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             return
 
-    def feed_data(self, lr: torch.Tensor, hr: torch.Tensor = None):
+    def feed_data(
+        self,
+        lr: torch.Tensor,
+        hr: torch.Tensor = None,
+        x: torch.Tensor = torch.Tensor([]),
+        y: torch.Tensor = torch.Tensor([]),
+        Z: torch.Tensor = torch.Tensor([]),
+    ):
         self.lr = lr
         self.hr = hr
+        if x.any():
+            self.x = x
+            self.y = y
+        if Z.any():
+            self.Z = Z
 
     def compute_losses_and_optimize(
         self, it, training_epoch: bool = False, validation_epoch: bool = False
@@ -280,11 +301,23 @@ class wind_field_GAN_3D(BaseGAN):
             if self.pixel_criterion:
                 loss_G_pix = self.pixel_criterion(self.hr, self.fake_hr)
 
+            HR_wind_gradient, HR_divergence = calculate_gradient_of_wind_field(self.hr[:,:3], self.x, self.y,self.Z)
+            SR_wind_gradient, SR_divergence = calculate_gradient_of_wind_field(self.fake_hr[:,:3], self.x, self.y, self.Z)
+
+            loss_G_xy_gradient = self.gradient_xy_criterion(SR_wind_gradient[:, :6]/torch.max(abs(SR_wind_gradient[:, :6])), HR_wind_gradient[:, :6]/torch.max(abs(HR_wind_gradient[:, :6])))
+            loss_G_z_gradient = self.gradient_z_criterion(SR_wind_gradient[:, 6:]/torch.max(SR_wind_gradient[:, 6:]), HR_wind_gradient[:, 6:]/torch.max(HR_wind_gradient[:, 6:]))
+
+            max_divergence = torch.max(abs(torch.cat((HR_divergence, SR_divergence), dim=0)))
+            loss_G_divergence = self.divergence_criterion(HR_divergence/max_divergence, SR_divergence/max_divergence)
+
             loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
             # loss_G_feat *= self.cfg.training.feature_weight
             loss_G_pix *= self.cfg.training.pixel_loss_weight
+            loss_G_xy_gradient *= self.cfg.training.gradient_xy_loss_weight
+            loss_G_z_gradient *= self.cfg.training.gradient_z_loss_weight
+            loss_G_divergence *= self.cfg.training.divergence_loss_weight
 
-            loss_G = loss_G_adversarial + loss_G_pix
+            loss_G = loss_G_adversarial + loss_G_pix + loss_G_xy_gradient + loss_G_z_gradient + loss_G_divergence
 
             # normalize by batch sz, this is not done in ESRGAN
             # loss_D.mul_(1.0 / current_batch_size)
@@ -294,6 +327,9 @@ class wind_field_GAN_3D(BaseGAN):
             if training_epoch:
                 self.loss_dict["train_loss_G"] = loss_G.item()
                 self.loss_dict["train_loss_G_adversarial"] = loss_G_adversarial.item()
+                self.loss_dict["train_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
+                self.loss_dict["train_loss_G_z_gradient"] = loss_G_z_gradient.item()
+                self.loss_dict["train_loss_G_divergence"] = loss_G_divergence.item()
                 # self.loss_dict["train_loss_G_feat"] = loss_G_feat.item()
                 self.loss_dict["train_loss_G_pix"] = loss_G_pix.item()
                 self.hist_dict["SR_pix_distribution"] = (
@@ -303,7 +339,9 @@ class wind_field_GAN_3D(BaseGAN):
             else:
                 self.loss_dict["val_loss_G"] = loss_G.item()
                 self.loss_dict["val_loss_G_adversarial"] = loss_G_adversarial.item()
-                # self.loss_dict["val_loss_G_feat"] = loss_G_feat.item()
+                self.loss_dict["val_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
+                self.loss_dict["val_loss_G_z_gradient"] = loss_G_z_gradient.item()
+                self.loss_dict["val_loss_G_divergence"] = loss_G_divergence.item()
                 self.loss_dict["val_loss_G_pix"] = loss_G_pix.item()
                 if self.conv_mode == "horizontal_3D":
                     grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
@@ -315,7 +353,6 @@ class wind_field_GAN_3D(BaseGAN):
                     grad_end = self.G.model[-1].weight.grad.cpu().detach()
                     weight_start = self.G.model[0][0].weight.cpu().detach()
                     weight_end = self.G.model[-1].weight.cpu().detach()
-
 
                 self.hist_dict["val_grad_G_first_layer"] = grad_start.numpy()
                 self.hist_dict["val_grad_G_last_layer"] = grad_end.numpy()
@@ -386,7 +423,9 @@ class wind_field_GAN_3D(BaseGAN):
         else:
             # features[0] is StridedDownConv2x, whose first elem is a nn.Conv2D
             if self.conv_mode == "horizontal_3D":
-                grad_start = self.D.features[0][0].convs[0][0].weight.grad.detach().cpu()
+                grad_start = (
+                    self.D.features[0][0].convs[0][0].weight.grad.detach().cpu()
+                )
                 weight_start = self.D.features[0][0].convs[0][0].weight.detach().cpu()
                 grad_end = self.D.classifier[-1].weight.grad.detach().cpu()
                 weight_end = self.D.classifier[-1].weight.detach().cpu()
@@ -395,7 +434,7 @@ class wind_field_GAN_3D(BaseGAN):
                 weight_start = self.D.features[0][0][0].weight.detach().cpu()
                 grad_end = self.D.classifier[-1].weight.grad.detach().cpu()
                 weight_end = self.D.classifier[-1].weight.detach().cpu()
-            
+
             self.hist_dict["val_grad_D_first_layer"] = grad_start.numpy()
             self.hist_dict["val_grad_D_last_layer"] = grad_end.numpy()
             self.hist_dict["val_weight_D_first_layer"] = weight_start.numpy()
