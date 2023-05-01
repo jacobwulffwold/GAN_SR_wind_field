@@ -23,8 +23,8 @@ import train
 import test
 from datetime import date
 from process_data import preprosess
-from CNN_models.Generator_3D import Generator_3D
-from CNN_models.Discriminator_3D import Discriminator_3D
+import numpy as np
+import random
 
 
 def main():
@@ -54,15 +54,15 @@ def main():
 
     status_logger.info(f"run.py: running with device: {cfg.device}")
 
-    dataset_train, dataset_test, dataset_validation = prepare_data(cfg)
+    dataset_train, dataset_test, dataset_validation, x,y = prepare_data(cfg)
 
     status_logger.info(f"run.py: data prepared")
-    
+
     if cfg.is_train:
         status_logger.info(
             "run.py: starting training" + ("" if not cfg.is_test else " before testing")
         )
-        train.train(cfg, dataset_train, dataset_validation)
+        train.train(cfg, dataset_train, dataset_validation, x,y)
         status_logger.info("run.py: finished training")
         cfg.is_train = False
     if cfg.is_test:
@@ -143,6 +143,7 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
     is_ok = makedirs_ensure_user_ok(cfg.env.this_runs_folder)
     makedirs(cfg.env.this_runs_folder + "/images")
     makedirs(cfg.env.this_runs_tensorboard_log_folder)
+    setup_seed(cfg.env.fixed_seed)
     return is_ok
 
 
@@ -180,15 +181,15 @@ def setup_logger(cfg: Config):
 
     return
 
+def setup_seed(seed: int):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 def setup_torch(cfg: Config):
     # device="mps" if torch.backends.mps.is_available() else "cpu"
-    device = "cpu"
-    cfg.device = torch.device(device)
-    # if torch.cuda.is_available() and cfg.gpu_id is not None:
-    #     cfg.device = torch.device(f"cuda:{cfg.gpu_id}")
-    # else:
-    #     cfg.device = torch.device("cpu")
+    cfg.device = torch.device(f"cuda:{cfg.gpu_id}") if torch.cuda.is_available() and cfg.gpu_id is not None else torch.device("cpu")
 
 
 def makedirs(path):
@@ -232,15 +233,24 @@ def save_config(cfg: Config, folder: str):
     with open(filename, "w") as ini:
         ini.write(cfg.asINI())
 
+
 def prepare_data(cfg: Config):
     cfg_gan = cfg.gan_config
     Z_DICT = {"start": 1, "max": cfg_gan.number_of_z_layers + 1, "step": 1}
-    start_date = date(cfg_gan.start_date[0], cfg_gan.start_date[1], cfg_gan.start_date[2])
+    start_date = date(
+        cfg_gan.start_date[0], cfg_gan.start_date[1], cfg_gan.start_date[2]
+    )
     end_date = date(cfg_gan.end_date[0], cfg_gan.end_date[1], cfg_gan.end_date[2])
 
     return preprosess(
-        Z_DICT=Z_DICT, start_date=start_date, end_date=end_date, include_pressure=cfg_gan.include_pressure, include_z_channel=cfg_gan.include_z_channel
+        Z_DICT=Z_DICT,
+        start_date=start_date,
+        end_date=end_date,
+        include_pressure=cfg_gan.include_pressure,
+        include_z_channel=cfg_gan.include_z_channel,
+        interpolate_z=cfg_gan.interpolate_z,
     )
+
 
 if __name__ == "__main__":
     main()

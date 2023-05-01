@@ -19,15 +19,15 @@ import torch.nn as nn
 import tensorboardX
 from process_data import preprosess
 import config.config as config
+import matplotlib.pyplot as plt
 
 
 # import data.imageset as imageset
-from GAN_models.wind_field_GAN_2D import wind_field_GAN_2D
 from GAN_models.wind_field_GAN_3D import wind_field_GAN_3D
 import iocomponents.displaybar as displaybar
 
 
-def train(cfg: config.Config, dataset_train, dataset_validation):
+def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     cfg_t = cfg.training
     status_logger = logging.getLogger("status")
     train_logger = logging.getLogger("train")
@@ -35,7 +35,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
         log_dir=cfg.env.this_runs_tensorboard_log_folder
     )
 
-    random.seed()
     torch.backends.cudnn.benckmark = True
 
     dataloader_train, dataloader_val = None, None
@@ -47,7 +46,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
             num_workers=cfg.dataset_train.n_workers,
             pin_memory=True,
         )
-        # dataloader_train = imageset.createDataloader(cfg, is_train_dataloader=True, downsampler_mode="bicubic")
+        # dataloader_train = imageset.createDataloader(cfg, is_train_dataloader=True, downsampler_mode="trilinear")
         status_logger.info("finished creating training dataloader and dataset")
     else:
         raise ValueError("can't train without a training dataset - adjust the config")
@@ -59,7 +58,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
             num_workers=cfg.dataset_val.n_workers,
             pin_memory=True,
         )
-        # dataloader_val = imageset.createDataloader(cfg, is_validation_dataloader=True, downsampler_mode="bicubic")
+        # dataloader_val = imageset.createDataloader(cfg, is_validation_dataloader=True, downsampler_mode="trilinear")
         status_logger.info("finished creating validation dataloader and dataset")
     else:
         status_logger.warning(
@@ -123,8 +122,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
     # store_LR_HR_in_runs_folder(cfg, dataloader_val)
 
     # Debugging
-    # print("CUDA availability:", torch.cuda.is_available())
-    # print("Current device:", torch.cuda.current_device(), "- num devices:", torch.cuda.device_count(), "- device name:", torch.cuda.get_device_name(0))
+    print("CUDA availability:", torch.cuda.is_available())
+    print("Current device:", torch.cuda.current_device(), "- num devices:", torch.cuda.device_count(), "- device name:", torch.cuda.get_device_name(0))
     # end debugging
     status_logger.info(f"beginning run from epoch {start_epoch}, it {it}")
 
@@ -140,8 +139,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
 
             LR = data[0].float().to(cfg.device)
             HR = data[1].float().to(cfg.device)
+            if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
+                gan.feed_data(LR, HR[:, :-1, :, :, :], x, y, HR[:, -1, :, :])
+            else:
+                gan.feed_data(LR, HR[:, :-1, :, :, :], Z=HR[:, -1, :, :])
 
-            gan.feed_data(LR, HR)
             gan.optimize_parameters(it)
             gan.update_learning_rate() if i > 0 else None
 
@@ -181,7 +183,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
                     i_val += 1
                     val_LR = val_data[0].float().to(cfg.device)
                     val_HR = val_data[1].float().to(cfg.device)
-                    gan.feed_data(val_LR, val_HR)
+                    gan.feed_data(val_LR, val_HR[:, :-1, :, :, :], Z=val_HR[:, -1, :, :, :])
                     gan.validation(it)
                     for val_name, val in gan.get_loss_dict_ref().items():
                         loss_vals[val_name] += val / n
@@ -219,9 +221,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
                             # xwp_LR = LR_ori[3,:,:]#*(np.max(x_wp_nomask)-np.min(x_wp_nomask))+np.min(x_wp_nomask)
                             # zwp_LR = LR_ori[4,:,:]#*(np.max(z_wp_nomask)-np.min(z_wp_nomask))+np.min(z_wp_nomask)
 
-                            # Bicubic
-                            # imgs_bicubic_tensor = nn.functional.interpolate(LR_i, scale_factor=4, mode='bicubic')
-                            imgs_bicubic = (
+                            # trilinear
+                            # imgs_trilinear_tensor = nn.functional.interpolate(LR_i, scale_factor=4, mode='trilinear')
+                            imgs_trilinear = (
                                 nn.functional.interpolate(
                                     LR_i,
                                     scale_factor=(4, 4, 1),
@@ -233,18 +235,18 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
                                 .cpu()
                                 .numpy()
                             )
-                            u_bicubic = imgs_bicubic[
+                            u_trilinear = imgs_trilinear[
                                 0, :, :, :
                             ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                            v_bicubic = imgs_bicubic[
+                            v_trilinear = imgs_trilinear[
                                 1, :, :, :
                             ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                            w_bicubic = imgs_bicubic[
+                            w_trilinear = imgs_trilinear[
                                 2, :, :, :
                             ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
-                            # loss_bicubic = torch.sum(((HR_i - imgs_bicubic_tensor)**2)/(128*128)).item()
-                            # rounded_loss_bicubic = round(loss_bicubic, 3)
+                            # loss_trilinear = torch.sum(((HR_i - imgs_trilinear_tensor)**2)/(128*128)).item()
+                            # rounded_loss_trilinear = round(loss_trilinear, 3)
 
                             # Generated HR
                             # loss_sr = torch.sum(((HR_i - gan.G(LR_i))**2)/(128*128)).item()
@@ -277,8 +279,30 @@ def train(cfg: config.Config, dataset_train, dataset_validation):
                             # Store results to file:
                             HR_img = [u_HR, v_HR, w_HR]
                             sr_img = [u_sr, v_sr, w_sr]
-                            bc_img = [u_bicubic, v_bicubic, w_bicubic]
+                            bc_img = [u_trilinear, v_trilinear, w_trilinear]
                             LR_img = [u_LR, v_LR, w_LR]
+
+                            # tb_writer.add_image(
+                            #     "LR_" + str(it), LR_i[:, :3, :, :, 3].squeeze()
+                            # )
+                            # tb_writer.add_image(
+                            #     "HR_" + str(it), HR_i[:, :3, :, :, 3].squeeze()
+                            # )
+                            # tb_writer.add_image(
+                            #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
+                            # )
+    
+
+                            fig, axes = plt.subplots(2, 2)
+                            axes[0, 0].pcolor(u_LR[:, :, 3])
+                            axes[0, 0].set_title("LR u, z=3")
+                            axes[0, 1].pcolor(u_HR[:, :, 3])
+                            axes[0, 1].set_title("HR u, z=3")
+                            axes[1, 0].pcolor(u_sr[:, :, 3])
+                            axes[1, 0].set_title("SR u, z=3")
+                            axes[1, 1].pcolor(u_trilinear[:, :, 3])
+                            axes[1, 1].set_title("Trilinear u, z=3")
+                            tb_writer.add_figure("u_field_" + str(it), fig, it)
 
                             imgs = dict()
                             imgs["HR"] = HR_img
