@@ -27,26 +27,60 @@ from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 
 EARTH_RADIUS = 6371009
 
-def plot_images(filename, 
+
+def plot_images(
+    filename,
     terrain,
     X,
     Y,
     Z,
-    x_dict={"start": 4, "max": -3, "step": 1},
-    z_dict={"start": 1, "max": 10, "step": 5},
-    z_plot_scale=1,):
-
+    x_dict={"start": 0, "max": -1, "step": 1},
+    z_dict={"start": 0, "max": -1, "step": 5},
+    z_plot_scale=1,
+):
     with open(filename, "rb") as f:
         images = pickle.load(f)
-    
-    i=0
+
+    i = 0
     for key, value in images.items():
         print(key)
-        u, v, w = slice_only_dim_dicts(x_dict, z_dict, value[0], value[1], value[2])
-        
-        plot_field(np.squeeze(X), np.squeeze(Y), np.squeeze(Z), u,v,w, z_plot_scale=z_plot_scale, fig=i, terrain=terrain)
-        
-        i+=1
+        this_x_dict = x_dict.copy()
+        if key == "LR":
+            for dict_key, dict_value in x_dict.items():
+                this_x_dict[dict_key] = dict_value // 4
+                if dict_key == "step" and dict_value // 4 == 0:
+                    this_x_dict[dict_key] = 1
+
+            this_X, this_Y, this_Z, this_terrain, u, v, w = slice_only_dim_dicts(
+                this_x_dict,
+                z_dict,
+                X[::4, ::4, :],
+                Y[::4, ::4, :],
+                Z[::4, ::4, :],
+                terrain[::4, ::4],
+                value[0],
+                value[1],
+                value[2],
+            )
+
+        else:
+            this_X, this_Y, this_Z, this_terrain, u, v, w = slice_only_dim_dicts(
+                x_dict, z_dict, X, Y, Z, terrain, value[0], value[1], value[2]
+            )
+
+        plot_field(
+            np.squeeze(this_X),
+            np.squeeze(this_Y),
+            np.squeeze(this_Z),
+            u,
+            v,
+            w,
+            z_plot_scale=z_plot_scale,
+            fig=i,
+            terrain=this_terrain,
+        )
+
+        i += 1
 
 
 def check(url):
@@ -283,32 +317,41 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
         pressure,
     )
 
+
 def slice_only_dim_dicts(
-    x_dict={"start": 4, "max": -3, "step": 1},
+    xy_dict={"start": 4, "max": -3, "step": 1},
     z_dict={"start": 1, "max": 10, "step": 5},
-*args):
+    *args
+):
     value_list = []
     for val in args:
         if val.ndim == 3:
-            value_list.append(val[
-                x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-                x_dict["start"] : x_dict["max"] : x_dict["step"],
-                z_dict["start"] : z_dict["max"] : z_dict["step"],
-            ])
+            value_list.append(
+                val[
+                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    z_dict["start"] : z_dict["max"] : z_dict["step"],
+                ]
+            )
         elif val.ndim == 2:
-            value_list.append(val[
-                x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-                x_dict["start"] : x_dict["max"] : x_dict["step"],
-            ])
+            value_list.append(
+                val[
+                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                ]
+            )
         elif val.ndim == 4:
-            value_list.append(val[
-                :,
-                x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-                x_dict["start"] : x_dict["max"] : x_dict["step"],
-                z_dict["start"] : z_dict["max"] : z_dict["step"],
-            ])
-    
+            value_list.append(
+                val[
+                    :,
+                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    z_dict["start"] : z_dict["max"] : z_dict["step"],
+                ]
+            )
+
     return value_list
+
 
 def slice_data(
     terrain,
@@ -365,6 +408,88 @@ def slice_data(
         w,
         pressure,
     )
+
+
+def interpolate_z_axis(
+    x,
+    y,
+    Z_input,
+    terrain,
+    u,
+    v,
+    w,
+    pressure,
+):
+    z_above_ground = np.transpose(
+        (np.transpose(Z_input, ([0, 3, 1, 2])) - terrain), ([0, 2, 3, 1])
+    )
+    new_1D_z_above_ground = np.linspace(
+        np.mean(z_above_ground[:, :, :, 0]),
+        np.mean(z_above_ground[:, :, :, -1]),
+        num=z_above_ground[0, 0, 0, :].size,
+    )
+    X, Y, new_3D_z_above_ground = np.meshgrid(x, y, new_1D_z_above_ground)
+
+    for i in tqdm(range(u.shape[0])):
+        for j in range(u.shape[1]):
+            for k in range(u.shape[2]):
+                u[i, j, k, :] = np.interp(
+                    new_1D_z_above_ground, z_above_ground[i, j, k, :], u[i, j, k, :]
+                )
+                v[i, j, k, :] = np.interp(
+                    new_1D_z_above_ground, z_above_ground[i, j, k, :], v[i, j, k, :]
+                )
+                u[i, j, k, :] = np.interp(
+                    new_1D_z_above_ground, z_above_ground[i, j, k, :], w[i, j, k, :]
+                )
+                pressure[i, j, k, :] = np.interp(
+                    new_1D_z_above_ground,
+                    z_above_ground[i, j, k, :],
+                    pressure[i, j, k, :],
+                )
+
+    return new_3D_z_above_ground, u, v, w, pressure
+
+
+def get_interpolated_z_data(
+    filename,
+    x,
+    y,
+    Z_input,
+    terrain,
+    u,
+    v,
+    w,
+    pressure,
+):
+    try:
+        with open(filename, "rb") as f:
+            (
+                Z_interp_above_ground,
+                u_interp,
+                v_interp,
+                w_interp,
+                pressure_interp,
+            ) = pickle.load(f)
+        print("Loaded interpolated (z_above_ground) data from file " + filename)
+    except:
+        print("Interpolating z axis...")
+        (
+            Z_interp_above_ground,
+            u_interp,
+            v_interp,
+            w_interp,
+            pressure_interp,
+        ) = interpolate_z_axis(x, y, Z_input, terrain, u, v, w, pressure)
+
+        with open(filename, "wb") as f:
+            pickle.dump(
+                [Z_interp_above_ground, u_interp, v_interp, w_interp, pressure_interp],
+                f,
+            )
+        print("Saved data to file " + filename)
+
+    return Z_interp_above_ground, u_interp, v_interp, w_interp, pressure_interp
 
 
 def interpolate_cartesian_3D(
@@ -434,13 +559,13 @@ def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1):
     if terrain.any():
         try:
             mlab.surf(
-                X[:, :, 0].T, Y[:, :, 0].T, z_plot_scale * terrain.T, colormap="black-white"
+                X[:, :, 0].T,
+                Y[:, :, 0].T,
+                z_plot_scale * terrain.T,
+                colormap="black-white",
             )
         except:
-            mlab.surf(
-                X.T, Y.T, z_plot_scale * terrain.T, colormap="black-white"
-            )
-
+            mlab.surf(X.T, Y.T, z_plot_scale * terrain.T, colormap="black-white")
 
     mlab.show()
 
@@ -456,10 +581,10 @@ def plot_pressure(
     surface=True,
     z_step=5,
 ):
-    for i in range(pressure[0, 0, :].size):
-        pressure[:, :, i] = (pressure[:, :, i] - pressure[:, :, -1]) / (
-            pressure[:, :, 0] - pressure[:, :, -1]
-        )
+    # for i in range(pressure[0, 0, :].size):
+    #     pressure[:, :, i] = (pressure[:, :, i] - pressure[:, :, -1]) / (
+    #         pressure[:, :, 0] - pressure[:, :, -1]
+    #     )
 
     mlab.figure(fig)
 
@@ -499,34 +624,31 @@ def preprosess_and_plot(
     z_plot_scale,
     time_index,
     interpolate=False,
+    cartesian=False,
+    interpolated_file_name="",
 ):
     terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
         terrain, x, y, z, u, v, w, pressure, x_dict, z_dict
     )
 
-    plot_images("./runs/3D_full_conv_test/images/val_imgs__it_44.pkl", terrain, X, Y, z[time_index], X_DICT, Z_DICT, z_plot_scale)
+    # plot_images("./runs/3D_full_conv_test/images/val_imgs__it_44.pkl", terrain, X, Y, z[time_index], X_DICT, Z_DICT, z_plot_scale)
 
     if interpolate:
-        filename = (
-            "./saved_interpolated_data/2018_apr_xy"
-            + str(x_dict["start"])
-            + "_"
-            + str(x_dict["max"])
-            + "_"
-            + str(x_dict["step"])
-            + "___z"
-            + str(z_dict["start"])
-            + "_"
-            + str(z_dict["max"])
-            + "_"
-            + str(z_dict["step"])
-            + "__time_"
-            + str(time_index)
-            + ".pickle"
-        )
-        [print(x.shape) for x in [terrain, x, y, X, Y, z, u, v, w]]
-        try:
-            with open(filename, "rb") as f:
+        # [print(x.shape) for x in [terrain, x, y, X, Y, z, u, v, w]]
+        if cartesian:
+            filename = "./saved_interpolated_cartesian_data/" + interpolated_file_name
+            try:
+                with open(filename, "rb") as f:
+                    (
+                        X_cartesian,
+                        Y_cartesian,
+                        Z_cartesian,
+                        u_cart,
+                        v_cart,
+                        w_cart,
+                    ) = pickle.load(f)
+                print("Loaded cartesian data from file " + filename)
+            except:
                 (
                     X_cartesian,
                     Y_cartesian,
@@ -534,31 +656,48 @@ def preprosess_and_plot(
                     u_cart,
                     v_cart,
                     w_cart,
-                ) = pickle.load(f)
-            print("Loaded cartesian data from file " + filename)
-        except:
-            (
-                X_cartesian,
-                Y_cartesian,
-                Z_cartesian,
-                u_cart,
-                v_cart,
-                w_cart,
-            ) = interpolate_cartesian_3D(X, Y, z, u, v, w, x, y, time_index)
+                ) = interpolate_cartesian_3D(X, Y, z, u, v, w, x, y, time_index)
 
-            with open(filename, "wb") as f:
-                pickle.dump(
-                    [X_cartesian, Y_cartesian, Z_cartesian, u_cart, v_cart, w_cart], f
+                with open(filename, "wb") as f:
+                    pickle.dump(
+                        [X_cartesian, Y_cartesian, Z_cartesian, u_cart, v_cart, w_cart],
+                        f,
+                    )
+                print("Saved data to file " + filename)
+
+                plot_field(
+                    X_cartesian,
+                    Y_cartesian,
+                    Z_cartesian,
+                    u_cart,
+                    v_cart,
+                    w_cart,
+                    terrain,
+                    z_plot_scale,
+                    fig=3,
                 )
-            print("Saved data to file " + filename)
+        else:
+            filename = "./saved_interpolated_z_data/" + interpolated_file_name
+
+            (
+                Z_interp_above_ground,
+                u_interp,
+                v_interp,
+                w_interp,
+                pressure_interp,
+            ) = get_interpolated_z_data(filename, x, y, z, terrain, u, v, w, pressure)
+
+            Z_interp = np.transpose(
+                np.transpose(Z_interp_above_ground, ([2, 0, 1])) + terrain, ([1, 2, 0])
+            )
 
             plot_field(
-                X_cartesian,
-                Y_cartesian,
-                Z_cartesian,
-                u_cart,
-                v_cart,
-                w_cart,
+                X,
+                Y,
+                Z_interp,
+                u_interp[time_index],
+                v_interp[time_index],
+                w_interp[time_index],
                 terrain,
                 z_plot_scale,
                 fig=3,
@@ -575,9 +714,8 @@ def preprosess_and_plot(
         z_plot_scale,
         fig=1,
     )
-    
 
-    # plot_pressure(X, Y, z, z_plot_scale, pressure[time_index], fig=2)
+    plot_pressure(X, Y, z, z_plot_scale, pressure[time_index], fig=2)
 
 
 def download_and_combine(data_code, start_date, end_date):
@@ -622,6 +760,28 @@ def download_and_combine(data_code, start_date, end_date):
     return time, terrain, x, y, z, u, v, w, theta, tke, td, pressure
 
 
+def interp_file_name(x_dict, z_dict, start_date, end_date):
+    return (
+        str(start_date)
+        + "_"
+        + str(end_date)
+        + "_"
+        + str(x_dict["start"])
+        + "_"
+        + str(x_dict["max"])
+        + "_"
+        + str(x_dict["step"])
+        + "___z"
+        + str(z_dict["start"])
+        + "_"
+        + str(z_dict["max"])
+        + "_"
+        + str(z_dict["step"])
+        + "__time_"
+        + ".pickle"
+    )
+
+
 if __name__ == "__main__":
     data_code = "simra_BESSAKER_"
     start_date = date(2018, 4, 1)  # 1,2
@@ -631,34 +791,37 @@ if __name__ == "__main__":
         data_code, start_date, end_date
     )
 
-    z_plot_scale = 1
+    z_plot_scale = 5
     time_index = 3
-    X_DICT = {"start": 4, "max": 30, "step": 1}
-    Z_DICT = {"start": 1, "max": 2, "step": 1}
+    X_DICT = {"start": 4, "max": -3, "step": 1}
+    Z_DICT = {"start": 1, "max": 41, "step": 10}
 
-    terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
-        terrain, x, y, z, u, v, w, pressure, X_DICT, Z_DICT
-    )
+    file_name = interp_file_name(X_DICT, Z_DICT, start_date, end_date)
 
-    plot_images("./runs/larger_pix_loss/images/val_imgs__it_200.pkl", terrain, X, Y, z[time_index], X_DICT, Z_DICT, z_plot_scale)
-    
+    # terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
+    #     terrain, x, y, z, u, v, w, pressure, X_DICT, Z_DICT
+    # )
+
+    # plot_images("./runs/3D_full_conv_five_channels/images/val_imgs__it_40.pkl", terrain, X, Y, z[time_index], z_plot_scale=z_plot_scale)
+
     # z = (z.transpose(2,0,1)-terrain).transpose((1,2,0))
 
-    # preprosess_and_plot(
-    #     terrain,
-    #     x,
-    #     y,
-    #     z,
-    #     u,
-    #     v,
-    #     w,
-    #     pressure,
-    #     X_DICT,
-    #     Z_DICT,
-    #     z_plot_scale,
-    #     time_index,
-    #     interpolate=False,
-    # )
+    preprosess_and_plot(
+        terrain,
+        x,
+        y,
+        z,
+        u,
+        v,
+        w,
+        pressure,
+        X_DICT,
+        Z_DICT,
+        z_plot_scale,
+        time_index,
+        interpolate=False,
+        interpolated_file_name=file_name,
+    )
 
     # mlab.quiver3d(X[:,:, z_start:z_lim:z_step],Y[:,:, z_start:z_lim:z_step],z_scale*z[:,:, z_start:z_lim:z_step],u_nomask[time_index][:, :, z_start:z_lim:z_step], v_nomask[time_index][:, :, z_start:z_lim:z_step], w_nomask[time_index][:,:, z_start:z_lim:z_step], mask_points=1)
     # mlab.surf(X_2D, Y_2D, z_scale*terrain_nomask.transpose(), colormap="black-white")

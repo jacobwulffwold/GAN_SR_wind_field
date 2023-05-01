@@ -24,6 +24,7 @@ opencv-python = "^4.7.0.72"
 torch-tb-profiler = "^0.4.1"
 torchvision = "^0.15.1"
 torchaudio = "^2.0.1"
+pyvista = "^0.38.5"
 
 
 [build-system]

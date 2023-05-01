@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
 
 import config.config as config
 import GAN_models.wind_field_GAN_3D as wind_field_GAN_3D
-import GAN_models.wind_field_GAN_2D as wind_field_GAN_2D
 from process_data import preprosess
 
 
@@ -28,7 +27,7 @@ def test(cfg: config.Config, dataset_test):
     status_logger = logging.getLogger("status")
 
     dataloader_test = None
-  
+
     if cfg.dataset_test is not None:
         if cfg.dataset_test.mode.lower() == "hrlr":
             dataloader_test = torch.utils.data.DataLoader(

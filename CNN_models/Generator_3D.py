@@ -8,7 +8,14 @@ Implements the ESRDnet nn.Module
 
 import math
 import torch.nn as nn
-from CNN_models.torch_blocks import RRDB, create_UpConv_block, SkipConnectionBlock, create_conv_lrelu_layer, Horizontal_Conv_3D, create_UpConv_block
+from CNN_models.torch_blocks import (
+    RRDB,
+    create_UpConv_block,
+    SkipConnectionBlock,
+    create_conv_lrelu_layer,
+    Horizontal_Conv_3D,
+    create_UpConv_block,
+)
 import tools.loggingclass as lc
 
 
@@ -27,10 +34,10 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         RDB_residual_scaling: float = 0.2,
         RRDB_residual_scaling: float = 0.2,
         act_type: str = "leakyrelu",
-        number_of_z_layers:int = 10,
-        conv_mode:str = "3D",
+        number_of_z_layers: int = 10,
+        conv_mode: str = "3D",
         # device=torch.device("mps" if torch.backends.mps.is_available() else "cpu"),
-        device = "cpu"
+        device="cpu",
     ):
         super(Generator_3D, self).__init__()
 
@@ -47,12 +54,27 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
 
         layer_type = nn.Conv2d if conv_mode == "2D" else nn.Conv3d
 
-        hr_pad = (hr_kern_size-1) // 2
+        hr_pad = (hr_kern_size - 1) // 2
 
         # Low level feature extraction
-        if conv_mode in {"3D", "2D"}: 
-            feature_conv = create_conv_lrelu_layer(in_channels, number_of_features, 3, padding=1, layer_type=layer_type, lrelu=False)
-            lr_conv = create_conv_lrelu_layer(number_of_features, number_of_features, 3, padding=1,layer_type=layer_type, lrelu_negative_slope=slope, lrelu=False)
+        if conv_mode in {"3D", "2D"}:
+            feature_conv = create_conv_lrelu_layer(
+                in_channels,
+                number_of_features,
+                3,
+                padding=1,
+                layer_type=layer_type,
+                lrelu=False,
+            )
+            lr_conv = create_conv_lrelu_layer(
+                number_of_features,
+                number_of_features,
+                3,
+                padding=1,
+                layer_type=layer_type,
+                lrelu_negative_slope=slope,
+                lrelu=False,
+            )
             hr_convs = [
                 create_conv_lrelu_layer(
                     number_of_features,
@@ -60,7 +82,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                     kernel_size=hr_kern_size,
                     padding=hr_pad,
                     lrelu_negative_slope=slope,
-                    layer_type=layer_type
+                    layer_type=layer_type,
                 ),
                 layer_type(
                     number_of_features,
@@ -70,15 +92,42 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 ),
             ]
 
-        elif conv_mode== "horizontal_3D":
-            feature_conv = Horizontal_Conv_3D(in_channels, number_of_features, 3, number_of_z_layers=number_of_z_layers, lrelu=False) 
-            lr_conv = Horizontal_Conv_3D(number_of_features, number_of_features, 3, lrelu_negative_slope=slope, number_of_z_layers=number_of_z_layers, lrelu=False)
-            hr_convs = [Horizontal_Conv_3D(number_of_features, number_of_features, kernel_size=hr_kern_size, lrelu_negative_slope=slope, number_of_z_layers=number_of_z_layers),
-                    Horizontal_Conv_3D(number_of_features, out_channels, kernel_size=hr_kern_size, number_of_z_layers=number_of_z_layers, lrelu=False),]
-       
+        elif conv_mode == "horizontal_3D":
+            feature_conv = Horizontal_Conv_3D(
+                in_channels,
+                number_of_features,
+                3,
+                number_of_z_layers=number_of_z_layers,
+                lrelu=False,
+            )
+            lr_conv = Horizontal_Conv_3D(
+                number_of_features,
+                number_of_features,
+                3,
+                lrelu_negative_slope=slope,
+                number_of_z_layers=number_of_z_layers,
+                lrelu=False,
+            )
+            hr_convs = [
+                Horizontal_Conv_3D(
+                    number_of_features,
+                    number_of_features,
+                    kernel_size=hr_kern_size,
+                    lrelu_negative_slope=slope,
+                    number_of_z_layers=number_of_z_layers,
+                ),
+                Horizontal_Conv_3D(
+                    number_of_features,
+                    out_channels,
+                    kernel_size=hr_kern_size,
+                    number_of_z_layers=number_of_z_layers,
+                    lrelu=False,
+                ),
+            ]
+
         else:
             raise ValueError(f"Conv mode {conv_mode} not implemented")
-        
+
         RRDBs = [
             RRDB(
                 number_of_features,
@@ -92,7 +141,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             )
             for i in range(number_of_RRDBs)
         ]
-    
+
         # Shortcut from feature_conv to the upsampler
         RRDB_conv_shortcut = SkipConnectionBlock(nn.Sequential(*RRDBs, lr_conv))
 
@@ -106,7 +155,12 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
 
         upsampler = [
             create_UpConv_block(
-                number_of_features, number_of_features, scale=2, lrelu_negative_slope=slope, number_of_z_layers=number_of_z_layers, mode=conv_mode,
+                number_of_features,
+                number_of_features,
+                scale=2,
+                lrelu_negative_slope=slope,
+                number_of_z_layers=number_of_z_layers,
+                mode=conv_mode,
             )
             for upsample in range(number_of_upsample_layers)
         ]

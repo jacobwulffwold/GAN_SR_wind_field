@@ -31,7 +31,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         # device=torch.device("mps" if torch.backends.mps.is_available() else "cpu"),
         device="cpu",
         number_of_z_layers=10,
-        conv_mode:str="3D",
+        conv_mode: str = "3D",
     ):
         super(Discriminator_3D, self).__init__()
         self.base_number_of_features = base_number_of_features
@@ -86,7 +86,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 normalization_type=normalization_type,
                 drop_first_norm=False,
                 halve_z_dim=True,
-                number_of_z_layers=number_of_z_layers//2,
+                number_of_z_layers=number_of_z_layers // 2,
                 mode=conv_mode,
             )
         )
@@ -100,7 +100,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 normalization_type=normalization_type,
                 drop_first_norm=False,
                 halve_z_dim=True,
-                number_of_z_layers=number_of_z_layers//2,
+                number_of_z_layers=number_of_z_layers // 2,
                 mode=conv_mode,
             )
         )
@@ -114,7 +114,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 normalization_type=normalization_type,
                 drop_first_norm=False,
                 halve_z_dim=True,
-                number_of_z_layers=number_of_z_layers//4,
+                number_of_z_layers=number_of_z_layers // 4,
                 mode=conv_mode,
             )
         )

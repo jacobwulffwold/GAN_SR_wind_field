@@ -28,13 +28,15 @@ class IniConfig:
 
         return s
 
+
 class GANConfig(IniConfig):
-    include_pressure:bool = True
-    include_z_channel:bool = True
-    number_of_z_layers:int = 10
-    conv_mode:str = "3D"
+    include_pressure: bool = True
+    include_z_channel: bool = True
+    number_of_z_layers: int = 10
+    conv_mode: str = "3D"
     start_date = [2018, 4, 1]
     end_date = [2018, 4, 4]
+    interpolate_z: bool = False
 
     def setGANConfig(self, gan_config):
         self.include_pressure = gan_config.getboolean("include_pressure")
@@ -43,6 +45,8 @@ class GANConfig(IniConfig):
         self.conv_mode = gan_config.get("conv_mode")
         self.start_date = safe_list_from_string(gan_config.get("start_date"), int)
         self.end_date = safe_list_from_string(gan_config.get("end_date"), int)
+        self.interpolate_z = gan_config.getboolean("interpolate_z")
+
 
 class EnvConfig(IniConfig):
     root_path: str = "~/GAN_SR_wind_field_"
@@ -52,6 +56,7 @@ class EnvConfig(IniConfig):
     generator_load_path: str = None
     discriminator_load_path: str = None
     state_load_path: str = None
+    fixed_seed:int = 2001
 
     def setEnvConfig(self, env_config):
         self.root_path = env_config.get("root_path")
@@ -61,6 +66,8 @@ class EnvConfig(IniConfig):
         self.generator_load_path = env_config.get("generator_load_path")
         self.discriminator_load_path = env_config.get("discriminator_load_path")
         self.state_load_path = env_config.get("state_load_path")
+        self.fixed_seed = env_config.getint("fixed_seed")
+
 
 class GeneratorConfig(IniConfig):
     norm_type: str = "none"
@@ -79,7 +86,7 @@ class GeneratorConfig(IniConfig):
     weight_init_scale: float = 1.0
     lff_kern_size: int = 3
     number_of_z_layers: int = 1
-    conv_mode:str ="2D"
+    conv_mode: str = "2D"
 
     def setGeneratorConfig(self, gen_config):
         self.norm_type = gen_config.get("norm_type")
@@ -195,8 +202,9 @@ class TrainingConfig(IniConfig):
     pixel_criterion: str = "l1"
     pixel_loss_weight: float = 1e-1
 
-    feature_criterion: str = "l2"
-    feature_weight: float = 1.0
+    gradient_xy_loss_weight: float = 1e-1
+    gradient_z_loss_weight: float = 1e-1
+    divergence_loss_weight: float = 1e-1
 
     use_noisy_labels: bool = False
     use_one_sided_label_smoothing: bool = False
@@ -228,7 +236,9 @@ class TrainingConfig(IniConfig):
         self.d_g_train_ratio = train_config.getint("d_g_train_ratio")
         self.pixel_criterion = train_config.get("pixel_criterion")
         self.pixel_loss_weight = train_config.getfloat("pixel_loss_weight")
-        self.feature_criterion = train_config.get("feature_criterion")
+        self.gradient_xy_loss_weight = train_config.getfloat("gradient_xy_loss_weight")
+        self.gradient_z_loss_weight = train_config.getfloat("gradient_z_loss_weight")
+        self.divergence_loss_weight = train_config.getfloat("divergence_loss_weight")
         self.feature_weight = train_config.getfloat("feature_weight")
         self.use_noisy_labels = train_config.getboolean("use_noisy_labels")
         self.use_one_sided_label_smoothing = train_config.getboolean(

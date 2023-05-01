@@ -1,4 +1,5 @@
-saved_interpolated_data/
+saved_interpolated_cartesian_data/
+saved_interpolated_z_data/
 combined_downloaded_bessaker_data/
 downloaded_raw_bessaker_data/
 log/
@@ -8,3 +9,5 @@ runs/
 __pycache__/
 OLD/
 CNN_models/OLD
+GAN_models/OLD
+.DS_Store
