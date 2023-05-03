@@ -24,7 +24,11 @@ class BaseGAN(lc.GlobalLoggingClass):
     def __init__(self, cfg: config.Config):
         super(BaseGAN, self).__init__()
         self.cfg = cfg
-        self.device = torch.device("cuda" if cfg.gpu_id is not None else "cpu")
+        self.device = (
+            torch.device(f"cuda:{cfg.gpu_id}")
+            if torch.cuda.is_available() and cfg.gpu_id is not None
+            else torch.device("cpu")
+        )
         # self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         # self.device = torch.device("cpu")
         self.is_train = cfg.is_train

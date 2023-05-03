@@ -8,6 +8,7 @@ Implements the ESRDnet nn.Module
 
 import math
 import torch.nn as nn
+import torch
 from CNN_models.torch_blocks import (
     RRDB,
     create_UpConv_block,
@@ -77,15 +78,15 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             )
             hr_convs = [
                 create_conv_lrelu_layer(
-                    number_of_features,
-                    number_of_features,
+                    number_of_features + 1,
+                    number_of_features + 1,
                     kernel_size=hr_kern_size,
                     padding=hr_pad,
                     lrelu_negative_slope=slope,
                     layer_type=layer_type,
                 ),
                 layer_type(
-                    number_of_features,
+                    number_of_features + 1,
                     out_channels,
                     kernel_size=hr_kern_size,
                     padding=hr_pad,
@@ -110,14 +111,14 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             )
             hr_convs = [
                 Horizontal_Conv_3D(
-                    number_of_features,
-                    number_of_features,
+                    number_of_features + 1,
+                    number_of_features + 1,
                     kernel_size=hr_kern_size,
                     lrelu_negative_slope=slope,
                     number_of_z_layers=number_of_z_layers,
                 ),
                 Horizontal_Conv_3D(
-                    number_of_features,
+                    number_of_features + 1,
                     out_channels,
                     kernel_size=hr_kern_size,
                     number_of_z_layers=number_of_z_layers,
@@ -165,10 +166,11 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             for upsample in range(number_of_upsample_layers)
         ]
 
-        self.model = nn.Sequential(
-            feature_conv, RRDB_conv_shortcut, *upsampler, *hr_convs
-        )
+        self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
+        self.hr_convs = nn.Sequential(*hr_convs)
         self.status_logs.append(f"Generator: finished init")
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, x, Z):
+        x = self.model(x)
+        x = torch.cat((x, Z[:, None, :, :]), dim=1)
+        return self.hr_convs(x)

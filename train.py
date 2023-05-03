@@ -122,8 +122,15 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     # store_LR_HR_in_runs_folder(cfg, dataloader_val)
 
     # Debugging
-    print("CUDA availability:", torch.cuda.is_available())
-    print("Current device:", torch.cuda.current_device(), "- num devices:", torch.cuda.device_count(), "- device name:", torch.cuda.get_device_name(0))
+    if torch.cuda.is_available():
+        print(
+            "Current device:",
+            torch.cuda.current_device(),
+            "- num devices:",
+            torch.cuda.device_count(),
+            "- device name:",
+            torch.cuda.get_device_name(0),
+        )
     # end debugging
     status_logger.info(f"beginning run from epoch {start_epoch}, it {it}")
 
@@ -183,7 +190,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     i_val += 1
                     val_LR = val_data[0].float().to(cfg.device)
                     val_HR = val_data[1].float().to(cfg.device)
-                    gan.feed_data(val_LR, val_HR[:, :-1, :, :, :], Z=val_HR[:, -1, :, :, :])
+                    gan.feed_data(
+                        val_LR, val_HR[:, :-1, :, :, :], Z=val_HR[:, -1, :, :, :]
+                    )
                     gan.validation(it)
                     for val_name, val in gan.get_loss_dict_ref().items():
                         loss_vals[val_name] += val / n
@@ -251,7 +260,18 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                             # Generated HR
                             # loss_sr = torch.sum(((HR_i - gan.G(LR_i))**2)/(128*128)).item()
                             # rounded_loss_sr = round(loss_sr, 3)
-                            gen_HR = gan.G(LR_i).squeeze().detach().cpu().numpy()
+                            gen_HR = (
+                                gan.G(
+                                    LR_i,
+                                    torch.index_select(
+                                        gan.Z, 0, batch_quiver, out=None
+                                    ),
+                                )
+                                .squeeze()
+                                .detach()
+                                .cpu()
+                                .numpy()
+                            )
                             u_sr = gen_HR[
                                 0, :, :, :
                             ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
@@ -291,7 +311,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                             # tb_writer.add_image(
                             #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
                             # )
-    
 
                             fig, axes = plt.subplots(2, 2)
                             axes[0, 0].pcolor(u_LR[:, :, 3])
@@ -379,7 +398,14 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
             indx = torch.tensor([i]).float().to(cfg.device)
             LR_i = torch.index_select(LRs, 0, indx, out=None)
             # new record in # of .calls ?
-            sr_np = gan.G(LR_i).squeeze().detach().cpu().numpy() * 255
+            sr_np = (
+                gan.G(LR_i, torch.index_select(gan.Z, 0, indx, out=None))
+                .squeeze()
+                .detach()
+                .cpu()
+                .numpy()
+                * 255
+            )
             sr_np[sr_np < 0] = 0
             sr_np[sr_np > 255] = 255
 

@@ -6,8 +6,6 @@ Apache License
 Implements the ESRD GAN model
 """
 
-import functools
-import logging
 import math
 
 import numpy as np
@@ -42,9 +40,11 @@ class wind_field_GAN_3D(BaseGAN):
             "train_loss_G_xy_gradient": 0.0,
             "train_loss_G_z_gradient": 0.0,
             "train_loss_G_divergence": 0.0,
+            "train_loss_G_feature_D": 0.0,
             "val_loss_G_xy_gradient": 0.0,
             "val_loss_G_z_gradient": 0.0,
             "val_loss_G_divergence": 0.0,
+            "val_loss_G_feature_D": 0.0,
             "val_loss_D": 0.0,
             "val_loss_G": 0.0,
             "val_loss_G_adversarial": 0.0,
@@ -95,6 +95,7 @@ class wind_field_GAN_3D(BaseGAN):
         self.G = self.G.to(cfg.device)
         initialization.init_weights(self.G, scale=cfg_g.weight_init_scale)
         self.conv_mode = cfg_g.conv_mode
+        self.use_D_feature_extractor_cost = cfg_gan.use_D_feature_extractor_cost
 
         if cfg.is_train:
             cfg_d: config.DiscriminatorConfig = cfg.discriminator
@@ -158,6 +159,7 @@ class wind_field_GAN_3D(BaseGAN):
             self.gradient_xy_criterion = nn.MSELoss()
             self.gradient_z_criterion = nn.MSELoss()
             self.divergence_criterion = nn.MSELoss()
+            self.feature_D_criterion = nn.L1Loss()
 
             if cfg_t.pixel_criterion is None or cfg_t.pixel_criterion == "none":
                 self.pixel_criterion = None
@@ -217,7 +219,7 @@ class wind_field_GAN_3D(BaseGAN):
         ):
             raise ValueError("process_data requires exactly one input as true")
 
-        self.fake_hr = self.G(self.lr)
+        self.fake_hr = self.G(self.lr, self.Z)
 
         # changes when going from train <-> val <-> test
         # (at least when data loader has drop_last=True )
@@ -289,35 +291,54 @@ class wind_field_GAN_3D(BaseGAN):
                     f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
                 )
 
-            # feature loss
-            # loss_G_feat = 0
-            # if self.feature_criterion:
-            #     features = self.F(self.hr).detach()
-            #     fake_features = self.F(self.fake_hr)
-            #     loss_G_feat = self.feature_criterion(features, fake_features)
+            loss_G_feature_D = 0
+            if self.use_D_feature_extractor_cost:
+                features = self.D.features(self.hr).detach()
+                fake_features = self.D.features(self.fake_hr)
+                loss_G_feature_D = self.feature_D_criterion(features, fake_features)
 
-            # pixel loss
             loss_G_pix = 0
             if self.pixel_criterion:
                 loss_G_pix = self.pixel_criterion(self.hr, self.fake_hr)
 
-            HR_wind_gradient, HR_divergence = calculate_gradient_of_wind_field(self.hr[:,:3], self.x, self.y,self.Z)
-            SR_wind_gradient, SR_divergence = calculate_gradient_of_wind_field(self.fake_hr[:,:3], self.x, self.y, self.Z)
+            HR_wind_gradient, HR_divergence = calculate_gradient_of_wind_field(
+                self.hr[:, :3], self.x, self.y, self.Z
+            )
+            SR_wind_gradient, SR_divergence = calculate_gradient_of_wind_field(
+                self.fake_hr[:, :3], self.x, self.y, self.Z
+            )
 
-            loss_G_xy_gradient = self.gradient_xy_criterion(SR_wind_gradient[:, :6]/torch.max(abs(SR_wind_gradient[:, :6])), HR_wind_gradient[:, :6]/torch.max(abs(HR_wind_gradient[:, :6])))
-            loss_G_z_gradient = self.gradient_z_criterion(SR_wind_gradient[:, 6:]/torch.max(SR_wind_gradient[:, 6:]), HR_wind_gradient[:, 6:]/torch.max(HR_wind_gradient[:, 6:]))
+            loss_G_xy_gradient = self.gradient_xy_criterion(
+                SR_wind_gradient[:, :6] / torch.max(abs(SR_wind_gradient[:, :6])),
+                HR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
+            )
+            loss_G_z_gradient = self.gradient_z_criterion(
+                SR_wind_gradient[:, 6:] / torch.max(SR_wind_gradient[:, 6:]),
+                HR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
+            )
 
-            max_divergence = torch.max(abs(torch.cat((HR_divergence, SR_divergence), dim=0)))
-            loss_G_divergence = self.divergence_criterion(HR_divergence/max_divergence, SR_divergence/max_divergence)
+            max_divergence = torch.max(
+                abs(torch.cat((HR_divergence, SR_divergence), dim=0))
+            )
+            loss_G_divergence = self.divergence_criterion(
+                HR_divergence / max_divergence, SR_divergence / max_divergence
+            )
 
             loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
-            # loss_G_feat *= self.cfg.training.feature_weight
+            loss_G_feature_D *= self.cfg.training.feature_D_loss_weight
             loss_G_pix *= self.cfg.training.pixel_loss_weight
             loss_G_xy_gradient *= self.cfg.training.gradient_xy_loss_weight
             loss_G_z_gradient *= self.cfg.training.gradient_z_loss_weight
             loss_G_divergence *= self.cfg.training.divergence_loss_weight
 
-            loss_G = loss_G_adversarial + loss_G_pix + loss_G_xy_gradient + loss_G_z_gradient + loss_G_divergence
+            loss_G = (
+                loss_G_adversarial
+                + loss_G_pix
+                + loss_G_xy_gradient
+                + loss_G_z_gradient
+                + loss_G_divergence
+                + loss_G_feature_D
+            )
 
             # normalize by batch sz, this is not done in ESRGAN
             # loss_D.mul_(1.0 / current_batch_size)
@@ -330,7 +351,7 @@ class wind_field_GAN_3D(BaseGAN):
                 self.loss_dict["train_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
                 self.loss_dict["train_loss_G_z_gradient"] = loss_G_z_gradient.item()
                 self.loss_dict["train_loss_G_divergence"] = loss_G_divergence.item()
-                # self.loss_dict["train_loss_G_feat"] = loss_G_feat.item()
+                self.loss_dict["train_loss_G_feature_D"] = loss_G_feature_D.item()
                 self.loss_dict["train_loss_G_pix"] = loss_G_pix.item()
                 self.hist_dict["SR_pix_distribution"] = (
                     self.fake_hr.detach().cpu().numpy()
@@ -342,17 +363,18 @@ class wind_field_GAN_3D(BaseGAN):
                 self.loss_dict["val_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
                 self.loss_dict["val_loss_G_z_gradient"] = loss_G_z_gradient.item()
                 self.loss_dict["val_loss_G_divergence"] = loss_G_divergence.item()
+                self.loss_dict["val_loss_G_feature_D"] = loss_G_feature_D.item()
                 self.loss_dict["val_loss_G_pix"] = loss_G_pix.item()
                 if self.conv_mode == "horizontal_3D":
                     grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
-                    grad_end = self.G.model[-1].convs[-1][-1].weight.grad.cpu().detach()
+                    grad_end = self.G.hr_convs[-1].convs[-1][-1].weight.grad.cpu().detach()
                     weight_start = self.G.model[0].convs[0][0].weight.cpu().detach()
-                    weight_end = self.G.model[-1].convs[-1][-1].weight.cpu().detach()
+                    weight_end = self.G.hr_convs[-1].convs[-1][-1].weight.cpu().detach()
                 else:
                     grad_start = self.G.model[0][0].weight.grad.cpu().detach()
-                    grad_end = self.G.model[-1].weight.grad.cpu().detach()
+                    grad_end = self.G.hr_convs[-1].weight.grad.cpu().detach()
                     weight_start = self.G.model[0][0].weight.cpu().detach()
-                    weight_end = self.G.model[-1].weight.cpu().detach()
+                    weight_end = self.G.hr_convs[-1].weight.cpu().detach()
 
                 self.hist_dict["val_grad_G_first_layer"] = grad_start.numpy()
                 self.hist_dict["val_grad_G_last_layer"] = grad_end.numpy()

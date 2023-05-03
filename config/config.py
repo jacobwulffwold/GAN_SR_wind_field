@@ -37,6 +37,7 @@ class GANConfig(IniConfig):
     start_date = [2018, 4, 1]
     end_date = [2018, 4, 4]
     interpolate_z: bool = False
+    use_D_feature_extractor_cost = False
 
     def setGANConfig(self, gan_config):
         self.include_pressure = gan_config.getboolean("include_pressure")
@@ -46,6 +47,7 @@ class GANConfig(IniConfig):
         self.start_date = safe_list_from_string(gan_config.get("start_date"), int)
         self.end_date = safe_list_from_string(gan_config.get("end_date"), int)
         self.interpolate_z = gan_config.getboolean("interpolate_z")
+        self.use_D_feature_extractor_cost = gan_config.getboolean("use_D_feature_extractor_cost")
 
 
 class EnvConfig(IniConfig):
@@ -56,7 +58,7 @@ class EnvConfig(IniConfig):
     generator_load_path: str = None
     discriminator_load_path: str = None
     state_load_path: str = None
-    fixed_seed:int = 2001
+    fixed_seed: int = 2001
 
     def setEnvConfig(self, env_config):
         self.root_path = env_config.get("root_path")
@@ -205,6 +207,7 @@ class TrainingConfig(IniConfig):
     gradient_xy_loss_weight: float = 1e-1
     gradient_z_loss_weight: float = 1e-1
     divergence_loss_weight: float = 1e-1
+    feature_D_loss_weight:float = 0.1
 
     use_noisy_labels: bool = False
     use_one_sided_label_smoothing: bool = False
@@ -239,7 +242,7 @@ class TrainingConfig(IniConfig):
         self.gradient_xy_loss_weight = train_config.getfloat("gradient_xy_loss_weight")
         self.gradient_z_loss_weight = train_config.getfloat("gradient_z_loss_weight")
         self.divergence_loss_weight = train_config.getfloat("divergence_loss_weight")
-        self.feature_weight = train_config.getfloat("feature_weight")
+        self.feature_D_loss_weight = train_config.getfloat("feature_D_loss_weight")
         self.use_noisy_labels = train_config.getboolean("use_noisy_labels")
         self.use_one_sided_label_smoothing = train_config.getboolean(
             "use_one_sided_label_smoothing"
@@ -340,9 +343,9 @@ class Config(IniConfig):
             s = s + f"{str(k)} = {str(v)}\n"
 
         s += "\n" + str(self.env)
+        s += "\n" + str(self.gan_config)
         s += "\n" + str(self.generator)
         s += "\n" + str(self.discriminator)
-        s += "\n" + str(self.feature_extractor)
         s += "\n" + str(self.training)
         if self.dataset_train is not None:
             s += "\n" + str(self.dataset_train)

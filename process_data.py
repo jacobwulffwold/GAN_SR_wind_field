@@ -10,7 +10,7 @@ from download_data import (
     slice_only_dim_dicts,
     interp_file_name,
     get_interpolated_z_data,
-    plot_pressure
+    plot_pressure,
 )
 from torch.autograd import grad
 
@@ -29,20 +29,38 @@ torch.gradient
 # w_nan = np.ma.filled(w.astype(float), np.nan)
 # w_nomask = w_nan[:, 4:-4, 4:-3]
 
-def calculate_gradient_of_wind_field(HR_data, x,y,Z):
-    grad_x, grad_y = torch.gradient(HR_data, dim=(2,3), spacing=(x,y))
-    grad_z = calculate_div_z(HR_data, Z)
-    divergence = grad_x[:,0,1:-1,1:-1,1:-1] + grad_y[:,1,1:-1,1:-1,1:-1] + grad_z[:,2,1:-1,1:-1,:]
 
-    return torch.cat((grad_x[:,:,1:-1,1:-1,1:-1], grad_y[:,:,1:-1,1:-1,1:-1], grad_z[:,:,1:-1,1:-1,:]), dim=1), divergence
+def calculate_gradient_of_wind_field(HR_data, x, y, Z):
+    grad_x, grad_y = torch.gradient(HR_data, dim=(2, 3), spacing=(x, y))
+    grad_z = calculate_div_z(HR_data, Z)
+    divergence = (
+        grad_x[:, 0, 1:-1, 1:-1, 1:-1]
+        + grad_y[:, 1, 1:-1, 1:-1, 1:-1]
+        + grad_z[:, 2, 1:-1, 1:-1, :]
+    )
+
+    return (
+        torch.cat(
+            (
+                grad_x[:, :, 1:-1, 1:-1, 1:-1],
+                grad_y[:, :, 1:-1, 1:-1, 1:-1],
+                grad_z[:, :, 1:-1, 1:-1, :],
+            ),
+            dim=1,
+        ),
+        divergence,
+    )
+
 
 def calculate_div_z(HR_data, Z):
     dZ = Z[:, :, :, 1:] - Z[:, :, :, :-1]
 
     derivatives = torch.zeros_like(HR_data)[:, :, :, :, 1:-1]
     for i in range(1, Z.shape[-1] - 1):
-        dz1, dz2 = torch.tile(dZ[:, None, :, :, i - 1], (1, HR_data.shape[1],1,1)), torch.tile(dZ[:, None, :, :, i], (1,HR_data.shape[1],1,1))
-        
+        dz1, dz2 = torch.tile(
+            dZ[:, None, :, :, i - 1], (1, HR_data.shape[1], 1, 1)
+        ), torch.tile(dZ[:, None, :, :, i], (1, HR_data.shape[1], 1, 1))
+
         derivatives[:, :, :, :, i - 1] = (
             dz1**2 * HR_data[:, :, :, :, i + 1]
             + (dz2**2 - dz1**2) * HR_data[:, :, :, :, i]
@@ -191,7 +209,13 @@ def preprosess(
     # plot_field(X, Y, z[time_index], HR_data_train[time_index, 0, :, :, :], HR_data_train[time_index, 1, :,:,:], HR_data_train[time_index, 2, :,:,:], terrain, fig=2)
     # plot_field(X[::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], Y[::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], z[time_index, ::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], LR_data_train[time_index, 0, :, :, :], LR_data_train[time_index, 1, :, :, :], LR_data_train[time_index, 2, :, :, :], terrain[::COARSENESS_FACTOR, ::COARSENESS_FACTOR], fig=3)
 
-    return dataset_train, dataset_test, dataset_validation, torch.from_numpy(x), torch.from_numpy(y)
+    return (
+        dataset_train,
+        dataset_test,
+        dataset_validation,
+        torch.from_numpy(x),
+        torch.from_numpy(y),
+    )
 
 
 if __name__ == "__main__":

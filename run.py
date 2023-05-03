@@ -3,7 +3,7 @@ run.py
 Written by Eirik Vesterkjær, 2019, edited by Thomas Nakken Larsen 2020 and Jacob Wulff Wold 2023
 Apache License
 
-Entry point for training or testing wind_field_GAN_2D
+Entry point for training or testing wind_field_GAN_3D
 Sets up environment/logging, and starts training/testing
 Usage:
     python run.py < --train | --test | --use > [ --cfg path/to/config.ini ] [ -h ]
@@ -54,7 +54,7 @@ def main():
 
     status_logger.info(f"run.py: running with device: {cfg.device}")
 
-    dataset_train, dataset_test, dataset_validation, x,y = prepare_data(cfg)
+    dataset_train, dataset_test, dataset_validation, x, y = prepare_data(cfg)
 
     status_logger.info(f"run.py: data prepared")
 
@@ -62,7 +62,7 @@ def main():
         status_logger.info(
             "run.py: starting training" + ("" if not cfg.is_test else " before testing")
         )
-        train.train(cfg, dataset_train, dataset_validation, x,y)
+        train.train(cfg, dataset_train, dataset_validation, x, y)
         status_logger.info("run.py: finished training")
         cfg.is_train = False
     if cfg.is_test:
@@ -181,15 +181,21 @@ def setup_logger(cfg: Config):
 
     return
 
+
 def setup_seed(seed: int):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
 
+
 def setup_torch(cfg: Config):
     # device="mps" if torch.backends.mps.is_available() else "cpu"
-    cfg.device = torch.device(f"cuda:{cfg.gpu_id}") if torch.cuda.is_available() and cfg.gpu_id is not None else torch.device("cpu")
+    cfg.device = (
+        torch.device(f"cuda:{cfg.gpu_id}")
+        if torch.cuda.is_available() and cfg.gpu_id is not None
+        else torch.device("cpu")
+    )
 
 
 def makedirs(path):
