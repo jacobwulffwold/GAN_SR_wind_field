@@ -66,10 +66,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
         )
 
     # gan: nn.Module = None
-    if cfg.model.lower() == "wind_field_gan_2d":
-        gan = wind_field_GAN_2D(cfg)
-        status_logger.info(f"Making model wind_field_GAN_2D from config {cfg.name}")
-    elif cfg.model.lower() == "wind_field_gan_3d":
+    if cfg.model.lower() == "wind_field_gan_3d":
         gan = wind_field_GAN_3D(cfg)
         status_logger.info(f"Making model wind_field_GAN_3D from config {cfg.name}")
     else:
@@ -152,6 +149,15 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 gan.feed_data(LR, HR[:, :-1, :, :, :], Z=HR[:, -1, :, :])
 
             gan.optimize_parameters(it)
+            if i == 1 and torch.cuda.is_available():
+                prev = 0
+                for key, value in gan.memory_dict.items():
+                    diff = value -prev
+                    status_logger.info(key+" memory usage (MB)", value, ", diff from previous: ", diff)
+                    prev = value
+            if i == 2 and torch.cuda.is_available():
+                status_logger.info("memory occupied after 2 iterations: ", torch.cuda.memory_allocated(cfg.device))
+            
             gan.update_learning_rate() if i > 0 else None
 
             l = gan.get_new_status_logs()

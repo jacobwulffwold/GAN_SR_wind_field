@@ -6,11 +6,8 @@ from datetime import date
 from download_data import (
     download_and_combine,
     slice_data,
-    plot_field,
-    slice_only_dim_dicts,
     interp_file_name,
     get_interpolated_z_data,
-    plot_pressure,
 )
 from torch.autograd import grad
 
@@ -38,6 +35,10 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
         + grad_y[:, 1, 1:-1, 1:-1, 1:-1]
         + grad_z[:, 2, 1:-1, 1:-1, :]
     )
+    xy_divergence = (
+        grad_x[:, 0, 1:-1, 1:-1, 1:-1]
+        + grad_y[:, 1, 1:-1, 1:-1, 1:-1]
+    )
 
     return (
         torch.cat(
@@ -49,6 +50,7 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
             dim=1,
         ),
         divergence,
+        xy_divergence
     )
 
 

@@ -207,6 +207,7 @@ class TrainingConfig(IniConfig):
     gradient_xy_loss_weight: float = 1e-1
     gradient_z_loss_weight: float = 1e-1
     divergence_loss_weight: float = 1e-1
+    xy_divergence_loss_weight: float = 1e-1
     feature_D_loss_weight:float = 0.1
 
     use_noisy_labels: bool = False
@@ -242,6 +243,7 @@ class TrainingConfig(IniConfig):
         self.gradient_xy_loss_weight = train_config.getfloat("gradient_xy_loss_weight")
         self.gradient_z_loss_weight = train_config.getfloat("gradient_z_loss_weight")
         self.divergence_loss_weight = train_config.getfloat("divergence_loss_weight")
+        self.xy_divergence_loss_weight = train_config.getfloat("xy_divergence_loss_weight")
         self.feature_D_loss_weight = train_config.getfloat("feature_D_loss_weight")
         self.use_noisy_labels = train_config.getboolean("use_noisy_labels")
         self.use_one_sided_label_smoothing = train_config.getboolean(

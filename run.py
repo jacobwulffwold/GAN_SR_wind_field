@@ -29,7 +29,7 @@ import random
 
 def main():
     cfg: Config = argv_to_cfg()
-    cfg.is_train = True
+    # cfg.is_train = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use:
         print(
             "pass either --test or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
@@ -82,8 +82,8 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--cfg",
         type=str,
-        default="config/wind_field_GAN_3D_config.ini",
-        help="path to config ini file (defaults to /config/wind_field_GAN_2D_config.ini)",
+        default="config/wind_field_GAN_3D_config_local.ini",
+        help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
     parser.add_argument(
         "--train",
