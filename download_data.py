@@ -246,18 +246,18 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
             filename = "./downloaded_raw_bessaker_data/" + filename + sim_time
             if index == 0:
                 nc_fid = Dataset(filename, mode="r")
-                time = nc_fid["time"][:]
-                latitude = nc_fid["longitude"][:]
-                longitude = nc_fid["latitude"][:]
+                # time = nc_fid["time"][:]
+                # latitude = nc_fid["longitude"][:]
+                # longitude = nc_fid["latitude"][:]
                 x = nc_fid["x"][:]
                 y = nc_fid["y"][:]
                 z = np.transpose(
                     nc_fid["geopotential_height_ml"][:], (transpose_indices)
                 )[:, :, :, ::-1]
                 terrain = nc_fid["surface_altitude"][:]
-                theta = np.transpose(
-                    nc_fid["air_potential_temperature_ml"][:], (transpose_indices)
-                )[:, :, :, ::-1]
+                # theta = np.transpose(
+                #     nc_fid["air_potential_temperature_ml"][:], (transpose_indices)
+                # )[:, :, :, ::-1]
                 u = np.transpose(nc_fid["x_wind_ml"][:], (transpose_indices))[
                     :, :, :, ::-1
                 ]
@@ -272,38 +272,38 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
                 )[:, :, :, ::-1]
                 # u10 = nc_fid['x_wind_10m'][:]
                 # v10 = nc_fid['y_wind_10m'][:]
-                tke = np.transpose(
-                    nc_fid["turbulence_index_ml"][:], (transpose_indices)
-                )[:, :, :, ::-1]
-                td = np.transpose(
-                    nc_fid["turbulence_dissipation_ml"][:], (transpose_indices)
-                )[:, :, :, ::-1]
+                # tke = np.transpose(
+                #     nc_fid["turbulence_index_ml"][:], (transpose_indices)
+                # )[:, :, :, ::-1]
+                # td = np.transpose(
+                #     nc_fid["turbulence_dissipation_ml"][:], (transpose_indices)
+                # )[:, :, :, ::-1]
                 index = index + 1
                 nc_fid.close()
             else:
                 nc_fid = Dataset(filename, mode="r")
-                time = np.ma.append(time, nc_fid["time"][:][1:13], axis=0)
+                # time = np.ma.append(time, nc_fid["time"][:][1:13], axis=0)
                 u = quick_append(u, "x_wind_ml", nc_fid, transpose_indices)
                 v = quick_append(v, "y_wind_ml", nc_fid, transpose_indices)
                 w = quick_append(w, "upward_air_velocity_ml", nc_fid, transpose_indices)
                 pressure = quick_append(
                     pressure, "air_pressure_ml", nc_fid, transpose_indices
                 )
-                theta = quick_append(
-                    theta, "air_potential_temperature_ml", nc_fid, transpose_indices
-                )
-                tke = quick_append(
-                    tke, "turbulence_index_ml", nc_fid, transpose_indices
-                )
-                td = quick_append(
-                    td, "turbulence_dissipation_ml", nc_fid, transpose_indices
-                )
+                # theta = quick_append(
+                #     theta, "air_potential_temperature_ml", nc_fid, transpose_indices
+                # )
+                # tke = quick_append(
+                #     tke, "turbulence_index_ml", nc_fid, transpose_indices
+                # )
+                # td = quick_append(
+                #     td, "turbulence_dissipation_ml", nc_fid, transpose_indices
+                # )
                 z = quick_append(z, "geopotential_height_ml", nc_fid, transpose_indices)
                 nc_fid.close()
     return (
-        time,
-        latitude,
-        longitude,
+        # time,
+        # latitude,
+        # longitude,
         terrain,
         x,
         y,
@@ -311,9 +311,9 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
         u,
         v,
         w,
-        theta,
-        tke,
-        td,
+        # theta,
+        # tke,
+        # td,
         pressure,
     )
 
@@ -729,17 +729,16 @@ def download_and_combine(data_code, start_date, end_date):
 
     try:
         with open(filename, "rb") as f:
-            time, terrain, x, y, z, u, v, w, theta, tke, td, pressure = pickle.load(f)
+            terrain, x, y, z, u, v, w, pressure = pickle.load(f)
         print("Already downloaded. Loaded data from file " + filename)
 
     except:
         download_Bessaker_data(start_date, end_date, "./downloaded_raw_bessaker_data/")
         transpose_indices = [0, 2, 3, 1]
-
         (
-            time,
-            latitude,
-            longitude,
+            # time,
+            # latitude,
+            # longitude,
             terrain,
             x,
             y,
@@ -747,17 +746,17 @@ def download_and_combine(data_code, start_date, end_date):
             u,
             v,
             w,
-            theta,
-            tke,
-            td,
+            # theta,
+            # tke,
+            # td,
             pressure,
         ) = extract_3D(data_code, start_date, end_date, transpose_indices)
 
         with open(filename, "wb") as f:
-            pickle.dump([time, terrain, x, y, z, u, v, w, theta, tke, td, pressure], f)
+            pickle.dump([terrain, x, y, z, u, v, w, pressure], f)
         print("Saved data to file " + filename)
 
-    return time, terrain, x, y, z, u, v, w, theta, tke, td, pressure
+    return terrain, x, y, z, u, v, w, pressure
 
 
 def interp_file_name(x_dict, z_dict, start_date, end_date):
@@ -787,7 +786,7 @@ if __name__ == "__main__":
     start_date = date(2018, 4, 1)  # 1,2
     end_date = date(2018, 4, 2)  #
 
-    time, terrain, x, y, z, u, v, w, theta, tke, td, pressure = download_and_combine(
+    terrain, x, y, z, u, v, w, pressure = download_and_combine(
         data_code, start_date, end_date
     )
 

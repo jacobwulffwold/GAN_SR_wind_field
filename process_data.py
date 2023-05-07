@@ -150,7 +150,7 @@ def preprosess(
 ):
     data_code = "simra_BESSAKER_"
 
-    time, terrain, x, y, z, u, v, w, theta, tke, td, pressure = download_and_combine(
+    terrain, x, y, z, u, v, w, pressure = download_and_combine(
         data_code, start_date, end_date
     )
 
