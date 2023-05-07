@@ -1,6 +1,6 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
-#SBATCH --account=jawold
+#SBATCH --account=nv-fys
 #SBATCH --time=0-00:30:00
 #SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
