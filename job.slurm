@@ -12,7 +12,6 @@
 
 module purge
 module load Anaconda3/2022.05
-cd GAN_SR_wind_field
 source /cluster/apps/eb/software/Anaconda3/2022.05/etc/profile.d/conda.sh conda activate myenv
 conda activate myenv
 python run.py --train --cfg config/wind_field_GAN_3D_config_cluster.ini
