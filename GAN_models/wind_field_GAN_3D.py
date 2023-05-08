@@ -200,10 +200,10 @@ class wind_field_GAN_3D(BaseGAN):
         self.lr = lr
         self.hr = hr
         if x.any():
-            self.x = x
-            self.y = y
+            self.x = x.to(self.device)
+            self.y = y.to(self.device)
         if Z.any():
-            self.Z = Z
+            self.Z = Z.to(self.device)
 
     def compute_losses_and_optimize(
         self, it, training_epoch: bool = False, validation_epoch: bool = False
@@ -217,7 +217,7 @@ class wind_field_GAN_3D(BaseGAN):
         ):
             raise ValueError("process_data requires exactly one input as true")
 
-        self.fake_hr = self.G(self.lr, self.Z)
+        self.fake_hr = self.G(self.lr, self.Z).to(self.device)
         if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward"):
             self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024 / 1024
 
