@@ -130,233 +130,240 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
         )
     # end debugging
     status_logger.info(f"beginning run from epoch {start_epoch}, it {it}")
+    with torch.profiler.profile(
+    schedule=torch.profiler.schedule(
+        wait=2,
+        warmup=2,
+        active=6,
+        repeat=1),
+    on_trace_ready=torch.profiler.tensorboard_trace_handler(cfg.env.this_runs_tensorboard_log_folder),
+    with_stack=True
+    ) as profiler:
+        for epoch in range(start_epoch, count_train_epochs):
+            status_logger.debug("epoch {epoch}")
 
-    for epoch in range(start_epoch, count_train_epochs + 1):
-        status_logger.debug("epoch {epoch}")
+            # dataloader -> (LR, HR, HR_img_name)
+            for i, (LR, HR) in enumerate(dataloader_train):
+                # if it > cfg_t.niter:
+                #     break
+                it += 1
+                bar.update(i, epoch, it)
 
-        # dataloader -> (LR, HR, HR_img_name)
-        for i, data in enumerate(dataloader_train):
-            # if it > cfg_t.niter:
-            #     break
-            it += 1
-            bar.update(i, epoch, it)
+                LR = LR.float().to(cfg.device)
+                HR = HR.float().to(cfg.device)
+                if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
+                    gan.feed_data(LR, HR[:, :-1, :, :, :], x, y, HR[:, -1, :, :])
+                else:
+                    gan.feed_data(LR, HR[:, :-1, :, :, :], Z=HR[:, -1, :, :])
 
-            LR = data[0].float().to(cfg.device)
-            HR = data[1].float().to(cfg.device)
-            if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
-                gan.feed_data(LR, HR[:, :-1, :, :, :], x, y, HR[:, -1, :, :])
-            else:
-                gan.feed_data(LR, HR[:, :-1, :, :, :], Z=HR[:, -1, :, :])
+                gan.optimize_parameters(it)
+                profiler.step()
 
-            gan.optimize_parameters(it)
-            if i == 1 and torch.cuda.is_available():
-                prev = 0
-                for key, value in gan.memory_dict.items():
-                    diff = value -prev
-                    status_logger.info(key+" memory usage (MB)", value, ", diff from previous: ", diff)
-                    prev = value
-            if i == 2 and torch.cuda.is_available():
-                status_logger.info("memory occupied after 2 iterations: ", torch.cuda.memory_allocated(cfg.device))
-            
-            gan.update_learning_rate() if i > 0 else None
+                if i == 1 and torch.cuda.is_available():
+                    prev = 0
+                    for key, value in gan.memory_dict.items():
+                        diff = value -prev
+                        status_logger.info(key+" memory usage (MB)", value, ", diff from previous: ", diff)
+                        prev = value
+                if i == 2 and torch.cuda.is_available():
+                    status_logger.info("memory occupied after 2 iterations: ", torch.cuda.memory_allocated(cfg.device))
+                
+                gan.update_learning_rate() if i > 0 else None
 
-            l = gan.get_new_status_logs()
+                l = gan.get_new_status_logs()
 
-            if len(l) > 0:
-                for log in l:
-                    train_logger.info(log)
+                if len(l) > 0:
+                    for log in l:
+                        train_logger.info(log)
 
-            if it % cfg_t.save_model_period == 0:
-                status_logger.debug(f"saving model (it {it})")
-                gan.save_model(cfg.env.this_runs_folder, epoch, it)
-                status_logger.debug(f"storing visuals (it {it})")
-                # store_current_visuals(cfg, it, gan, dataloader_val)
+                if it % cfg_t.save_model_period == 0:
+                    status_logger.debug(f"saving model (it {it})")
+                    gan.save_model(cfg.env.this_runs_folder, epoch, it)
+                    status_logger.debug(f"storing visuals (it {it})")
+                    # store_current_visuals(cfg, it, gan, dataloader_val)
 
-            if dataloader_val is None:
-                continue
-            if it % cfg_t.val_period == 0:
-                status_logger.debug(f"validation epoch (it {it})")
-                loss_vals = dict(
-                    (val_name, val * 0)
-                    for (val_name, val) in gan.get_loss_dict_ref().items()
-                )
-                metrics_vals = dict(
-                    (val_name, val * 0)
-                    for (val_name, val) in gan.get_metrics_dict_ref().items()
-                )
-                n = len(dataloader_val)
-                # VISUALIZING
-                # it_folder_path = os.path.join(cfg.env.this_runs_folder + "/", f"{it}_visuals" )
-                # if not os.path.exists(it_folder_path):
-                #    os.makedirs(it_folder_path)
-                os.makedirs("images/training/grnd_est", exist_ok=True)
-
-                i_val = 0
-                for _, val_data in enumerate(dataloader_val):
-                    i_val += 1
-                    val_LR = val_data[0].float().to(cfg.device)
-                    val_HR = val_data[1].float().to(cfg.device)
-                    gan.feed_data(
-                        val_LR, val_HR[:, :-1, :, :, :], Z=val_HR[:, -1, :, :, :]
+                if dataloader_val is None:
+                    continue
+                if it % cfg_t.val_period == 0:
+                    status_logger.debug(f"validation epoch (it {it})")
+                    loss_vals = dict(
+                        (val_name, val * 0)
+                        for (val_name, val) in gan.get_loss_dict_ref().items()
                     )
-                    gan.validation(it)
-                    for val_name, val in gan.get_loss_dict_ref().items():
-                        loss_vals[val_name] += val / n
-
-                    for val_name, val in gan.get_metrics_dict_ref().items():
-                        metrics_vals[val_name] += val / n
+                    metrics_vals = dict(
+                        (val_name, val * 0)
+                        for (val_name, val) in gan.get_metrics_dict_ref().items()
+                    )
+                    n = len(dataloader_val)
                     # VISUALIZING
-                    # if (it % 40000 == 0):
-                    if i_val % len(dataloader_val) == 0:
-                        with torch.no_grad():
-                            batch_quiver = torch.LongTensor(
-                                np.asarray([np.random.randint(val_LR.shape[0], size=1)])
-                            )[0].to(
-                                cfg.device
-                            )  #
-                            # print("var_LR.shape:",  val_LR.shape, "var_LR.shape[0] =", val_LR.shape[0], "( type=", type(val_LR), ")")
-                            # print("Batch_quiver shape:", batch_quiver.shape)
-                            # print(batch_quiver)
+                    # it_folder_path = os.path.join(cfg.env.this_runs_folder + "/", f"{it}_visuals" )
+                    # if not os.path.exists(it_folder_path):
+                    #    os.makedirs(it_folder_path)
+                    os.makedirs("images/training/grnd_est", exist_ok=True)
 
-                            # Fetch validation sample from device, using random index
-                            LR_i = torch.index_select(val_LR, 0, batch_quiver, out=None)
-                            HR_i = torch.index_select(val_HR, 0, batch_quiver, out=None)
+                    i_val = 0
+                    for _, (val_LR, val_HR) in enumerate(dataloader_val):
+                        i_val += 1
+                        val_LR = val_LR.float().to(cfg.device)
+                        val_HR = val_HR.float().to(cfg.device)
+                        gan.feed_data(
+                            val_LR, val_HR[:, :-1, :, :, :], Z=val_HR[:, -1, :, :, :]
+                        )
+                        gan.validation(it)
+                        for val_name, val in gan.get_loss_dict_ref().items():
+                            loss_vals[val_name] += val / n
 
-                            # Low Resolution
-                            LR_ori = LR_i.squeeze().detach().cpu().numpy()
-                            u_LR = LR_ori[
-                                0, :, :, :
-                            ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                            v_LR = LR_ori[
-                                1, :, :, :
-                            ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                            w_LR = LR_ori[
-                                2, :, :, :
-                            ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
-                            # xwp_LR = LR_ori[3,:,:]#*(np.max(x_wp_nomask)-np.min(x_wp_nomask))+np.min(x_wp_nomask)
-                            # zwp_LR = LR_ori[4,:,:]#*(np.max(z_wp_nomask)-np.min(z_wp_nomask))+np.min(z_wp_nomask)
+                        for val_name, val in gan.get_metrics_dict_ref().items():
+                            metrics_vals[val_name] += val / n
+                        # VISUALIZING
+                        # if (it % 40000 == 0):
+                        if i_val % len(dataloader_val) == 0:
+                            with torch.no_grad():
+                                batch_quiver = torch.LongTensor(
+                                    np.asarray([np.random.randint(val_LR.shape[0], size=1)])
+                                )[0].to(
+                                    cfg.device
+                                )  #
+                                # print("var_LR.shape:",  val_LR.shape, "var_LR.shape[0] =", val_LR.shape[0], "( type=", type(val_LR), ")")
+                                # print("Batch_quiver shape:", batch_quiver.shape)
+                                # print(batch_quiver)
 
-                            # trilinear
-                            # imgs_trilinear_tensor = nn.functional.interpolate(LR_i, scale_factor=4, mode='trilinear')
-                            imgs_trilinear = (
-                                nn.functional.interpolate(
-                                    LR_i,
-                                    scale_factor=(4, 4, 1),
-                                    mode="trilinear",
-                                    align_corners=True,
+                                # Fetch validation sample from device, using random index
+                                LR_i = torch.index_select(val_LR, 0, batch_quiver, out=None)
+                                HR_i = torch.index_select(val_HR, 0, batch_quiver, out=None).squeeze().detach().cpu().numpy()
+
+                                # Low Resolution
+                                LR_ori = LR_i.squeeze().detach().cpu().numpy()
+                                u_LR = LR_ori[
+                                    0, :, :, :
+                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_LR = LR_ori[
+                                    1, :, :, :
+                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_LR = LR_ori[
+                                    2, :, :, :
+                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                # xwp_LR = LR_ori[3,:,:]#*(np.max(x_wp_nomask)-np.min(x_wp_nomask))+np.min(x_wp_nomask)
+                                # zwp_LR = LR_ori[4,:,:]#*(np.max(z_wp_nomask)-np.min(z_wp_nomask))+np.min(z_wp_nomask)
+
+                                # trilinear
+                                # imgs_trilinear_tensor = nn.functional.interpolate(LR_i, scale_factor=4, mode='trilinear')
+                                imgs_trilinear = (
+                                    nn.functional.interpolate(
+                                        LR_i,
+                                        scale_factor=(4, 4, 1),
+                                        mode="trilinear",
+                                        align_corners=True,
+                                    )
+                                    .squeeze()
+                                    .detach()
+                                    .cpu()
+                                    .numpy()
                                 )
-                                .squeeze()
-                                .detach()
-                                .cpu()
-                                .numpy()
-                            )
-                            u_trilinear = imgs_trilinear[
-                                0, :, :, :
-                            ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                            v_trilinear = imgs_trilinear[
-                                1, :, :, :
-                            ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                            w_trilinear = imgs_trilinear[
-                                2, :, :, :
-                            ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                u_trilinear = imgs_trilinear[
+                                    0, :, :, :
+                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_trilinear = imgs_trilinear[
+                                    1, :, :, :
+                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_trilinear = imgs_trilinear[
+                                    2, :, :, :
+                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
-                            # loss_trilinear = torch.sum(((HR_i - imgs_trilinear_tensor)**2)/(128*128)).item()
-                            # rounded_loss_trilinear = round(loss_trilinear, 3)
+                                # loss_trilinear = torch.sum(((HR_i - imgs_trilinear_tensor)**2)/(128*128)).item()
+                                # rounded_loss_trilinear = round(loss_trilinear, 3)
 
-                            # Generated HR
-                            # loss_sr = torch.sum(((HR_i - gan.G(LR_i))**2)/(128*128)).item()
-                            # rounded_loss_sr = round(loss_sr, 3)
-                            gen_HR = (
-                                gan.G(
-                                    LR_i,
-                                    torch.index_select(
-                                        gan.Z, 0, batch_quiver, out=None
-                                    ),
+                                # Generated HR
+                                # loss_sr = torch.sum(((HR_i - gan.G(LR_i))**2)/(128*128)).item()
+                                # rounded_loss_sr = round(loss_sr, 3)
+                                gen_HR = (
+                                    gan.G(
+                                        LR_i,
+                                        torch.index_select(
+                                            gan.Z, 0, batch_quiver, out=None
+                                        ),
+                                    )
+                                    .squeeze()
+                                    .detach()
+                                    .cpu()
+                                    .numpy()
                                 )
-                                .squeeze()
-                                .detach()
-                                .cpu()
-                                .numpy()
-                            )
-                            u_sr = gen_HR[
-                                0, :, :, :
-                            ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                            v_sr = gen_HR[
-                                1, :, :, :
-                            ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                            w_sr = gen_HR[
-                                2, :, :, :
-                            ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                u_sr = gen_HR[
+                                    0, :, :, :
+                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_sr = gen_HR[
+                                    1, :, :, :
+                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_sr = gen_HR[
+                                    2, :, :, :
+                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
-                            # HR
-                            HR = (
-                                HR_i.squeeze().detach().cpu().numpy()
-                            )  # torch.index_select(val_HR, 0, batch_quiver, out=None)
-                            u_HR = HR[
-                                0, :, :, :
-                            ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                            v_HR = HR[
-                                1, :, :, :
-                            ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                            w_HR = HR[
-                                2, :, :, :
-                            ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                # HR
+                                u_HR = HR[
+                                    0, :, :, :
+                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_HR = HR[
+                                    1, :, :, :
+                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_HR = HR[
+                                    2, :, :, :
+                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
-                            # Store results to file:
-                            HR_img = [u_HR, v_HR, w_HR]
-                            sr_img = [u_sr, v_sr, w_sr]
-                            bc_img = [u_trilinear, v_trilinear, w_trilinear]
-                            LR_img = [u_LR, v_LR, w_LR]
+                                # Store results to file:
+                                HR_img = [u_HR, v_HR, w_HR]
+                                sr_img = [u_sr, v_sr, w_sr]
+                                bc_img = [u_trilinear, v_trilinear, w_trilinear]
+                                LR_img = [u_LR, v_LR, w_LR]
 
-                            # tb_writer.add_image(
-                            #     "LR_" + str(it), LR_i[:, :3, :, :, 3].squeeze()
-                            # )
-                            # tb_writer.add_image(
-                            #     "HR_" + str(it), HR_i[:, :3, :, :, 3].squeeze()
-                            # )
-                            # tb_writer.add_image(
-                            #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
-                            # )
+                                # tb_writer.add_image(
+                                #     "LR_" + str(it), LR_i[:, :3, :, :, 3].squeeze()
+                                # )
+                                # tb_writer.add_image(
+                                #     "HR_" + str(it), HR_i[:, :3, :, :, 3].squeeze()
+                                # )
+                                # tb_writer.add_image(
+                                #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
+                                # )
 
-                            fig, axes = plt.subplots(2, 2)
-                            axes[0, 0].pcolor(u_LR[:, :, 3])
-                            axes[0, 0].set_title("LR u, z=3")
-                            axes[0, 1].pcolor(u_HR[:, :, 3])
-                            axes[0, 1].set_title("HR u, z=3")
-                            axes[1, 0].pcolor(u_sr[:, :, 3])
-                            axes[1, 0].set_title("SR u, z=3")
-                            axes[1, 1].pcolor(u_trilinear[:, :, 3])
-                            axes[1, 1].set_title("Trilinear u, z=3")
-                            tb_writer.add_figure("u_field_" + str(it), fig, it)
+                                fig, axes = plt.subplots(2, 2)
+                                axes[0, 0].pcolor(u_LR[:, :, 3])
+                                axes[0, 0].set_title("LR u, z=3")
+                                axes[0, 1].pcolor(u_HR[:, :, 3])
+                                axes[0, 1].set_title("HR u, z=3")
+                                axes[1, 0].pcolor(u_sr[:, :, 3])
+                                axes[1, 0].set_title("SR u, z=3")
+                                axes[1, 1].pcolor(u_trilinear[:, :, 3])
+                                axes[1, 1].set_title("Trilinear u, z=3")
+                                tb_writer.add_figure("u_field_" + str(it), fig, it)
 
-                            imgs = dict()
-                            imgs["HR"] = HR_img
-                            imgs["SR"] = sr_img
-                            imgs["BC"] = bc_img
-                            imgs["LR"] = LR_img
+                                imgs = dict()
+                                imgs["HR"] = HR_img
+                                imgs["SR"] = sr_img
+                                imgs["BC"] = bc_img
+                                imgs["LR"] = LR_img
 
-                            with open(
-                                cfg.env.this_runs_folder
-                                + "/images/val_imgs__it_"
-                                + str(it)
-                                + ".pkl",
-                                "wb",
-                            ) as f:
-                                pkl.dump(imgs, f)
+                                with open(
+                                    cfg.env.this_runs_folder
+                                    + "/images/val_imgs__it_"
+                                    + str(it)
+                                    + ".pkl",
+                                    "wb",
+                                ) as f:
+                                    pkl.dump(imgs, f)
 
-                if cfg.use_tensorboard_logger:
-                    tb_writer.add_scalars("data/losses", loss_vals, it)
-                    # for hist_name, val in hist_vals.items():
-                    #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
-                    tb_writer.add_scalars("data/metrics", metrics_vals, it)
+                    if cfg.use_tensorboard_logger:
+                        tb_writer.add_scalars("data/losses", loss_vals, it)
+                        # for hist_name, val in hist_vals.items():
+                        #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
+                        tb_writer.add_scalars("data/metrics", metrics_vals, it)
 
-                stat_log_str = f"it: {it} "
-                for k, v in loss_vals.items():
-                    stat_log_str += f"{k}: {v} "
-                for k, v in metrics_vals.items():
-                    stat_log_str += f"{k}: {v} "
-                status_logger.debug(stat_log_str)
-                # store_current_visuals(cfg, 0, gan, dataloader_val) # tricky way of always having the newest images.
+                    stat_log_str = f"it: {it} "
+                    for k, v in loss_vals.items():
+                        stat_log_str += f"{k}: {v} "
+                    for k, v in metrics_vals.items():
+                        stat_log_str += f"{k}: {v} "
+                    status_logger.debug(stat_log_str)
+                    # store_current_visuals(cfg, 0, gan, dataloader_val) # tricky way of always having the newest images.
     return
 
 
@@ -398,8 +405,8 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
     if not os.path.exists(it_folder_path):
         os.makedirs(it_folder_path)
 
-    for v, data in enumerate(dataloader):
-        LRs = data[0].float().to(cfg.device)
+    for v, (LRs, HRs) in enumerate(dataloader):
+        LRs = LRs.float().to(cfg.device)
         for i in range(LRs.shape[0]):
             indx = torch.tensor([i]).float().to(cfg.device)
             LR_i = torch.index_select(LRs, 0, indx, out=None)

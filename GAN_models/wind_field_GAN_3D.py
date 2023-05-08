@@ -94,8 +94,7 @@ class wind_field_GAN_3D(BaseGAN):
             device=self.device,
             number_of_z_layers=cfg_gan.number_of_z_layers,
             conv_mode=cfg_gan.conv_mode,
-        )
-        self.G = self.G.to(cfg.device)
+        ).to(cfg.device)
         initialization.init_weights(self.G, scale=cfg_g.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
             self.memory_dict["G"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
@@ -504,8 +503,8 @@ class wind_field_GAN_3D(BaseGAN):
 
     def compute_psnr_x_batch_size(self):
         # zeros = torch.FloatTensor(self.batch_size).fill_(0.0).to(self.cfg.device)
-        w, h = self.hr.shape[2], self.hr.shape[3]
-        batch_MSE = torch.sum((self.hr - self.fake_hr) ** 2) / (w * h)
+        w, h, l = self.hr.shape[2], self.hr.shape[3], self.hr.shape[4]
+        batch_MSE = torch.sum((self.hr - self.fake_hr) ** 2) / (w * h * l)
         batch_MSE = batch_MSE.item()
         R_squared = 1.0  # R is max fluctuation, and data is float [0, 1] -> R² = 1
         epsilon = (
