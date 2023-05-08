@@ -2,7 +2,7 @@
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
 #SBATCH --time=0-00:15:00
-#SBATCH --gres=gpu:A100m80:1
+#SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --job-name="memory_test_ESRGAN_wind_field"
