@@ -299,13 +299,13 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # HR
-                                u_HR = HR[
+                                u_HR = HR_i[
                                     0, :, :, :
                                 ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_HR = HR[
+                                v_HR = HR_i[
                                     1, :, :, :
                                 ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_HR = HR[
+                                w_HR = HR_i[
                                     2, :, :, :
                                 ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
