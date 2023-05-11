@@ -212,6 +212,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         i_val += 1
                         val_LR = val_LR.to(cfg.device, non_blocking=True)
                         val_HR = val_HR.to(cfg.device, non_blocking=True)
+                        val_Z = val_Z.to(cfg.device, non_blocking=True)
                         gan.feed_data(
                             val_LR, val_HR, Z=val_Z
                         )
