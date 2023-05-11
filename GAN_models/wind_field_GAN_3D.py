@@ -76,45 +76,48 @@ class wind_field_GAN_3D(BaseGAN):
         ###################
         # Define generator, discriminator, feature extractor
         ###################
-        cfg_g: config.GeneratorConfig = cfg.generator
+        cfg_G: config.GeneratorConfig = cfg.generator
         cfg_gan: config.GANConfig = cfg.gan_config
         self.G = Generator_3D(
-            cfg_g.in_num_ch + cfg_gan.include_pressure + cfg_gan.include_z_channel + cfg_gan.include_above_ground_channel,
-            cfg_g.out_num_ch + cfg_gan.include_pressure,
-            cfg_g.num_features,
-            cfg_g.num_RRDB,
+            cfg_G.in_num_ch + cfg_gan.include_pressure + cfg_gan.include_z_channel + cfg_gan.include_above_ground_channel,
+            cfg_G.out_num_ch + cfg_gan.include_pressure,
+            cfg_G.num_features,
+            cfg_G.num_RRDB,
             upscale=cfg.scale,
-            hr_kern_size=cfg_g.hr_kern_size,
-            number_of_RDB_convs=cfg_g.num_RDB_convs,
-            RDB_gc=cfg_g.RDB_growth_chan,
-            lff_kern_size=cfg_g.lff_kern_size,
-            RDB_residual_scaling=cfg_g.RDB_res_scaling,
-            RRDB_residual_scaling=cfg_g.RRDB_res_scaling,
-            act_type=cfg_g.act_type,
+            hr_kern_size=cfg_G.hr_kern_size,
+            number_of_RDB_convs=cfg_G.num_RDB_convs,
+            RDB_gc=cfg_G.RDB_growth_chan,
+            lff_kern_size=cfg_G.lff_kern_size,
+            RDB_residual_scaling=cfg_G.RDB_res_scaling,
+            RRDB_residual_scaling=cfg_G.RRDB_res_scaling,
+            act_type=cfg_G.act_type,
             device=self.device,
             number_of_z_layers=cfg_gan.number_of_z_layers,
             conv_mode=cfg_gan.conv_mode,
-        ).to(cfg.device)
-        initialization.init_weights(self.G, scale=cfg_g.weight_init_scale)
+            use_mixed_precision=cfg_G.use_mixed_precision,
+        ).to(cfg.device, non_blocking=True)
+        initialization.init_weights(self.G, scale=cfg_G.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
             self.memory_dict["G"] =torch.cuda.memory_allocated(self.device) / 1024**2
         
-        self.conv_mode = cfg_g.conv_mode
+        self.conv_mode = cfg_G.conv_mode
         self.use_D_feature_extractor_cost = cfg_gan.use_D_feature_extractor_cost
+        
 
         if cfg.is_train:
-            cfg_d: config.DiscriminatorConfig = cfg.discriminator
+            cfg_D: config.DiscriminatorConfig = cfg.discriminator
             if cfg.dataset_train.hr_img_size == 128:
                 self.D = Discriminator_3D(
-                    cfg_d.in_num_ch + cfg_gan.include_pressure,
-                    cfg_d.num_features,
-                    feat_kern_size=cfg_d.feat_kern_size,
-                    normalization_type=cfg_d.norm_type,
-                    act_type=cfg_d.act_type,
-                    mode=cfg_d.layer_mode,
+                    cfg_D.in_num_ch + cfg_gan.include_pressure,
+                    cfg_D.num_features,
+                    feat_kern_size=cfg_D.feat_kern_size,
+                    normalization_type=cfg_D.norm_type,
+                    act_type=cfg_D.act_type,
+                    mode=cfg_D.layer_mode,
                     device=self.device,
                     number_of_z_layers=cfg_gan.number_of_z_layers,
                     conv_mode=cfg_gan.conv_mode,
+                    use_mixed_precision=cfg_D.use_mixed_precision,
                 )
             else:
                 raise NotImplementedError(
@@ -123,14 +126,14 @@ class wind_field_GAN_3D(BaseGAN):
                 )
 
             # move to CUDA if available
-            self.HR_labels = self.HR_labels.float().to(cfg.device)
-            self.fake_HR_labels = self.fake_HR_labels.float().to(cfg.device)
-            self.D = self.D.float().to(cfg.device)
-            
-            # self.F = self.F.to(cfg.device)
-            initialization.init_weights(self.D, scale=cfg_d.weight_init_scale)
+            self.D = self.D.to(cfg.device, non_blocking=True)
+            self.HR_labels = self.HR_labels.to(cfg.device, non_blocking=True)
+            self.fake_HR_labels = self.fake_HR_labels.to(cfg.device, non_blocking=True)
+    
+            initialization.init_weights(self.D, scale=cfg_D.weight_init_scale)
             if torch.cuda.is_available() and not self.memory_dict.get("G_and_D"):
                 self.memory_dict["G_and_D"] =torch.cuda.memory_allocated(self.device) / 1024**2
+        
         ###################
         # Define optimizers, schedulers, and losses
         ###################
@@ -182,7 +185,7 @@ class wind_field_GAN_3D(BaseGAN):
 
             # GAN adversarial loss
             if cfg_t.gan_type == "relativistic" or cfg_t.gan_type == "relativisticavg":
-                self.criterion = nn.BCEWithLogitsLoss().float().to(cfg.device)
+                self.criterion = nn.BCEWithLogitsLoss().to(cfg.device, non_blocking=True)
             else:
                 raise NotImplementedError(
                     f"Only relativistic and relativisticavg GAN are implemented, not {cfg_t.gan_type}"
@@ -193,53 +196,43 @@ class wind_field_GAN_3D(BaseGAN):
         self,
         lr: torch.Tensor,
         hr: torch.Tensor = None,
-        x: torch.Tensor = torch.Tensor([]),
-        y: torch.Tensor = torch.Tensor([]),
-        Z: torch.Tensor = torch.Tensor([]),
+        x: torch.Tensor = None,
+        y: torch.Tensor = None,
+        Z: torch.Tensor = None,
     ):
         self.lr = lr
         self.hr = hr
-        if x.any():
+        if x is not None and y is not None:
             self.x = x
             self.y = y
-        if Z.any():
+        if Z is not None:
             self.Z = Z
-
-    def compute_losses_and_optimize(
-        self, it, training_epoch: bool = False, validation_epoch: bool = False
-    ):
-        """
-        process_data
-        computes losses, and if it is a training epoch, performs parameter optimization
-        """
-        if (not training_epoch and not validation_epoch) or (
-            training_epoch and validation_epoch
-        ):
-            raise ValueError("process_data requires exactly one input as true")
-
-        self.fake_hr = self.G(self.lr, self.Z).to(self.device)
-        if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward"):
-            self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024**2
-
-        # changes when going from train <-> val <-> test
-        # (at least when data loader has drop_last=True )
-        current_batch_size = self.hr.size(0)
-        if current_batch_size != self.batch_size:
-            self.batch_size = current_batch_size
-
-        self.make_new_labels()
-
-        ###################
-        # Update G
-        ###################
-        if it % 2 == 0:  # self.cfg.d_g_train_ratio == 0:
-            for param in self.D.parameters():
-                param.requires_grad = False
-
-            self.G.zero_grad()
-
-            y_pred = None
-            fake_y_pred = None
+    
+    def D_forward(self, it: int, train_D: bool,):
+        if train_D:
+            self.D.train()
+            if self.cfg.training.use_instance_noise:
+                y_pred = self.D(
+                    self.hr
+                    + trainingtricks.instance_noise(
+                        1, self.hr.size(), it, self.cfg.training.niter
+                    )
+                    .to(self.device, non_blocking=True)
+                ).squeeze()
+                fake_y_pred = self.D(
+                    self.fake_hr.detach()
+                    + trainingtricks.instance_noise(
+                        1, self.hr.size(), it, self.cfg.training.niter
+                    )
+                    .to(self.device, non_blocking=True)
+                ).squeeze()  # detach -> avoid BP to G
+            else:
+                y_pred = self.D(self.hr).squeeze()
+                fake_y_pred = self.D(
+                    self.fake_hr.detach()
+                ).squeeze() 
+        else:
+            self.D.eval()
             if self.cfg.training.use_instance_noise:
                 y_pred = (
                     self.D(
@@ -247,7 +240,6 @@ class wind_field_GAN_3D(BaseGAN):
                         + trainingtricks.instance_noise(
                             1.0, self.hr.size(), it, self.cfg.training.niter
                         )
-                        .float()
                         .to(self.device)
                     )
                     .squeeze()
@@ -258,215 +250,178 @@ class wind_field_GAN_3D(BaseGAN):
                     + trainingtricks.instance_noise(
                         1, self.hr.size(), it, self.cfg.training.niter
                     )
-                    .float()
                     .to(self.device)
                 ).squeeze()
             else:
                 y_pred = self.D(self.hr).squeeze().detach()
                 fake_y_pred = self.D(self.fake_hr).squeeze()
-
-            # adversarial loss
-            loss_G_adversarial = 0
-
-            if self.cfg.training.gan_type == "dcgan":
-                loss_D = self.criterion(fake_y_pred, self.HR_labels) + self.criterion(
-                    y_pred, self.fake_HR_labels
-                )
-            if self.cfg.training.gan_type == "relativistic":
-                loss_G_adversarial = self.criterion(
-                    fake_y_pred - y_pred, self.HR_labels
-                )
-
-            elif self.cfg.training.gan_type == "relativisticavg":
-                loss_G_adversarial = (
-                    self.criterion(fake_y_pred - torch.mean(y_pred), self.HR_labels)
-                    + self.criterion(
-                        y_pred - torch.mean(fake_y_pred), self.fake_HR_labels
-                    )
-                ) / 2.0
-            else:
-                raise NotImplementedError(
-                    f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
-                )
-
-            loss_G_feature_D = 0
-            if self.use_D_feature_extractor_cost:
-                features = self.D.features(self.hr).detach()
-                fake_features = self.D.features(self.fake_hr)
-                loss_G_feature_D = self.feature_D_criterion(features, fake_features)
-
-            loss_G_pix = 0
-            if self.pixel_criterion:
-                loss_G_pix = self.pixel_criterion(self.hr, self.fake_hr)
-
-            HR_wind_gradient, HR_divergence, HR_xy_divergence = calculate_gradient_of_wind_field(
-                self.hr[:, :3], self.x, self.y, self.Z
-            )
-            SR_wind_gradient, SR_divergence, SR_xy_divergence = calculate_gradient_of_wind_field(
-                self.fake_hr[:, :3], self.x, self.y, self.Z
-            )
-
-            loss_G_xy_gradient = self.gradient_xy_criterion(
-                SR_wind_gradient[:, :6] / torch.max(abs(SR_wind_gradient[:, :6])),
-                HR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
-            )
-            loss_G_z_gradient = self.gradient_z_criterion(
-                SR_wind_gradient[:, 6:] / torch.max(SR_wind_gradient[:, 6:]),
-                HR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
-            )
-            
-
-            max_divergence = torch.max(
-                abs(torch.cat((HR_divergence, SR_divergence), dim=0))
-            )
-            loss_G_divergence = self.divergence_criterion(
-                HR_divergence / max_divergence, SR_divergence / max_divergence
-            )
-
-            max_xy_divergence = torch.max(
-                abs(torch.cat((HR_xy_divergence, SR_xy_divergence), dim=0))
-            )
-            loss_G_xy_divergence = self.xy_divergence_criterion(
-                HR_xy_divergence / max_xy_divergence, SR_xy_divergence / max_xy_divergence
-            )
-
-            loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
-            loss_G_feature_D *= self.cfg.training.feature_D_loss_weight
-            loss_G_pix *= self.cfg.training.pixel_loss_weight
-            loss_G_xy_gradient *= self.cfg.training.gradient_xy_loss_weight
-            loss_G_z_gradient *= self.cfg.training.gradient_z_loss_weight
-            loss_G_divergence *= self.cfg.training.divergence_loss_weight
-            loss_G_xy_divergence *= self.cfg.training.xy_divergence_loss_weight
-
-            loss_G = (
-                loss_G_adversarial
-                + loss_G_pix
-                + loss_G_xy_gradient
-                + loss_G_z_gradient
-                + loss_G_divergence
-                + loss_G_xy_divergence
-                + loss_G_feature_D
-            )
-
-            # normalize by batch sz, this is not done in ESRGAN
-            # loss_D.mul_(1.0 / current_batch_size)
-
-            loss_G.backward()
-
-            if torch.cuda.is_available() and not self.memory_dict.get("after_G_backward"):
-                self.memory_dict["after_G_backward"] =torch.cuda.memory_allocated(self.device) / 1024**2
-
-            if training_epoch:
-                self.loss_dict["train_loss_G"] = loss_G.item()
-                self.loss_dict["train_loss_G_adversarial"] = loss_G_adversarial.item()
-                self.loss_dict["train_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
-                self.loss_dict["train_loss_G_z_gradient"] = loss_G_z_gradient.item()
-                self.loss_dict["train_loss_G_divergence"] = loss_G_divergence.item()
-                self.loss_dict["train_loss_G_xy_divergence"] = loss_G_xy_divergence.item()
-                self.loss_dict["train_loss_G_feature_D"] = loss_G_feature_D.item()
-                self.loss_dict["train_loss_G_pix"] = loss_G_pix.item()
-                self.hist_dict["SR_pix_distribution"] = (
-                    self.fake_hr.detach().cpu().numpy()
-                )
-                self.optimizer_G.step()
-                if torch.cuda.is_available() and not self.memory_dict.get("after_G_step"):
-                    self.memory_dict["after_G_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
-                
-            else:
-                self.loss_dict["val_loss_G"] = loss_G.item()
-                self.loss_dict["val_loss_G_adversarial"] = loss_G_adversarial.item()
-                self.loss_dict["val_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
-                self.loss_dict["val_loss_G_z_gradient"] = loss_G_z_gradient.item()
-                self.loss_dict["val_loss_G_divergence"] = loss_G_divergence.item()
-                self.loss_dict["val_loss_G_xy_divergence"] = loss_G_xy_divergence.item()
-                self.loss_dict["val_loss_G_feature_D"] = loss_G_feature_D.item()
-                self.loss_dict["val_loss_G_pix"] = loss_G_pix.item()
-                if self.conv_mode == "horizontal_3D":
-                    grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
-                    grad_end = self.G.hr_convs[-1].convs[-1][-1].weight.grad.cpu().detach()
-                    weight_start = self.G.model[0].convs[0][0].weight.cpu().detach()
-                    weight_end = self.G.hr_convs[-1].convs[-1][-1].weight.cpu().detach()
-                else:
-                    grad_start = self.G.model[0][0].weight.grad.cpu().detach()
-                    grad_end = self.G.hr_convs[-1].weight.grad.cpu().detach()
-                    weight_start = self.G.model[0][0].weight.cpu().detach()
-                    weight_end = self.G.hr_convs[-1].weight.cpu().detach()
-
-                self.hist_dict["val_grad_G_first_layer"] = grad_start.numpy()
-                self.hist_dict["val_grad_G_last_layer"] = grad_end.numpy()
-                self.hist_dict["val_weight_G_first_layer"] = weight_start.numpy()
-                self.hist_dict["val_weight_G_last_layer"] = weight_end.numpy()
-
-        ###################
-        # Update D
-        ###################
-
-        for param in self.D.parameters():
-            param.requires_grad = True
-
-        self.optimizer_D.zero_grad()
-
-        # squeeze to go from shape [batch_sz, 1] to [batch_sz]
-        y_pred = None
-        fake_y_pred = None
-        if self.cfg.training.use_instance_noise:
-            y_pred = self.D(
-                self.hr
-                + trainingtricks.instance_noise(
-                    1, self.hr.size(), it, self.cfg.training.niter
-                )
-                .float()
-                .to(self.device)
-            ).squeeze()
-            fake_y_pred = self.D(
-                self.fake_hr.detach()
-                + trainingtricks.instance_noise(
-                    1, self.hr.size(), it, self.cfg.training.niter
-                )
-                .float()
-                .to(self.device)
-            ).squeeze()  # detach -> avoid BP to G
-        else:
-            y_pred = self.D(self.hr).squeeze()
-            fake_y_pred = self.D(
-                self.fake_hr.detach()
-            ).squeeze()  # detach -> avoid BP to G
         
-        if torch.cuda.is_available() and not self.memory_dict.get("after_D_forward"):
-            self.memory_dict["after_D_forward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+        return y_pred, fake_y_pred
+    
+    def log_G_losses(self, loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_epoch: bool,):
+        if training_epoch:
+            self.loss_dict["train_loss_G"] = loss_G.item()
+            self.loss_dict["train_loss_G_adversarial"] = loss_G_adversarial.item()
+            self.loss_dict["train_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
+            self.loss_dict["train_loss_G_z_gradient"] = loss_G_z_gradient.item()
+            self.loss_dict["train_loss_G_divergence"] = loss_G_divergence.item()
+            self.loss_dict["train_loss_G_xy_divergence"] = loss_G_xy_divergence.item()
+            self.loss_dict["train_loss_G_feature_D"] = loss_G_feature_D.item()
+            self.loss_dict["train_loss_G_pix"] = loss_G_pix.item()
+            self.hist_dict["SR_pix_distribution"] = (
+                self.fake_hr.detach().cpu().numpy()
+            )
+            if torch.cuda.is_available() and not self.memory_dict.get("after_G_step"):
+                self.memory_dict["after_G_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2  
+        else:
+            self.loss_dict["val_loss_G"] = loss_G.item()
+            self.loss_dict["val_loss_G_adversarial"] = loss_G_adversarial.item()
+            self.loss_dict["val_loss_G_xy_gradient"] = loss_G_xy_gradient.item()
+            self.loss_dict["val_loss_G_z_gradient"] = loss_G_z_gradient.item()
+            self.loss_dict["val_loss_G_divergence"] = loss_G_divergence.item()
+            self.loss_dict["val_loss_G_xy_divergence"] = loss_G_xy_divergence.item()
+            self.loss_dict["val_loss_G_feature_D"] = loss_G_feature_D.item()
+            self.loss_dict["val_loss_G_pix"] = loss_G_pix.item()
+            if self.conv_mode == "horizontal_3D":
+                grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
+                grad_end = self.G.hr_convs[-1].convs[-1][-1].weight.grad.cpu().detach()
+                weight_start = self.G.model[0].convs[0][0].weight.cpu().detach()
+                weight_end = self.G.hr_convs[-1].convs[-1][-1].weight.cpu().detach()
+            else:
+                grad_start = self.G.model[0][0].weight.grad.cpu().detach()
+                grad_end = self.G.hr_convs[-1].weight.grad.cpu().detach()
+                weight_start = self.G.model[0][0].weight.cpu().detach()
+                weight_end = self.G.hr_convs[-1].weight.cpu().detach()
+            self.hist_dict["val_grad_G_first_layer"] = grad_start.numpy()
+            self.hist_dict["val_grad_G_last_layer"] = grad_end.numpy()
+            self.hist_dict["val_weight_G_first_layer"] = weight_start.numpy()
+            self.hist_dict["val_weight_G_last_layer"] = weight_end.numpy()
 
-        # D only has adversarial loss.
-        loss_D = None
+    def calculate_and_log_G_loss(self, y_pred, fake_y_pred, training_epoch: bool,):
+        loss_G_adversarial = 0
+        
         if self.cfg.training.gan_type == "dcgan":
-            loss_D = self.criterion(y_pred, self.HR_labels) + self.criterion(
-                fake_y_pred, self.fake_HR_labels
+            loss_G_adversarial = self.criterion(fake_y_pred, self.HR_labels) + self.criterion(
+                y_pred, self.fake_HR_labels
             )
         if self.cfg.training.gan_type == "relativistic":
-            loss_D = self.criterion(y_pred - fake_y_pred, self.HR_labels)
+            loss_G_adversarial = self.criterion(
+                fake_y_pred - y_pred, self.HR_labels
+            )
+
         elif self.cfg.training.gan_type == "relativisticavg":
-            loss_D = (
-                self.criterion(y_pred - torch.mean(fake_y_pred), self.HR_labels)
-                + self.criterion(fake_y_pred - torch.mean(y_pred), self.fake_HR_labels)
+            loss_G_adversarial = (
+                self.criterion(fake_y_pred - torch.mean(y_pred), self.HR_labels)
+                + self.criterion(
+                    y_pred - torch.mean(fake_y_pred), self.fake_HR_labels
+                )
             ) / 2.0
         else:
             raise NotImplementedError(
                 f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
             )
 
-        # normalize by batch sz, this is not done in ESRGAN
-        # loss_D.mul_(1.0 / current_batch_size)
-        loss_D.backward()
-        if torch.cuda.is_available() and not self.memory_dict.get("after_D_backward"):
-            self.memory_dict["after_D_backward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+        loss_G_feature_D = 0
+        if self.use_D_feature_extractor_cost:
+            features = self.D.features(self.hr).detach()
+            fake_features = self.D.features(self.fake_hr)
+            loss_G_feature_D = self.feature_D_criterion(features, fake_features)
 
+        loss_G_pix = 0
+        if self.pixel_criterion:
+            loss_G_pix = self.pixel_criterion(self.hr, self.fake_hr)
+
+        HR_wind_gradient, HR_divergence, HR_xy_divergence = calculate_gradient_of_wind_field(
+            self.hr[:, :3], self.x, self.y, self.Z
+        )
+        SR_wind_gradient, SR_divergence, SR_xy_divergence = calculate_gradient_of_wind_field(
+            self.fake_hr[:, :3], self.x, self.y, self.Z
+        )
+
+        loss_G_xy_gradient = self.gradient_xy_criterion(
+            SR_wind_gradient[:, :6] / torch.max(abs(SR_wind_gradient[:, :6])),
+            HR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
+        )
+        loss_G_z_gradient = self.gradient_z_criterion(
+            SR_wind_gradient[:, 6:] / torch.max(SR_wind_gradient[:, 6:]),
+            HR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
+        )
+        
+        max_divergence = torch.max(
+            abs(torch.cat((HR_divergence, SR_divergence), dim=0))
+        )
+        loss_G_divergence = self.divergence_criterion(
+            HR_divergence / max_divergence, SR_divergence / max_divergence
+        )
+
+        max_xy_divergence = torch.max(
+            abs(torch.cat((HR_xy_divergence, SR_xy_divergence), dim=0))
+        )
+        loss_G_xy_divergence = self.xy_divergence_criterion(
+            HR_xy_divergence / max_xy_divergence, SR_xy_divergence / max_xy_divergence
+        )
+
+        loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
+        loss_G_feature_D *= self.cfg.training.feature_D_loss_weight
+        loss_G_pix *= self.cfg.training.pixel_loss_weight
+        loss_G_xy_gradient *= self.cfg.training.gradient_xy_loss_weight
+        loss_G_z_gradient *= self.cfg.training.gradient_z_loss_weight
+        loss_G_divergence *= self.cfg.training.divergence_loss_weight
+        loss_G_xy_divergence *= self.cfg.training.xy_divergence_loss_weight
+
+        loss_G = (
+            loss_G_adversarial
+            + loss_G_pix
+            + loss_G_xy_gradient
+            + loss_G_z_gradient
+            + loss_G_divergence
+            + loss_G_xy_divergence
+            + loss_G_feature_D
+        )
+
+        self.G.scaler.scale(loss_G).backward()
+
+        self.log_G_losses(self, loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_epoch=training_epoch)
+
+        return loss_G
+
+    def update_G(self, training_epoch: bool):
+        
+        if training_epoch:
+            self.G.train()
+        else:
+            self.G.eval()
+        
+        with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
+            self.fake_hr = self.G(self.lr, self.Z).to(self.device)
+        
+        if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward"):
+            self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024**2
+        
+        for param in self.D.parameters():
+            param.requires_grad = False
+
+        self.G.zero_grad(set_to_none=True)
+
+        with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
+            y_pred, fake_y_pred = self.D_forward(train_D=False)
+            
+        with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
+            
+            self.calculate_and_log_G_loss(y_pred, fake_y_pred, training_epoch)
+    
+            if training_epoch:
+                self.G.scaler.step(self.optimizer_G)
+                self.G.scaler.update()
+        
+        if torch.cuda.is_available() and not self.memory_dict.get("after_G_backward"):
+            self.memory_dict["after_G_backward"] =torch.cuda.memory_allocated(self.device) / 1024**2    
+    
+    def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
         if training_epoch:
             self.loss_dict["train_loss_D"] = loss_D.item()
             # BCEWithLogitsLoss has sigmoid activation.
-            self.optimizer_D.step()
-            if torch.cuda.is_available() and not self.memory_dict.get("after_D_step"):
-                self.memory_dict["after_D_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
         else:
-            # features[0] is StridedDownConv2x, whose first elem is a nn.Conv2D
             if self.conv_mode == "horizontal_3D":
                 grad_start = (
                     self.D.features[0][0].convs[0][0].weight.grad.detach().cpu()
@@ -491,6 +446,82 @@ class wind_field_GAN_3D(BaseGAN):
             self.hist_dict["D_pred_SR"] = (
                 torch.sigmoid(fake_y_pred.detach()).cpu().numpy()[np.newaxis]
             )
+    
+    def update_D(self, it, training_epoch: bool):
+        for param in self.D.parameters():
+            param.requires_grad = True
+
+        self.optimizer_D.zero_grad(set_to_none=True)
+
+        with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
+            y_pred, fake_y_pred = self.D_forward(it, train_D=True)
+        
+        if torch.cuda.is_available() and not self.memory_dict.get("after_D_forward"):
+            self.memory_dict["after_D_forward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+
+        loss_D = None
+        if self.cfg.training.gan_type == "dcgan":
+            loss_D = self.criterion(y_pred, self.HR_labels) + self.criterion(
+                fake_y_pred, self.fake_HR_labels
+            )
+        if self.cfg.training.gan_type == "relativistic":
+            loss_D = self.criterion(y_pred - fake_y_pred, self.HR_labels)
+        elif self.cfg.training.gan_type == "relativisticavg":
+            loss_D = (
+                self.criterion(y_pred - torch.mean(fake_y_pred), self.HR_labels)
+                + self.criterion(fake_y_pred - torch.mean(y_pred), self.fake_HR_labels)
+            ) / 2.0
+        else:
+            raise NotImplementedError(
+                f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
+            )
+  
+        self.D.scaler.scale(loss_D).backward()
+        
+        if torch.cuda.is_available() and not self.memory_dict.get("after_D_backward"):
+            self.memory_dict["after_D_backward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+        
+        if training_epoch:
+            self.D.scaler.step(self.optimizer_D)
+            self.D.scaler.update()
+            if torch.cuda.is_available() and not self.memory_dict.get("after_D_step"):
+                self.memory_dict["after_D_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+
+        self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
+
+    def compute_losses_and_optimize(
+        self, it, training_epoch: bool = False, validation_epoch: bool = False
+    ):
+        """
+        process_data
+        computes losses, and if it is a training epoch, performs parameter optimization
+        """
+        if (not training_epoch and not validation_epoch) or (
+            training_epoch and validation_epoch
+        ):
+            raise ValueError("process_data requires exactly one input as true")
+
+        self.batch_size = self.hr.size(0)
+
+        self.make_new_labels()
+
+        ###################
+        # Update G
+        ###################
+        if it % 2 == 0:  # self.cfg.d_g_train_ratio == 0:
+            self.update_G(training_epoch)
+        else:
+            with torch.no_grad():
+                self.fake_hr = self.G(self.lr, self.Z).to(self.device)
+            if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward_no_grad"):
+                self.memory_dict["after_G_forward_no_grad"] = torch.cuda.memory_allocated(self.device) / 1024**2
+            
+        ###################
+        # Update D
+        ###################
+        self.update_D(it, training_epoch)
+
+        
 
     def optimize_parameters(self, it):
         self.compute_losses_and_optimize(it, training_epoch=True)
@@ -500,7 +531,7 @@ class wind_field_GAN_3D(BaseGAN):
         self.compute_psnr_x_batch_size()
 
     def compute_psnr_x_batch_size(self):
-        # zeros = torch.FloatTensor(self.batch_size).fill_(0.0).to(self.cfg.device)
+
         w, h, l = self.hr.shape[2], self.hr.shape[3], self.hr.shape[4]
         batch_MSE = torch.sum((self.hr - self.fake_hr) ** 2) / (w * h * l)
         batch_MSE = batch_MSE.item()
@@ -530,7 +561,7 @@ class wind_field_GAN_3D(BaseGAN):
             fake_label = 0.1
         elif self.cfg.training.use_one_sided_label_smoothing:
             real_label = 0.9
-            fake_label = 0.1  # WAS 0.0 --Thomas
+            fake_label = 0.0  
 
         if self.cfg.training.use_noisy_labels:
             self.HR_labels = (
@@ -540,8 +571,7 @@ class wind_field_GAN_3D(BaseGAN):
                     true_label_val=real_label,
                     false_label_val=fake_label,
                 )
-                .float()
-                .to(self.device)
+                .to(self.device, non_blocking=True)
                 .squeeze()
             )
             self.fake_HR_labels = (
@@ -551,8 +581,7 @@ class wind_field_GAN_3D(BaseGAN):
                     true_label_val=real_label,
                     false_label_val=fake_label,
                 )
-                .float()
-                .to(self.device)
+                .to(self.device, non_blocking=True)
                 .squeeze()
             )
         else:  # no noise std dev -> no noise
@@ -564,8 +593,7 @@ class wind_field_GAN_3D(BaseGAN):
                     true_label_val=real_label,
                     false_label_val=fake_label,
                 )
-                .float()
-                .to(self.device)
+                .to(self.device, non_blocking=True)
                 .squeeze()
             )
             self.fake_HR_labels = (
@@ -576,8 +604,7 @@ class wind_field_GAN_3D(BaseGAN):
                     true_label_val=real_label,
                     false_label_val=fake_label,
                 )
-                .float()
-                .to(self.device)
+                .to(self.device, non_blocking=True)
                 .squeeze()
             )
 

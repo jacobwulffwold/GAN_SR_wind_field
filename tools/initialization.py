@@ -9,8 +9,6 @@ From /codes/models/networks.py in https://github.com/xinntao/BasicSR
 """
 
 import functools
-
-import torch
 from torch.nn import init
 
 

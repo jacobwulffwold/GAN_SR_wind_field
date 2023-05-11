@@ -91,6 +91,7 @@ class GeneratorConfig(IniConfig):
     lff_kern_size: int = 3
     number_of_z_layers: int = 1
     conv_mode: str = "2D"
+    use_mixed_precision: bool = True
 
     def setGeneratorConfig(self, gen_config):
         self.norm_type = gen_config.get("norm_type")
@@ -109,6 +110,7 @@ class GeneratorConfig(IniConfig):
         self.lff_kern_size = gen_config.getint("lff_kern_size")
         self.number_of_z_layers = gen_config.getint("number_of_z_layers")
         self.conv_mode = gen_config.get("conv_mode")
+        self.use_mixed_precision = gen_config.getboolean("use_mixed_precision")
 
 
 class DiscriminatorConfig(IniConfig):
@@ -121,6 +123,7 @@ class DiscriminatorConfig(IniConfig):
     weight_init_scale: float = 1.0
     number_of_z_layers: int = 10
     conv_mode: str = "3D"
+    use_mixed_precision: bool = True
 
     def setDiscriminatorConfig(self, disc_config):
         self.norm_type = disc_config.get("norm_type")
@@ -132,6 +135,7 @@ class DiscriminatorConfig(IniConfig):
         self.weight_init_scale = disc_config.getfloat("weight_init_scale")
         self.number_of_z_layers = disc_config.getint("number_of_z_layers")
         self.conv_mode = disc_config.get("conv_mode")
+        self.use_mixed_precision = disc_config.getboolean("use_mixed_precision")
 
 
 class FeatureExtractorConfig(IniConfig):
@@ -148,7 +152,7 @@ class DatasetConfig(IniConfig):
     mode: str = "downsampler"
     dataroot_hr: str = "default_path"
     dataroot_lr: str = "default_lr_path"
-    n_workers: int = 16
+    num_workers: int = 0
     batch_size: int = 16
     hr_img_size: int = 192
     data_aug_gaussian_noise: bool = True
@@ -162,7 +166,7 @@ class DatasetConfig(IniConfig):
         self.mode = data_config.get("mode")
         self.dataroot_hr = data_config.get("dataroot_hr")
         self.dataroot_lr = data_config.get("dataroot_lr")
-        self.n_workers = data_config.getint("n_workers")
+        self.num_workers = data_config.getint("num_workers")
         self.batch_size = data_config.getint("batch_size")
         self.hr_img_size = data_config.getint("hr_img_size")
         self.data_aug_gaussian_noise = data_config.getboolean("data_aug_gaussian_noise")

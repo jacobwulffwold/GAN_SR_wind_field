@@ -10,8 +10,6 @@ from download_data import (
     get_interpolated_z_data,
 )
 from torch.autograd import grad
-
-torch.gradient
 # Handling the masked array problem by
 # 1) Filling the masked arrays with nan
 # 2) removing first,second and last row to get it by same grid dimension
@@ -53,8 +51,8 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
         xy_divergence
     )
 
-
-def calculate_div_z(HR_data, Z):
+@torch.jit.script
+def calculate_div_z(HR_data:torch.Tensor, Z:torch.Tensor):
     dZ = Z[:, :, :, 1:] - Z[:, :, :, :-1]
 
     derivatives = torch.zeros_like(HR_data)[:, :, :, :, 1:-1]
@@ -115,9 +113,9 @@ def reformat_to_torch(
         arr_norm_LR = np.concatenate((arr_norm_LR, z_above_ground[:,:,::coarseness_factor, ::coarseness_factor, :]/np.max(z_above_ground)), axis=1)
         del z_above_ground
 
-    HR_data = torch.from_numpy(HR_arr)
-    LR_data = torch.from_numpy(arr_norm_LR)
-    z = torch.from_numpy(z)
+    HR_data = torch.from_numpy(HR_arr).float()
+    LR_data = torch.from_numpy(arr_norm_LR).float()
+    z = torch.from_numpy(z).float()
 
     number_of_train_samples = int(HR_data.size(0) * train_fraction)
     number_of_test_samples = int(HR_data.size(0) * (1 - train_fraction) / 2)
@@ -216,7 +214,7 @@ def preprosess(
     dataset_test = torch.utils.data.TensorDataset(LR_data_test, HR_data_test, z_data_test)
     dataset_validation = torch.utils.data.TensorDataset(LR_data_val, HR_data_val, z_data_val)
 
-    # LR_test, HR_test = dataset_train[:8]
+    # LR_test, HR_test, Z_test = dataset_train[:8]
     # Z = HR_test[:, -1, :, :, :]
 
     # grad_tensor, divergence = calculate_gradient_of_wind_field(HR_test[:,:-1,:,:,:], torch.from_numpy(x), torch.from_numpy(y), Z)
@@ -233,8 +231,8 @@ def preprosess(
         dataset_train,
         dataset_test,
         dataset_validation,
-        torch.from_numpy(x),
-        torch.from_numpy(y),
+        torch.from_numpy(x).float(),
+        torch.from_numpy(y).float(),
     )
 
 

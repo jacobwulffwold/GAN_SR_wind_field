@@ -7,6 +7,7 @@ Implements VGG-style discriminators for different input resolutions.
 """
 
 import torch.nn as nn
+import torch
 
 from CNN_models.torch_blocks import create_discriminator_block
 import tools.loggingclass as lc
@@ -32,6 +33,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         device="cpu",
         number_of_z_layers=10,
         conv_mode: str = "3D",
+        use_mixed_precision: bool = False,
     ):
         super(Discriminator_3D, self).__init__()
         self.base_number_of_features = base_number_of_features
@@ -47,6 +49,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
             slope = 0.2
 
         features = []
+        self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
         # 128x128x10 -> 64x64x10
         remainder_z_layers = [number_of_z_layers]

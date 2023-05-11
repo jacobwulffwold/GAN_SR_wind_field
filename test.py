@@ -75,7 +75,7 @@ def test(cfg: config.Config, dataset_test):
     metrics_file = os.path.join(output_folder_path + "/" + cfg.name + "_metrics.csv")
 
     if cfg.is_use:
-        for j, data in enumerate(dataloader_test):
+        for j, (lrs, hrs, Zs) in enumerate(dataloader_test):
             status_logger.info(f"batch {j}")
             lrs = data[0]
             names = data[1]
@@ -85,7 +85,7 @@ def test(cfg: config.Config, dataset_test):
                 indx = torch.tensor([i])
                 lr_i = torch.index_select(lrs, 0, indx, out=None)
                 img_name = names[i]
-                sr_i = gan.G(lr_i.float().to(cfg.device)).cpu()
+                sr_i = gan.G(lr_i.to(cfg.device)).cpu()
                 make_and_write_images(
                     lr_i, None, sr_i, output_folder_path, img_name, cfg.scale
                 )
@@ -101,12 +101,12 @@ def test(cfg: config.Config, dataset_test):
 
                 for i in range(len(lrs)):
                     status_logger.info(f"image {i}")
-                    indx = torch.tensor([i])
+                    indx = torch.as_tensor([i])
                     lr_i = torch.index_select(lrs, 0, indx, out=None)
                     hr_i = torch.index_select(hrs, 0, indx, out=None)
                     # img_name = names[i]
 
-                    sr_i = gan.G(lr_i.float().to(cfg.device)).cpu()
+                    sr_i = gan.G(lr_i.to(cfg.device)).cpu()
                     # img_name = "lr_bc_sr_hr"
 
                     imgs = make_and_write_images(

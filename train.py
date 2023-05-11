@@ -43,7 +43,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             dataset_train,
             batch_size=cfg.dataset_train.batch_size,
             shuffle=True,
-            num_workers=cfg.dataset_train.n_workers,
+            num_workers=cfg.dataset_train.num_workers,
             pin_memory=True,
         )
         # dataloader_train = imageset.createDataloader(cfg, is_train_dataloader=True, downsampler_mode="trilinear")
@@ -55,7 +55,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             dataset_validation,
             batch_size=cfg.dataset_val.batch_size,
             shuffle=False,
-            num_workers=cfg.dataset_val.n_workers,
+            num_workers=cfg.dataset_val.num_workers,
             pin_memory=True,
         )
         # dataloader_val = imageset.createDataloader(cfg, is_validation_dataloader=True, downsampler_mode="trilinear")
@@ -149,13 +149,13 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 it += 1
                 bar.update(i, epoch, it)
 
-                LR = LR.float().to(cfg.device)
-                HR = HR.float().to(cfg.device)
-                Z = Z.float().to(cfg.device)
+                LR = LR.to(cfg.device, non_blocking=True)
+                HR = HR.to(cfg.device, non_blocking=True)
+                Z = Z.to(cfg.device, non_blocking=True)
                 
                 if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
-                    x = x.to(cfg.device)
-                    y = y.to(cfg.device)
+                    x = x.to(cfg.device, non_blocking=True)
+                    y = y.to(cfg.device, non_blocking=True)
                     gan.feed_data(LR, HR, x, y, Z)
                 else:
                     gan.feed_data(LR, HR, Z=Z)
@@ -208,8 +208,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     i_val = 0
                     for _, (val_LR, val_HR, val_Z) in enumerate(dataloader_val):
                         i_val += 1
-                        val_LR = val_LR.float().to(cfg.device)
-                        val_HR = val_HR.float().to(cfg.device)
+                        val_LR = val_LR.to(cfg.device, non_blocking=True)
+                        val_HR = val_HR.to(cfg.device, non_blocking=True)
                         gan.feed_data(
                             val_LR, val_HR, Z=val_Z
                         )
@@ -223,14 +223,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         # if (it % 40000 == 0):
                         if i_val % len(dataloader_val) == 0:
                             with torch.no_grad():
-                                batch_quiver = torch.LongTensor(
-                                    np.asarray([np.random.randint(val_LR.shape[0], size=1)])
-                                )[0].to(
-                                    cfg.device
-                                )  #
-                                # print("var_LR.shape:",  val_LR.shape, "var_LR.shape[0] =", val_LR.shape[0], "( type=", type(val_LR), ")")
-                                # print("Batch_quiver shape:", batch_quiver.shape)
-                                # print(batch_quiver)
+                                batch_quiver = torch.randint(val_LR.shape[0], size=1, device=cfg.device)[0] 
 
                                 # Fetch validation sample from device, using random index
                                 LR_i = torch.index_select(val_LR, 0, batch_quiver, out=None)
@@ -240,18 +233,13 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 LR_ori = LR_i.squeeze().detach().cpu().numpy()
                                 u_LR = LR_ori[
                                     0, :, :, :
-                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                ]  
                                 v_LR = LR_ori[
                                     1, :, :, :
-                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                ] 
                                 w_LR = LR_ori[
                                     2, :, :, :
-                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
-                                # xwp_LR = LR_ori[3,:,:]#*(np.max(x_wp_nomask)-np.min(x_wp_nomask))+np.min(x_wp_nomask)
-                                # zwp_LR = LR_ori[4,:,:]#*(np.max(z_wp_nomask)-np.min(z_wp_nomask))+np.min(z_wp_nomask)
-
-                                # trilinear
-                                # imgs_trilinear_tensor = nn.functional.interpolate(LR_i, scale_factor=4, mode='trilinear')
+                                ]  
                                 imgs_trilinear = (
                                     nn.functional.interpolate(
                                         LR_i,
@@ -386,7 +374,7 @@ def store_LR_HR_in_runs_folder(cfg: config.Config, dataloader):
         HRs = data[1]
         # handles batch sizes > 0
         for i in range(LRs.shape[0]):
-            indx = torch.tensor([i])
+            indx = torch.as_tensor([i])
             LR_i = torch.index_select(LRs, 0, indx, out=None)
             HR_i = torch.index_select(HRs, 0, indx, out=None)
             LR_np = LR_i.squeeze().detach().numpy()  # * 255
@@ -410,9 +398,9 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
         os.makedirs(it_folder_path)
 
     for v, (LRs, HRs, Zs) in enumerate(dataloader):
-        LRs = LRs.float().to(cfg.device)
+        LRs = LRs.to(cfg.device)
         for i in range(LRs.shape[0]):
-            indx = torch.tensor([i]).float().to(cfg.device)
+            indx = torch.as_tensor([i]).to(cfg.device)
             LR_i = torch.index_select(LRs, 0, indx, out=None)
             # new record in # of .calls ?
             sr_np = (

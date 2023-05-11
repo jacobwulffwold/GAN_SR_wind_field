@@ -37,6 +37,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         act_type: str = "leakyrelu",
         number_of_z_layers: int = 10,
         conv_mode: str = "3D",
+        use_mixed_precision: bool = False,
         # device=torch.device("mps" if torch.backends.mps.is_available() else "cpu"),
         device="cpu",
     ):
@@ -56,6 +57,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         layer_type = nn.Conv2d if conv_mode == "2D" else nn.Conv3d
 
         hr_pad = (hr_kern_size - 1) // 2
+        self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
         # Low level feature extraction
         if conv_mode in {"3D", "2D"}:
@@ -169,7 +171,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
         self.hr_convs = nn.Sequential(*hr_convs)
         self.status_logs.append(f"Generator: finished init")
-
+    
     def forward(self, x, Z):
         x = self.model(x)
         x = torch.cat((x, Z[:, None, :, :]), dim=1)
