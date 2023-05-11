@@ -146,8 +146,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
             # dataloader -> (LR, HR, HR_img_name)
             for i, (LR, HR, Z) in enumerate(dataloader_train):
-                # if it > cfg_t.niter:
-                #     break
+                
+                if it > cfg_t.niter:
+                    break
+
                 it += 1
                 bar.update(i, epoch, it)
 
@@ -169,10 +171,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     prev = 0
                     for key, value in gan.memory_dict.items():
                         diff = value - prev
-                        status_logger.info(key+" memory usage (MB)", str(value), ", diff from previous: ", str(diff))
+                        status_logger.info(key+" memory usage (MB) "+str(value)+", diff from previous: "+str(diff))
                         prev = value
-                if i == 2 and torch.cuda.is_available():
-                    status_logger.info("memory occupied after 2 iterations: ", str(torch.cuda.memory_allocated(cfg.device)/1024**2))
                 
                 gan.update_learning_rate() if i > 0 else None
 
@@ -191,6 +191,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if dataloader_val is None:
                     continue
                 if it % cfg_t.val_period == 0:
+                    del LR, HR, Z
                     status_logger.debug(f"validation epoch (it {it})")
                     loss_vals = dict(
                         (val_name, val * 0)
@@ -358,6 +359,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
+                    if torch.cuda.is_available() and it // cfg_t.val_period == 1:
+                        status_logger.info("max memory allocated: "+str(torch.cuda.max_memory_allocated(cfg.device)/1024**2))
                     # store_current_visuals(cfg, 0, gan, dataloader_val) # tricky way of always having the newest images.
     return
 
