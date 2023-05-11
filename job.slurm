@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=10G
 #SBATCH --job-name="memory_test_ESRGAN_wind_field"
-#SBATCH --output=memory_test.out
+#SBATCH --output=latest_test.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

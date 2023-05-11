@@ -223,7 +223,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         # if (it % 40000 == 0):
                         if i_val % len(dataloader_val) == 0:
                             with torch.no_grad():
-                                batch_quiver = torch.randint(val_LR.shape[0], size=1, device=cfg.device)[0] 
+                                batch_quiver = torch.randint(val_LR.shape[0], size=(1,), device=cfg.device)[0] 
 
                                 # Fetch validation sample from device, using random index
                                 LR_i = torch.index_select(val_LR, 0, batch_quiver, out=None)
