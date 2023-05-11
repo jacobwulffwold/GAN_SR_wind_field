@@ -81,6 +81,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     it = 0
     it_per_epoch = len(dataloader_train)
     count_train_epochs = cfg_t.niter // it_per_epoch
+    if count_train_epochs < 1:
+        count_train_epochs = 1
 
     if cfg.load_model_from_save:
         status_logger.info(
