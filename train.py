@@ -143,7 +143,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             status_logger.debug("epoch {epoch}")
 
             # dataloader -> (LR, HR, HR_img_name)
-            for i, (LR, HR) in enumerate(dataloader_train):
+            for i, (LR, HR, Z) in enumerate(dataloader_train):
                 # if it > cfg_t.niter:
                 #     break
                 it += 1
@@ -151,10 +151,14 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                 LR = LR.float().to(cfg.device)
                 HR = HR.float().to(cfg.device)
+                Z = Z.float().to(cfg.device)
+                
                 if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
-                    gan.feed_data(LR, HR[:, :-1, :, :, :], x, y, HR[:, -1, :, :])
+                    x = x.to(cfg.device)
+                    y = y.to(cfg.device)
+                    gan.feed_data(LR, HR, x, y, Z)
                 else:
-                    gan.feed_data(LR, HR[:, :-1, :, :, :], Z=HR[:, -1, :, :])
+                    gan.feed_data(LR, HR, Z=Z)
 
                 gan.optimize_parameters(it)
                 profiler.step()
@@ -162,11 +166,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if i == 1 and torch.cuda.is_available():
                     prev = 0
                     for key, value in gan.memory_dict.items():
-                        diff = value -prev
-                        status_logger.info(key+" memory usage (MB)", value, ", diff from previous: ", diff)
+                        diff = value - prev
+                        status_logger.info(key+" memory usage (MB)", str(value), ", diff from previous: ", str(diff))
                         prev = value
                 if i == 2 and torch.cuda.is_available():
-                    status_logger.info("memory occupied after 2 iterations: ", torch.cuda.memory_allocated(cfg.device))
+                    status_logger.info("memory occupied after 2 iterations: ", str(torch.cuda.memory_allocated(cfg.device)/1024**2))
                 
                 gan.update_learning_rate() if i > 0 else None
 
@@ -202,12 +206,12 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     os.makedirs("images/training/grnd_est", exist_ok=True)
 
                     i_val = 0
-                    for _, (val_LR, val_HR) in enumerate(dataloader_val):
+                    for _, (val_LR, val_HR, val_Z) in enumerate(dataloader_val):
                         i_val += 1
                         val_LR = val_LR.float().to(cfg.device)
                         val_HR = val_HR.float().to(cfg.device)
                         gan.feed_data(
-                            val_LR, val_HR[:, :-1, :, :, :], Z=val_HR[:, -1, :, :, :]
+                            val_LR, val_HR, Z=val_Z
                         )
                         gan.validation(it)
                         for val_name, val in gan.get_loss_dict_ref().items():
@@ -405,7 +409,7 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
     if not os.path.exists(it_folder_path):
         os.makedirs(it_folder_path)
 
-    for v, (LRs, HRs) in enumerate(dataloader):
+    for v, (LRs, HRs, Zs) in enumerate(dataloader):
         LRs = LRs.float().to(cfg.device)
         for i in range(LRs.shape[0]):
             indx = torch.tensor([i]).float().to(cfg.device)

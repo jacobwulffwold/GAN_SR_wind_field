@@ -32,6 +32,7 @@ class IniConfig:
 class GANConfig(IniConfig):
     include_pressure: bool = True
     include_z_channel: bool = True
+    include_above_ground_channel: bool = False
     number_of_z_layers: int = 10
     conv_mode: str = "3D"
     start_date = [2018, 4, 1]
@@ -42,6 +43,7 @@ class GANConfig(IniConfig):
     def setGANConfig(self, gan_config):
         self.include_pressure = gan_config.getboolean("include_pressure")
         self.include_z_channel = gan_config.getboolean("include_z_channel")
+        self.include_above_ground_channel = gan_config.getboolean("include_above_ground_channel")
         self.number_of_z_layers = gan_config.getint("number_of_z_layers")
         self.conv_mode = gan_config.get("conv_mode")
         self.start_date = safe_list_from_string(gan_config.get("start_date"), int)

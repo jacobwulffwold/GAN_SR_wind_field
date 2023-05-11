@@ -79,7 +79,7 @@ class wind_field_GAN_3D(BaseGAN):
         cfg_g: config.GeneratorConfig = cfg.generator
         cfg_gan: config.GANConfig = cfg.gan_config
         self.G = Generator_3D(
-            cfg_g.in_num_ch + cfg_gan.include_pressure + cfg_gan.include_z_channel,
+            cfg_g.in_num_ch + cfg_gan.include_pressure + cfg_gan.include_z_channel + cfg_gan.include_above_ground_channel,
             cfg_g.out_num_ch + cfg_gan.include_pressure,
             cfg_g.num_features,
             cfg_g.num_RRDB,
@@ -97,7 +97,7 @@ class wind_field_GAN_3D(BaseGAN):
         ).to(cfg.device)
         initialization.init_weights(self.G, scale=cfg_g.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
-            self.memory_dict["G"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+            self.memory_dict["G"] =torch.cuda.memory_allocated(self.device) / 1024**2
         
         self.conv_mode = cfg_g.conv_mode
         self.use_D_feature_extractor_cost = cfg_gan.use_D_feature_extractor_cost
@@ -130,7 +130,7 @@ class wind_field_GAN_3D(BaseGAN):
             # self.F = self.F.to(cfg.device)
             initialization.init_weights(self.D, scale=cfg_d.weight_init_scale)
             if torch.cuda.is_available() and not self.memory_dict.get("G_and_D"):
-                self.memory_dict["G_and_D"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+                self.memory_dict["G_and_D"] =torch.cuda.memory_allocated(self.device) / 1024**2
         ###################
         # Define optimizers, schedulers, and losses
         ###################
@@ -200,10 +200,10 @@ class wind_field_GAN_3D(BaseGAN):
         self.lr = lr
         self.hr = hr
         if x.any():
-            self.x = x.to(self.device)
-            self.y = y.to(self.device)
+            self.x = x
+            self.y = y
         if Z.any():
-            self.Z = Z.to(self.device)
+            self.Z = Z
 
     def compute_losses_and_optimize(
         self, it, training_epoch: bool = False, validation_epoch: bool = False
@@ -219,7 +219,7 @@ class wind_field_GAN_3D(BaseGAN):
 
         self.fake_hr = self.G(self.lr, self.Z).to(self.device)
         if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward"):
-            self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024 / 1024
+            self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024**2
 
         # changes when going from train <-> val <-> test
         # (at least when data loader has drop_last=True )
@@ -237,8 +237,6 @@ class wind_field_GAN_3D(BaseGAN):
                 param.requires_grad = False
 
             self.G.zero_grad()
-
-            # squeeze to go from shape [batch_sz, 1] to [batch_sz]
 
             y_pred = None
             fake_y_pred = None
@@ -356,7 +354,7 @@ class wind_field_GAN_3D(BaseGAN):
             loss_G.backward()
 
             if torch.cuda.is_available() and not self.memory_dict.get("after_G_backward"):
-                self.memory_dict["after_G_backward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+                self.memory_dict["after_G_backward"] =torch.cuda.memory_allocated(self.device) / 1024**2
 
             if training_epoch:
                 self.loss_dict["train_loss_G"] = loss_G.item()

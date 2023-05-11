@@ -77,39 +77,47 @@ def reformat_to_torch(
     u,
     v,
     w,
-    pressure,
+    p,
     z,
     coarseness_factor=4,
     train_fraction=0.8,
     include_pressure=False,
     include_z_channel=False,
-    interpolate_z=False,
-    terrain=np.asarray([]),
+    include_above_ground_channel = False,
+    terrain = np.asarray([])
 ):
+    
     u, v, w, p, z = [
         wind_component[:, np.newaxis, :, :, :]
-        for wind_component in [u, v, w, pressure, z]
+        for wind_component in [u, v, w, p, z]
     ]
 
-    uvw_arr = np.concatenate((u, v, w), axis=1)
-    max_comp = np.max(uvw_arr.__abs__())
+    HR_arr = np.concatenate((u, v, w), axis=1)
+    del u, v, w
 
     if include_pressure:
-        arr_norm_HR = np.concatenate((uvw_arr / max_comp, p / np.max(p)), axis=1)
+        HR_arr = np.concatenate((HR_arr / np.max(HR_arr.__abs__()), p / np.max(p)), axis=1)
     else:
-        arr_norm_HR = uvw_arr / max_comp
-
-    z = z - np.min(z)
-
+        HR_arr = HR_arr / np.max(HR_arr.__abs__())
+    
+    
     if include_z_channel:
-        arr_norm_HR = np.concatenate((arr_norm_HR, z / np.max(z)), axis=1)
-        arr_norm_LR = arr_norm_HR[:, :, ::coarseness_factor, ::coarseness_factor, :]
+        z_norm = (z - np.min(z))/(np.max(z)-np.min(z))
+        arr_norm_LR = np.concatenate((HR_arr, z_norm), axis=1)[:, :, ::coarseness_factor, ::coarseness_factor, :]
+        del z_norm
     else:
-        arr_norm_LR = arr_norm_HR[:, :, ::coarseness_factor, ::coarseness_factor, :]
-        arr_norm_HR = np.concatenate((arr_norm_HR, z / np.max(z)), axis=1)
+        arr_norm_LR = HR_arr[:, :, ::coarseness_factor, ::coarseness_factor, :]
+    
+    if include_above_ground_channel:
+        z_above_ground = np.transpose(
+                np.transpose(z, ([0, 1, 4, 2, 3])) - terrain, ([0, 1, 3, 4, 2])
+            )
+        arr_norm_LR = np.concatenate((arr_norm_LR, z_above_ground[:,:,::coarseness_factor, ::coarseness_factor, :]/np.max(z_above_ground)), axis=1)
+        del z_above_ground
 
-    HR_data = torch.from_numpy(arr_norm_HR)
+    HR_data = torch.from_numpy(HR_arr)
     LR_data = torch.from_numpy(arr_norm_LR)
+    z = torch.from_numpy(z)
 
     number_of_train_samples = int(HR_data.size(0) * train_fraction)
     number_of_test_samples = int(HR_data.size(0) * (1 - train_fraction) / 2)
@@ -120,21 +128,24 @@ def reformat_to_torch(
     ]
 
     (
-        (HR_data_train, LR_data_train),
-        (HR_data_test, LR_data_test),
-        (HR_data_val, LR_data_val),
+        (HR_data_train, LR_data_train, z_data_train),
+        (HR_data_test, LR_data_test, z_data_test),
+        (HR_data_val, LR_data_val, z_data_val),
     ) = [
-        (HR_data[start:end].squeeze(), LR_data[start:end].squeeze())
+        (HR_data[start:end].squeeze(), LR_data[start:end].squeeze(), z[start:end].squeeze())
         for start, end in index_start_end
     ]
 
     return (
         HR_data_train,
         LR_data_train,
+        z_data_train,
         HR_data_test,
         LR_data_test,
+        z_data_test,
         HR_data_val,
         LR_data_val,
+        z_data_val
     )
 
 
@@ -147,6 +158,7 @@ def preprosess(
     include_pressure=False,
     include_z_channel=False,
     interpolate_z=False,
+    include_above_ground_channel = False,
 ):
     data_code = "simra_BESSAKER_"
 
@@ -160,11 +172,12 @@ def preprosess(
 
     COARSENESS_FACTOR = 4
 
-    filename = "./saved_interpolated_z_data/" + interp_file_name(
-        X_DICT, Z_DICT, start_date, end_date
-    )
+    
 
     if interpolate_z:
+        filename = "./saved_interpolated_z_data/" + interp_file_name(
+            X_DICT, Z_DICT, start_date, end_date
+        )
         Z_interp_above_ground, u, v, w, pressure = get_interpolated_z_data(
             filename, x, y, z, terrain, u, v, w, pressure
         )
@@ -178,10 +191,13 @@ def preprosess(
     (
         HR_data_train,
         LR_data_train,
+        z_data_train,
         HR_data_test,
         LR_data_test,
+        z_data_test,
         HR_data_val,
         LR_data_val,
+        z_data_val
     ) = reformat_to_torch(
         u,
         v,
@@ -192,11 +208,13 @@ def preprosess(
         train_fraction,
         include_pressure=include_pressure,
         include_z_channel=include_z_channel,
+        include_above_ground_channel=include_above_ground_channel,
+        terrain = terrain,
     )
 
-    dataset_train = torch.utils.data.TensorDataset(LR_data_train, HR_data_train)
-    dataset_test = torch.utils.data.TensorDataset(LR_data_test, HR_data_test)
-    dataset_validation = torch.utils.data.TensorDataset(LR_data_val, HR_data_val)
+    dataset_train = torch.utils.data.TensorDataset(LR_data_train, HR_data_train, z_data_train)
+    dataset_test = torch.utils.data.TensorDataset(LR_data_test, HR_data_test, z_data_test)
+    dataset_validation = torch.utils.data.TensorDataset(LR_data_val, HR_data_val, z_data_val)
 
     # LR_test, HR_test = dataset_train[:8]
     # Z = HR_test[:, -1, :, :, :]
@@ -221,4 +239,4 @@ def preprosess(
 
 
 if __name__ == "__main__":
-    preprosess()
+    preprosess(include_above_ground_channel=True)
