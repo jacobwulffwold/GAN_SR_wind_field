@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=16G
+#SBATCH --mem=20G
 #SBATCH --job-name="preprocessing_test_GAN"
 #SBATCH --output=preprocess_test.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
