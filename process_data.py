@@ -142,37 +142,42 @@ def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dic
     
     if not os.path.exists(folder+subfolder):
         os.makedirs(folder+subfolder)
-
+    
+    invalid_samples = set()
+    
     while not finished:
         for i in range(len(filenames)):           
-            try:
-                with open(folder+subfolder+"max_"+filenames[i], "rb") as f:
-                    z_min, z_max, z_above_ground_max, uvw_max, p_max = pickle.load(
-                        f
-                    )
-                if i < training_fraction * len(filenames):
-                    Z_MIN = min(Z_MIN, z_min)
-                    Z_MAX = max(Z_MAX, z_max)
-                    UVW_MAX = max(UVW_MAX, uvw_max)
-                    P_MAX = max(P_MAX, p_max)
-                    Z_ABOVE_GROUND_MAX = max(Z_ABOVE_GROUND_MAX, z_above_ground_max)
-                
-                if start != -1:
-                    print("Downloading new files, from ", filenames[start], " to ", filenames[i])
-                    download_and_split(filenames[start:i], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder)
-                    start = -1
-            except:
-                if start == -1:
-                    start = i
+            if filenames[i] not in invalid_samples:
+                try:
+                    with open(folder+subfolder+"max_"+filenames[i], "rb") as f:
+                        z_min, z_max, z_above_ground_max, uvw_max, p_max = pickle.load(
+                            f
+                        )
+                    if i < training_fraction * len(filenames):
+                        Z_MIN = min(Z_MIN, z_min)
+                        Z_MAX = max(Z_MAX, z_max)
+                        UVW_MAX = max(UVW_MAX, uvw_max)
+                        P_MAX = max(P_MAX, p_max)
+                        Z_ABOVE_GROUND_MAX = max(Z_ABOVE_GROUND_MAX, z_above_ground_max)
+                    
+                    if start != -1:
+                        print("Downloading new files, from ", filenames[start], " to ", filenames[i])
+                        invalid_samples = invalid_samples.union(download_and_split(filenames[start:i], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder))
+                        start = -1
+                except:
+                    if start == -1:
+                        start = i
             
         if i == len(filenames)-1:
             if start != -1:
                 print("Downloading new files, from ", filenames[start], " to ", filenames[i])
-                download_and_split(filenames[start:], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder)
+                invalid_samples = invalid_samples.union(download_and_split(filenames[start:], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder))
                 start = -1
             else:
                 finished = True
-
+    
+    filenames = [item for item in filenames if item not in invalid_samples]
+    
     print("Finished downloading all files")
 
     return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX

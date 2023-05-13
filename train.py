@@ -158,11 +158,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
-
-                else:
-                    gan.feed_data(LR, HR, Z=Z)
+                    gan.feed_data(x, y)
 
                 gan.optimize_parameters(LR, HR, Z, it)
+                
                 profiler.step()
 
                 if i == 1 and torch.cuda.is_available():
@@ -212,10 +211,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         val_LR = val_LR.to(cfg.device, non_blocking=True)
                         val_HR = val_HR.to(cfg.device, non_blocking=True)
                         val_Z = val_Z.to(cfg.device, non_blocking=True)
-                        gan.feed_data(
-                            val_LR, val_HR, Z=val_Z
-                        )
-                        gan.validation(it)
+                        gan.validation(val_LR, val_HR, val_Z, it)
                         for val_name, val in gan.get_loss_dict_ref().items():
                             loss_vals[val_name] += val / n
 
@@ -274,7 +270,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     gan.G(
                                         LR_i,
                                         torch.index_select(
-                                            gan.Z, 0, batch_quiver, out=None
+                                            val_Z, 0, batch_quiver, out=None
                                         ),
                                     )
                                     .squeeze()
@@ -408,7 +404,7 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
             LR_i = torch.index_select(LRs, 0, indx, out=None)
             # new record in # of .calls ?
             sr_np = (
-                gan.G(LR_i, torch.index_select(gan.Z, 0, indx, out=None))
+                gan.G(LR_i, torch.index_select(Zs, 0, indx, out=None))
                 .squeeze()
                 .detach()
                 .cpu()

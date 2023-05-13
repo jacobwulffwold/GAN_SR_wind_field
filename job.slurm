@@ -1,12 +1,12 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=0-05:00:00
+#SBATCH --time=0-00:05:00
 #SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=20G
+#SBATCH --mem=10G
 #SBATCH --job-name="preprocessing_test_GAN"
 #SBATCH --output=preprocess_test.out
 #SBATCH --mail-user=jawold@stud.ntnu.no

@@ -10,16 +10,9 @@ from datetime import datetime, timedelta, date
 from urllib import request
 import os
 import pickle
-import glob
 import netCDF4
 from netCDF4 import Dataset
 import numpy as np
-import matplotlib.pyplot as plt
-from netCDF4 import num2date
-import matplotlib.animation as animation
-import matplotlib
-import cftime
-from tqdm import tqdm
 from mayavi import mlab
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel
@@ -311,17 +304,11 @@ def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indic
                 # )
                 z = quick_append(z, "geopotential_height_ml", nc_fid, transpose_indices)
                 nc_fid.close()
-    
+
     u, v, w, pressure, z = [np.ma.filled(wind_field.astype(float), np.nan)
         for wind_field in [u, v, w, pressure, z]
     ]
     z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure) 
-
-    u[u > 100] = 0
-    v[v > 100] = 0
-    w[w > 100] = 0
-
-    pressure[pressure > 200000] = 0
     
     return (
         # time,
@@ -746,11 +733,17 @@ def split_into_separate_files(z,
             folder = "./full_dataset_files/"):
     
     z_above_ground = np.transpose(np.transpose(z, ([0,3,1,2])) - terrain, ([0,2,3,1]))
+    invalid_samples = set()
 
     for i in range(u.shape[0]):
         
         if os.path.isfile(folder+filenames[i]):
             continue
+        
+        if np.isnan(np.concatenate((z[i],z_above_ground[i],u[i],v[i],w[i],pressure[i]))).any() or np.isinf(np.concatenate((z[i],z_above_ground[i],u[i],v[i],w[i],pressure[i]))).any() or u[i][u[i]>100].any() or v[i][v[i]>100].any() or w[i][w[i]>100].any() or pressure[i][pressure[i]>200000].any():
+            invalid_samples.add(filenames[i])
+            continue
+
         with open(folder+filenames[i], "wb") as f:
             pickle.dump(
                 [
@@ -774,13 +767,15 @@ def split_into_separate_files(z,
                 ],
                 f,
             )
+    return invalid_samples
 
 def download_and_split(filenames, terrain, x_dict, y_dict, z_dict, folder = "./full_dataset_files/"):
     data_code = "simra_BESSAKER_"
-    start_time = datetime.strptime(filenames[0][filenames[0].find("/2")+1:-7], "%Y-%m-%d")
-    end_time = datetime.strptime(filenames[-1][filenames[-1].find("/2")+1:-7], "%Y-%m-%d")
+    start_time = datetime.strptime(filenames[0][:-7], "%Y-%m-%d")
+    end_time = datetime.strptime(filenames[-1][:-7], "%Y-%m-%d")
     days = (end_time - start_time).days+1
     transpose_indices = [0, 2, 3, 1]
+    invalid_samples = set()
     for i in range(0, days, 5):
         start = i
         end = min(i+5, days)
@@ -793,8 +788,9 @@ def download_and_split(filenames, terrain, x_dict, y_dict, z_dict, folder = "./f
 
         z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure, x_dict=x_dict, y_dict=y_dict, z_dict=z_dict)
 
-        split_into_separate_files(z, u, v, w, pressure, filenames[24*start : 24*end], terrain, folder=folder)
-
+        invalid_samples = invalid_samples.union(split_into_separate_files(z, u, v, w, pressure, filenames[24*start : 24*end], terrain, folder=folder))
+    
+    return invalid_samples
 
 def slice_dict_folder_name(x_dict, y_dict, z_dict):
     return (
@@ -833,7 +829,7 @@ if __name__ == "__main__":
     X_DICT = {"start": 4, "max": -3, "step": 1}
     Z_DICT = {"start": 1, "max": 41, "step": 10}
 
-    file_name = interp_file_name(X_DICT, Z_DICT, start_date, end_date)
+    # file_name = interp_file_name(X_DICT, Z_DICT, start_date, end_date)
 
 
 
