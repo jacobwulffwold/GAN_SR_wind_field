@@ -192,53 +192,53 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             return
 
-    def feed_data(
-        self,
-        lr: torch.Tensor,
-        hr: torch.Tensor = None,
-        x: torch.Tensor = None,
-        y: torch.Tensor = None,
-        Z: torch.Tensor = None,
-    ):
-        self.lr = lr
-        self.hr = hr
-        if x is not None and y is not None:
-            self.x = x
-            self.y = y
-        if Z is not None:
-            self.Z = Z
+    # def feed_data(
+    #     self,
+    #     lr: torch.Tensor,
+    #     hr: torch.Tensor = None,
+    #     x: torch.Tensor = None,
+    #     y: torch.Tensor = None,
+    #     Z: torch.Tensor = None,
+    # ):
+    #     LR = lr
+    #     self.hr = hr
+    #     if x is not None and y is not None:
+    #         self.x = x
+    #         self.y = y
+    #     if Z is not None:
+    #         Z = Z
     
-    def D_forward(self, it: int, train_D: bool,):
+    def D_forward(self, HR: torch.Tensor, fake_HR: torch.Tensor, it: int, train_D: bool,):
         if train_D:
             self.D.train()
             if self.cfg.training.use_instance_noise:
                 y_pred = self.D(
-                    self.hr
+                    HR
                     + trainingtricks.instance_noise(
-                        1, self.hr.size(), it, self.cfg.training.niter
+                        1, HR.size(), it, self.cfg.training.niter
                     )
                     .to(self.device, non_blocking=True)
                 ).squeeze()
                 fake_y_pred = self.D(
-                    self.fake_hr.detach()
+                    fake_HR.detach()
                     + trainingtricks.instance_noise(
-                        1, self.hr.size(), it, self.cfg.training.niter
+                        1, HR.size(), it, self.cfg.training.niter
                     )
                     .to(self.device, non_blocking=True)
                 ).squeeze()  # detach -> avoid BP to G
             else:
-                y_pred = self.D(self.hr).squeeze()
+                y_pred = self.D(HR).squeeze()
                 fake_y_pred = self.D(
-                    self.fake_hr.detach()
+                    fake_HR.detach()
                 ).squeeze() 
         else:
             self.D.eval()
             if self.cfg.training.use_instance_noise:
                 y_pred = (
                     self.D(
-                        self.hr
+                        HR
                         + trainingtricks.instance_noise(
-                            1.0, self.hr.size(), it, self.cfg.training.niter
+                            1.0, HR.size(), it, self.cfg.training.niter
                         )
                         .to(self.device)
                     )
@@ -246,19 +246,19 @@ class wind_field_GAN_3D(BaseGAN):
                     .detach()
                 )
                 fake_y_pred = self.D(
-                    self.fake_hr
+                    fake_HR
                     + trainingtricks.instance_noise(
-                        1, self.hr.size(), it, self.cfg.training.niter
+                        1, HR.size(), it, self.cfg.training.niter
                     )
                     .to(self.device)
                 ).squeeze()
             else:
-                y_pred = self.D(self.hr).squeeze().detach()
-                fake_y_pred = self.D(self.fake_hr).squeeze()
+                y_pred = self.D(HR).squeeze().detach()
+                fake_y_pred = self.D(fake_HR).squeeze()
         
         return y_pred, fake_y_pred
     
-    def log_G_losses(self, loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_epoch: bool,):
+    def log_G_losses(self, fake_HR, loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_epoch: bool,):
         if training_epoch:
             self.loss_dict["train_loss_G"] = loss_G.item()
             self.loss_dict["train_loss_G_adversarial"] = loss_G_adversarial.item()
@@ -269,7 +269,7 @@ class wind_field_GAN_3D(BaseGAN):
             self.loss_dict["train_loss_G_feature_D"] = loss_G_feature_D.item()
             self.loss_dict["train_loss_G_pix"] = loss_G_pix.item()
             self.hist_dict["SR_pix_distribution"] = (
-                self.fake_hr.detach().cpu().numpy()
+                fake_HR.detach().cpu().numpy()
             )
             if torch.cuda.is_available() and not self.memory_dict.get("after_G_step"):
                 self.memory_dict["after_G_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2  
@@ -297,7 +297,7 @@ class wind_field_GAN_3D(BaseGAN):
             self.hist_dict["val_weight_G_first_layer"] = weight_start.numpy()
             self.hist_dict["val_weight_G_last_layer"] = weight_end.numpy()
 
-    def calculate_and_log_G_loss(self, y_pred, fake_y_pred, training_epoch: bool,):
+    def calculate_and_log_G_loss(self, HR, fake_HR, y_pred, fake_y_pred, training_epoch: bool,):
         loss_G_adversarial = 0
         
         if self.cfg.training.gan_type == "dcgan":
@@ -323,19 +323,19 @@ class wind_field_GAN_3D(BaseGAN):
 
         loss_G_feature_D = 0
         if self.use_D_feature_extractor_cost:
-            features = self.D.features(self.hr).detach()
-            fake_features = self.D.features(self.fake_hr)
+            features = self.D.features(HR).detach()
+            fake_features = self.D.features(fake_HR)
             loss_G_feature_D = self.feature_D_criterion(features, fake_features)
 
         loss_G_pix = 0
         if self.pixel_criterion:
-            loss_G_pix = self.pixel_criterion(self.hr, self.fake_hr)
+            loss_G_pix = self.pixel_criterion(HR, fake_HR)
 
         HR_wind_gradient, HR_divergence, HR_xy_divergence = calculate_gradient_of_wind_field(
-            self.hr[:, :3], self.x, self.y, self.Z
+            HR[:, :3], self.x, self.y, Z
         )
         SR_wind_gradient, SR_divergence, SR_xy_divergence = calculate_gradient_of_wind_field(
-            self.fake_hr[:, :3], self.x, self.y, self.Z
+            fake_HR[:, :3], self.x, self.y, Z
         )
 
         loss_G_xy_gradient = self.gradient_xy_criterion(
@@ -382,19 +382,18 @@ class wind_field_GAN_3D(BaseGAN):
         # self.G.scaler.scale(loss_G).backward()
         loss_G.backward()
 
-        self.log_G_losses(loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_epoch=training_epoch)
+        self.log_G_losses(fake_HR, loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_epoch=training_epoch)
 
         return loss_G
 
-    def update_G(self, it, training_epoch: bool):
-        
-        if training_epoch:
+    def update_G(self, LR, HR, Z, it, training_iteration: bool):
+        if training_iteration:
             self.G.train()
         else:
             self.G.eval()
         
         # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
-        self.fake_hr = self.G(self.lr, self.Z).to(self.device)
+        fake_HR = self.G(LR, Z).to(self.device)
         
         if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward"):
             self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024**2
@@ -405,13 +404,13 @@ class wind_field_GAN_3D(BaseGAN):
         self.G.zero_grad(set_to_none=True)
 
         # with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
-        y_pred, fake_y_pred = self.D_forward(it, train_D=False)
+        y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
             
         # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
             
-        self.calculate_and_log_G_loss(y_pred, fake_y_pred, training_epoch)
+        self.calculate_and_log_G_loss(HR, fake_HR, y_pred, fake_y_pred, training_iteration)
 
-        if training_epoch:
+        if training_iteration:
             self.optimizer_G.step()
             # self.G.scaler.step(self.optimizer_G)
             # self.G.scaler.update()
@@ -449,14 +448,14 @@ class wind_field_GAN_3D(BaseGAN):
                 torch.sigmoid(fake_y_pred.detach()).cpu().numpy()[np.newaxis]
             )
     
-    def update_D(self, it, training_epoch: bool):
+    def update_D(self, HR: torch.Tensor, fake_HR: torch.Tensor, it, training_epoch: bool):
         for param in self.D.parameters():
             param.requires_grad = True
 
         self.optimizer_D.zero_grad(set_to_none=True)
 
         # with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
-        y_pred, fake_y_pred = self.D_forward(it, train_D=True)
+        y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=True)
         
         if torch.cuda.is_available() and not self.memory_dict.get("after_D_forward"):
             self.memory_dict["after_D_forward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
@@ -494,50 +493,40 @@ class wind_field_GAN_3D(BaseGAN):
         self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
 
     def compute_losses_and_optimize(
-        self, it, training_epoch: bool = False, validation_epoch: bool = False
+        self, LR, HR, Z, it, training_iteration: bool = False
     ):
-        """
-        process_data
-        computes losses, and if it is a training epoch, performs parameter optimization
-        """
-        if (not training_epoch and not validation_epoch) or (
-            training_epoch and validation_epoch
-        ):
-            raise ValueError("process_data requires exactly one input as true")
-
-        self.batch_size = self.hr.size(0)
-
+        self.batch_size = HR.size(0)
         self.make_new_labels()
 
         ###################
         # Update G
         ###################
         if it % 2 == 0:  # self.cfg.d_g_train_ratio == 0:
-            self.update_G(it, training_epoch)
+            self.update_G(LR, HR, Z, it, training_iteration)
         else:
             with torch.no_grad():
-                self.fake_hr = self.G(self.lr, self.Z).to(self.device)
+                fake_HR = self.G(LR, Z).to(self.device)
             if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward_no_grad"):
                 self.memory_dict["after_G_forward_no_grad"] = torch.cuda.memory_allocated(self.device) / 1024**2
             
         ###################
         # Update D
         ###################
-        self.update_D(it, training_epoch)
+        self.update_D(it, training_iteration)
 
         
 
-    def optimize_parameters(self, it):
-        self.compute_losses_and_optimize(it, training_epoch=True)
+    def optimize_parameters(self, LR, HR, Z, it):
+        self.compute_losses_and_optimize(LR, HR, Z, it, training_iteration=True)
 
     def validation(self, it):
         self.compute_losses_and_optimize(it, validation_epoch=True)
         self.compute_psnr_x_batch_size()
 
-    def compute_psnr_x_batch_size(self):
+    def compute_psnr_x_batch_size(self, HR: torch.Tensor, fake_HR: torch.Tensor):
 
-        w, h, l = self.hr.shape[2], self.hr.shape[3], self.hr.shape[4]
-        batch_MSE = torch.sum((self.hr - self.fake_hr) ** 2) / (w * h * l)
+        w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
+        batch_MSE = torch.sum((HR - self.fake_hr) ** 2) / (w * h * l)
         batch_MSE = batch_MSE.item()
         R_squared = 1.0  # R is max fluctuation, and data is float [0, 1] -> R² = 1
         epsilon = (

@@ -287,6 +287,7 @@ class Config(IniConfig):
     is_train: bool
     is_use: bool
     is_test: bool
+    is_download: bool
 
     def __init__(self, ini_path):
         config = ConfigParser(allow_no_value=True)

@@ -70,11 +70,11 @@ def gradient_of_irregular_grid(X, Y, Z, u, v, w):
 
 if __name__ == "__main__":
     data_code = "simra_BESSAKER_"
-    start_date = date(2018, 4, 1)  # 1,2
-    end_date = date(2018, 4, 2)  #
+    start_time = date(2018, 4, 1)  # 1,2
+    end_time = date(2018, 4, 2)  #
 
     time, terrain, x, y, z, u, v, w, theta, tke, td, pressure = download_and_combine(
-        data_code, start_date, end_date
+        data_code, start_time, end_time
     )
 
     z_plot_scale = 5

@@ -30,9 +30,9 @@ import random
 def main():
     cfg: Config = argv_to_cfg()
     # cfg.is_train = True
-    if not cfg.is_test and not cfg.is_train and not cfg.is_use:
+    if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download:
         print(
-            "pass either --test or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
+            "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
 
@@ -54,6 +54,13 @@ def main():
 
     status_logger.info(f"run.py: running with device: {cfg.device}")
 
+    if cfg.is_download:
+        start_date = date(
+        cfg.gan_config.start_date[0], cfg.gan_config.start_date[1], cfg.gan_config.start_date[2])
+        
+        end_date = date(cfg.gan_config.end_date[0], cfg.gan_config.end_date[1], cfg.gan_config.end_date[2])
+        status_logger.info("run.py: starting download of all data for Bessaker Wind farm from "+str(start_date)+" to "+str(end_date)+" not previously downloaded.")
+
     dataset_train, dataset_test, dataset_validation, x, y = prepare_data(cfg)
 
     status_logger.info(f"run.py: data prepared")
@@ -65,10 +72,12 @@ def main():
         train.train(cfg, dataset_train, dataset_validation, x, y)
         status_logger.info("run.py: finished training")
         cfg.is_train = False
+    
     if cfg.is_test:
         status_logger.info("run.py: starting testing")
         test.test(cfg, dataset_test)
         status_logger.info("run.py: finished testing")
+
 
     status_logger.info(
         f"run.py: log file location: {cfg.env.status_log_file}  run file location: {cfg.env.train_log_file}"
@@ -101,6 +110,13 @@ def argv_to_cfg() -> Config:
         "--use", default=False, action="store_true", help="use on LR images"
     )
     parser.add_argument(
+        "--download",
+        default=False,
+        action="store_true",
+        help="Only downloads data, does not train or test",
+    )
+    
+    parser.add_argument(
         "--loglevel",
         default=False,
         action="store_true",
@@ -110,6 +126,7 @@ def argv_to_cfg() -> Config:
     is_test = args.test
     is_train = args.train
     is_use = args.use
+    is_download = args.download
     cfg_path = args.cfg
 
     if is_use:
@@ -122,6 +139,7 @@ def argv_to_cfg() -> Config:
     cfg.is_test = is_test
     cfg.is_use = is_use
     cfg.is_train = is_train
+    cfg.is_download = is_download
 
     return cfg
 
@@ -140,6 +158,7 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
     # make necessary paths, but warn user if the run folder overlaps with existing folder.
     makedirs(cfg.env.log_folder)
     makedirs(cfg.env.tensorboard_log_folder)
+    [makedirs(path) for path in ["./saved_interpolated_z_data/", "./downloaded_raw_bessaker_data", "./full_dataset_files"]]
     is_ok = makedirs_ensure_user_ok(cfg.env.this_runs_folder)
     makedirs(cfg.env.this_runs_folder + "/images")
     makedirs(cfg.env.this_runs_tensorboard_log_folder)
@@ -242,7 +261,7 @@ def save_config(cfg: Config, folder: str):
 
 def prepare_data(cfg: Config):
     cfg_gan = cfg.gan_config
-    Z_DICT = {"start": 1, "max": cfg_gan.number_of_z_layers + 1, "step": 1}
+    Z_DICT = {"start": 0, "max": cfg_gan.number_of_z_layers, "step": 1}
     start_date = date(
         cfg_gan.start_date[0], cfg_gan.start_date[1], cfg_gan.start_date[2]
     )
@@ -255,6 +274,7 @@ def prepare_data(cfg: Config):
         include_pressure=cfg_gan.include_pressure,
         include_z_channel=cfg_gan.include_z_channel,
         interpolate_z=cfg_gan.interpolate_z,
+        include_above_ground_channel=cfg_gan.include_above_ground_channel,
     )
 
 

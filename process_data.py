@@ -2,29 +2,100 @@ import torch
 import numpy as np
 import torch.nn.parallel
 import torch.utils.data
-from datetime import date
+import pickle
 from download_data import (
-    download_and_combine,
-    slice_data,
-    interp_file_name,
+    download_and_split,
+    slice_only_dim_dicts,
+    slice_dict_folder_name,
     get_interpolated_z_data,
+    get_static_data,
 )
-from torch.autograd import grad
-# Handling the masked array problem by
-# 1) Filling the masked arrays with nan
-# 2) removing first,second and last row to get it by same grid dimension
-# 2.1) Need to get the grid dimension on 2^n form, e.g. 128 x 128
+from datetime import datetime, timedelta, date
+import os
 
-# u_nan = np.ma.filled(u.astype(float), np.nan)
-# u_nomask = u_nan[:, 4:-4, 4:-3]
+class CustomizedDataset(torch.utils.data.Dataset):
+  def __init__(self, 
+    filenames,
+    subfolder_name, 
+    Z_MIN, 
+    Z_MAX, 
+    UVW_MAX, 
+    P_MAX,
+    Z_ABOVE_GROUND_MAX,
+    x,
+    y,
+    include_pressure=False,
+    include_z_channel=False,
+    interpolate_z=False,
+    include_above_ground_channel = False,
+    COARSENESS_FACTOR = 4):
+        self.filenames = filenames
+        self.subfolder_name =subfolder_name
+        self.include_pressure = include_pressure
+        self.include_z_channel = include_z_channel
+        self.interpolate_z = interpolate_z
+        self.include_above_ground_channel = include_above_ground_channel
+        self.coarseness_factor = COARSENESS_FACTOR
+        self.Z_MIN = Z_MIN
+        self.Z_MAX = Z_MAX
+        self.Z_ABOVE_GROUND_MAX = Z_ABOVE_GROUND_MAX
+        self.UVW_MAX = UVW_MAX
+        self.P_MAX = P_MAX
+        self.x = x
+        self.y = y
 
-# v_nan = np.ma.filled(v.astype(float), np.nan)
-# v_nomask = v_nan[:, 4:-4, 4:-3]
+  def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.filenames)
 
-# w_nan = np.ma.filled(w.astype(float), np.nan)
-# w_nomask = w_nan[:, 4:-4, 4:-3]
+  def __getitem__(self, index):
+        'Generates one sample of data'
+        # Select sample
+        z, z_above_ground, u, v, w, pressure = pickle.load(open("./full_dataset_files/"+self.subfolder_name+self.filenames[index], "rb"))
+        
+        if self.interpolate_z:
+            z, u, v, w, pressure = get_interpolated_z_data(
+                "./saved_interpolated_z_data/"+self.subfolder_name+self.filenames[index], self.x, self.y, z_above_ground, u, v, w, pressure
+            )
 
+        LR, HR, Z = reformat_to_torch(
+            u,
+            v,
+            w,
+            pressure,
+            z,
+            z_above_ground,
+            self.Z_MIN, 
+            self.Z_MAX,
+            self.Z_ABOVE_GROUND_MAX,
+            self.UVW_MAX, 
+            self.P_MAX,
+            coarseness_factor=self.coarseness_factor,
+            include_pressure=self.include_pressure,
+            include_z_channel=self.include_z_channel,
+            include_above_ground_channel=self.include_above_ground_channel,
+        )
 
+        return LR, HR, Z
+
+def calculate_div_z(HR_data:torch.Tensor, Z:torch.Tensor):
+    dZ = Z[:, 0, :, :, 1:] - Z[:, 0, :, :, :-1]
+
+    derivatives = torch.zeros_like(HR_data)[:, :, :, :, 1:-1]
+    for i in range(1, Z.shape[-1] - 1):
+        dz1, dz2 = torch.tile(
+            dZ[:, None, :, :, i - 1], (1, HR_data.shape[1], 1, 1)
+        ), torch.tile(dZ[:, None, :, :, i], (1, HR_data.shape[1], 1, 1))
+
+        derivatives[:, :, :, :, i - 1] = (
+            dz1**2 * HR_data[:, :, :, :, i + 1]
+            + (dz2**2 - dz1**2) * HR_data[:, :, :, :, i]
+            - dz2**2 * HR_data[:, :, :, :, i - 1]
+        ) / (dz1 * dz2 * (dz1 + dz2))
+
+    return derivatives
+
+@torch.jit.script
 def calculate_gradient_of_wind_field(HR_data, x, y, Z):
     grad_x, grad_y = torch.gradient(HR_data, dim=(2, 3), spacing=(x, y))
     grad_z = calculate_div_z(HR_data, Z)
@@ -51,24 +122,60 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
         xy_divergence
     )
 
-@torch.jit.script
-def calculate_div_z(HR_data:torch.Tensor, Z:torch.Tensor):
-    dZ = Z[:, :, :, 1:] - Z[:, :, :, :-1]
+def filenames_from_start_and_end_dates(start_date: date, end_date: date):
+    start_time = datetime(start_date.year, start_date.month, start_date.day)
+    end_time = datetime(end_date.year, end_date.month, end_date.day)
+    delta = end_time - start_time
+    names = []
+    for i in range((delta.days+1) * 24):
+        names.append((str(start_time + timedelta(hours=i))+".pkl").replace(" ","-").replace(":00:00",""))
+    return names
 
-    derivatives = torch.zeros_like(HR_data)[:, :, :, :, 1:-1]
-    for i in range(1, Z.shape[-1] - 1):
-        dz1, dz2 = torch.tile(
-            dZ[:, None, :, :, i - 1], (1, HR_data.shape[1], 1, 1)
-        ), torch.tile(dZ[:, None, :, :, i], (1, HR_data.shape[1], 1, 1))
+def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dict, z_dict, terrain, folder:str="./full_dataset_files/", training_fraction=0.8):
+    
+    filenames = filenames_from_start_and_end_dates(start_date, end_date)
+    Z_MIN, Z_MAX, UVW_MAX, P_MAX, Z_ABOVE_GROUND_MAX = 10000, 0, 0, 0, 0
 
-        derivatives[:, :, :, :, i - 1] = (
-            dz1**2 * HR_data[:, :, :, :, i + 1]
-            + (dz2**2 - dz1**2) * HR_data[:, :, :, :, i]
-            - dz2**2 * HR_data[:, :, :, :, i - 1]
-        ) / (dz1 * dz2 * (dz1 + dz2))
+    finished = False
+    start = -1
+    subfolder = slice_dict_folder_name(x_dict, y_dict, z_dict)
+    
+    if not os.path.exists(folder+subfolder):
+        os.makedirs(folder+subfolder)
 
-    return derivatives
+    while not finished:
+        for i in range(len(filenames)):           
+            try:
+                with open(folder+subfolder+"max_"+filenames[i], "rb") as f:
+                    z_min, z_max, z_above_ground_max, uvw_max, p_max = pickle.load(
+                        f
+                    )
+                if i < training_fraction * len(filenames):
+                    Z_MIN = min(Z_MIN, z_min)
+                    Z_MAX = max(Z_MAX, z_max)
+                    UVW_MAX = max(UVW_MAX, uvw_max)
+                    P_MAX = max(P_MAX, p_max)
+                    Z_ABOVE_GROUND_MAX = max(Z_ABOVE_GROUND_MAX, z_above_ground_max)
+                
+                if start != -1:
+                    print("Downloading new files, from ", filenames[start], " to ", filenames[i])
+                    download_and_split(filenames[start:i], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder)
+                    start = -1
+            except:
+                if start == -1:
+                    start = i
+            
+        if i == len(filenames)-1:
+            if start != -1:
+                print("Downloading new files, from ", filenames[start], " to ", filenames[i])
+                download_and_split(filenames[start:], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder)
+                start = -1
+            else:
+                finished = True
 
+    print("Finished downloading all files")
+
+    return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX
 
 # Creating coarse simulation by skipping every alternate grid
 def reformat_to_torch(
@@ -77,142 +184,128 @@ def reformat_to_torch(
     w,
     p,
     z,
+    z_above_ground,
+    Z_MIN, 
+    Z_MAX, 
+    Z_ABOVE_GROUND_MAX,
+    UVW_MAX, 
+    P_MAX,
     coarseness_factor=4,
-    train_fraction=0.8,
     include_pressure=False,
     include_z_channel=False,
     include_above_ground_channel = False,
-    terrain = np.asarray([])
 ):
     
     u, v, w, p, z = [
-        wind_component[:, np.newaxis, :, :, :]
+        wind_component[np.newaxis, :, :, :]
         for wind_component in [u, v, w, p, z]
     ]
 
-    HR_arr = np.concatenate((u, v, w), axis=1)
+    HR_arr = np.concatenate((u, v, w), axis=0)
     del u, v, w
 
     if include_pressure:
-        HR_arr = np.concatenate((HR_arr / np.max(HR_arr.__abs__()), p / np.max(p)), axis=1)
+        HR_arr = np.concatenate((HR_arr / UVW_MAX, p / P_MAX), axis=0)
     else:
-        HR_arr = HR_arr / np.max(HR_arr.__abs__())
-    
+        HR_arr = HR_arr / UVW_MAX
     
     if include_z_channel:
-        z_norm = (z - np.min(z))/(np.max(z)-np.min(z))
-        arr_norm_LR = np.concatenate((HR_arr, z_norm), axis=1)[:, :, ::coarseness_factor, ::coarseness_factor, :]
-        del z_norm
+        arr_norm_LR = np.concatenate((HR_arr, (z - Z_MIN)/(Z_MAX-Z_MIN)), axis=0)[:, ::coarseness_factor, ::coarseness_factor, :]
     else:
-        arr_norm_LR = HR_arr[:, :, ::coarseness_factor, ::coarseness_factor, :]
+        arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
     
     if include_above_ground_channel:
-        z_above_ground = np.transpose(
-                np.transpose(z, ([0, 1, 4, 2, 3])) - terrain, ([0, 1, 3, 4, 2])
-            )
-        arr_norm_LR = np.concatenate((arr_norm_LR, z_above_ground[:,:,::coarseness_factor, ::coarseness_factor, :]/np.max(z_above_ground)), axis=1)
+        arr_norm_LR = np.concatenate((arr_norm_LR, z_above_ground[:,::coarseness_factor, ::coarseness_factor, :]/Z_ABOVE_GROUND_MAX), axis=0)
         del z_above_ground
 
     HR_data = torch.from_numpy(HR_arr).float()
     LR_data = torch.from_numpy(arr_norm_LR).float()
     z = torch.from_numpy(z).float()
-
-    number_of_train_samples = int(HR_data.size(0) * train_fraction)
-    number_of_test_samples = int(HR_data.size(0) * (1 - train_fraction) / 2)
-    index_start_end = [
-        (0, number_of_train_samples),
-        (number_of_train_samples, number_of_train_samples + number_of_test_samples),
-        (number_of_train_samples + number_of_test_samples, -1),
-    ]
-
-    (
-        (HR_data_train, LR_data_train, z_data_train),
-        (HR_data_test, LR_data_test, z_data_test),
-        (HR_data_val, LR_data_val, z_data_val),
-    ) = [
-        (HR_data[start:end].squeeze(), LR_data[start:end].squeeze(), z[start:end].squeeze())
-        for start, end in index_start_end
-    ]
-
+    
     return (
-        HR_data_train,
-        LR_data_train,
-        z_data_train,
-        HR_data_test,
-        LR_data_test,
-        z_data_test,
-        HR_data_val,
-        LR_data_val,
-        z_data_val
+        LR_data,
+        HR_data,
+        z,
     )
-
 
 def preprosess(
     train_fraction=0.8,
-    X_DICT={"start": 4, "max": -3, "step": 1},
-    Z_DICT={"start": 1, "max": 11, "step": 1},
+    X_DICT={"start": 0, "max": 128, "step": 1},
+    Y_DICT={"start": 0, "max": 128, "step": 1},
+    Z_DICT={"start": 0, "max": 10, "step": 1},
     start_date=date(2018, 4, 1),
     end_date=date(2018, 4, 3),
     include_pressure=False,
     include_z_channel=False,
     interpolate_z=False,
     include_above_ground_channel = False,
-):
-    data_code = "simra_BESSAKER_"
-
-    terrain, x, y, z, u, v, w, pressure = download_and_combine(
-        data_code, start_date, end_date
-    )
-
-    terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
-        terrain, x, y, z, u, v, w, pressure, X_DICT, Z_DICT
-    )
-
     COARSENESS_FACTOR = 4
+):
+    try:
+        with open("./full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = slice_only_dim_dicts(*pickle.load(f), x_dict=X_DICT, y_dict=Y_DICT)
+    except:
+        get_static_data()
+        with open("./full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = slice_only_dim_dicts(*pickle.load(f), x_dict=X_DICT, y_dict=Y_DICT)
 
+    filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX = download_all_files_and_prepare(start_date, end_date, X_DICT, Y_DICT, Z_DICT, terrain, training_fraction=train_fraction)
     
-
     if interpolate_z:
-        filename = "./saved_interpolated_z_data/" + interp_file_name(
-            X_DICT, Z_DICT, start_date, end_date
-        )
-        Z_interp_above_ground, u, v, w, pressure = get_interpolated_z_data(
-            filename, x, y, z, terrain, u, v, w, pressure
-        )
-        z = np.tile(
-            np.transpose(
-                np.transpose(Z_interp_above_ground, ([2, 0, 1])) + terrain, ([1, 2, 0])
-            ),
-            (z.shape[0], 1, 1, 1),
-        )
+        if not os.path.exists("./saved_interpolated_z_data/"+subfolder):
+            os.makedirs("./saved_interpolated_z_data/"+subfolder)
+           
+    number_of_train_samples = int(len(filenames) * train_fraction)
+    number_of_test_samples = int(len(filenames) * (1 - train_fraction) / 2)
+        
 
-    (
-        HR_data_train,
-        LR_data_train,
-        z_data_train,
-        HR_data_test,
-        LR_data_test,
-        z_data_test,
-        HR_data_val,
-        LR_data_val,
-        z_data_val
-    ) = reformat_to_torch(
-        u,
-        v,
-        w,
-        pressure,
-        z,
-        COARSENESS_FACTOR,
-        train_fraction,
+    dataset_train = CustomizedDataset(
+        filenames[:number_of_train_samples],
+        subfolder,
+        Z_MIN,
+        Z_MAX,
+        UVW_MAX,
+        P_MAX,
+        Z_ABOVE_GROUND_MAX,
+        x,
+        y,
         include_pressure=include_pressure,
         include_z_channel=include_z_channel,
-        include_above_ground_channel=include_above_ground_channel,
-        terrain = terrain,
-    )
+        interpolate_z=interpolate_z,
+        include_above_ground_channel = include_above_ground_channel,
+        COARSENESS_FACTOR = COARSENESS_FACTOR)
 
-    dataset_train = torch.utils.data.TensorDataset(LR_data_train, HR_data_train, z_data_train)
-    dataset_test = torch.utils.data.TensorDataset(LR_data_test, HR_data_test, z_data_test)
-    dataset_validation = torch.utils.data.TensorDataset(LR_data_val, HR_data_val, z_data_val)
+    dataset_test = CustomizedDataset(
+        filenames[number_of_train_samples:number_of_train_samples + number_of_test_samples],
+        subfolder,
+        Z_MIN,
+        Z_MAX,
+        UVW_MAX,
+        P_MAX,
+        Z_ABOVE_GROUND_MAX,
+        x,
+        y,
+        include_pressure=include_pressure,
+        include_z_channel=include_z_channel,
+        interpolate_z=interpolate_z,
+        include_above_ground_channel = include_above_ground_channel,
+        COARSENESS_FACTOR = COARSENESS_FACTOR)
+
+    dataset_validation = CustomizedDataset(
+        filenames[number_of_train_samples + number_of_test_samples:],
+        subfolder,
+        Z_MIN,
+        Z_MAX,
+        UVW_MAX,
+        P_MAX,
+        Z_ABOVE_GROUND_MAX,
+        x,
+        y,
+        include_pressure=include_pressure,
+        include_z_channel=include_z_channel,
+        interpolate_z=interpolate_z,
+        include_above_ground_channel = include_above_ground_channel,
+        COARSENESS_FACTOR = COARSENESS_FACTOR)
 
     # LR_test, HR_test, Z_test = dataset_train[:8]
     # Z = HR_test[:, -1, :, :, :]

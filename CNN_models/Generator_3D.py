@@ -174,5 +174,5 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
     
     def forward(self, x, Z):
         x = self.model(x)
-        x = torch.cat((x, Z[:, None, :, :]), dim=1)
+        x = torch.cat((x, Z), dim=1)
         return self.hr_convs(x)

@@ -158,11 +158,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
-                    gan.feed_data(LR, HR, x, y, Z)
+
                 else:
                     gan.feed_data(LR, HR, Z=Z)
 
-                gan.optimize_parameters(it)
+                gan.optimize_parameters(LR, HR, Z, it)
                 profiler.step()
 
                 if i == 1 and torch.cuda.is_available():

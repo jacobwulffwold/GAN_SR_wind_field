@@ -59,7 +59,6 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
             else:
                 remainder_z_layers.append(remainder_z_layers[i] // 2 + remainder_z_layers[i] % 2)
 
-
         features.append(
             create_discriminator_block(
                 in_channels,

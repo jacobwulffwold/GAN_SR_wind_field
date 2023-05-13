@@ -6,8 +6,7 @@ This is a temporary script file.
 """
 
 
-from datetime import timedelta, date
-import datetime
+from datetime import datetime, timedelta, date
 from urllib import request
 import os
 import pickle
@@ -104,7 +103,7 @@ def download_Bessaker_data(start_date, end_date, destination_folder):
     for i in range(delta.days + 1):
         for sim_time in sim_times:
             temp = start_date + timedelta(days=i)
-            temp_date = datetime.datetime.strptime(str(temp), "%Y-%m-%d")
+            temp_date = datetime.strptime(str(temp), "%Y-%m-%d")
             filename = data_code + ((str(temp)).replace("-", "")) + sim_time
             local_filename = destination_folder + filename
             if os.path.isfile(local_filename) == True:
@@ -230,12 +229,27 @@ def extract_XY_plane(data_code, start_date, end_date, iz):
 def quick_append(var, key, nc_fid, transpose_indices=[0, 2, 3, 1]):
     return np.ma.append(
         var,
-        np.transpose(nc_fid[key][1:13, :, :, :], (transpose_indices))[:, :, :, ::-1],
+        np.transpose(nc_fid[key][:-1, :, :, :], (transpose_indices))[:, :, :, ::-1],
         axis=0,
     )
 
+def get_static_data():
+    filename = os.listdir("./downloaded_raw_bessaker_data/")[0]
+    
+    nc_fid = Dataset("./downloaded_raw_bessaker_data/" + filename, mode="r")
+    
+    x = 100000*nc_fid["x"][:]
+    y = 100000*nc_fid["y"][:]
+    terrain = nc_fid["surface_altitude"][:]
+    nc_fid.close()
 
-def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
+    terrain = np.ma.filled(terrain.astype(float), np.nan)
+    terrain, x, y = slice_only_dim_dicts(terrain, x, y)
+
+    with open("./full_dataset_files/static_terrain_x_y.pkl", "wb") as f:
+            pickle.dump([terrain, x, y], f)
+
+def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
     delta = end_date - start_date
     sim_times = ["T00Z.nc", "T12Z.nc"]
     index = 0
@@ -249,27 +263,24 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
                 # time = nc_fid["time"][:]
                 # latitude = nc_fid["longitude"][:]
                 # longitude = nc_fid["latitude"][:]
-                x = nc_fid["x"][:]
-                y = nc_fid["y"][:]
                 z = np.transpose(
                     nc_fid["geopotential_height_ml"][:], (transpose_indices)
-                )[:, :, :, ::-1]
-                terrain = nc_fid["surface_altitude"][:]
+                )[:-1, :, :, ::-1]
                 # theta = np.transpose(
                 #     nc_fid["air_potential_temperature_ml"][:], (transpose_indices)
                 # )[:, :, :, ::-1]
                 u = np.transpose(nc_fid["x_wind_ml"][:], (transpose_indices))[
-                    :, :, :, ::-1
+                    :-1, :, :, ::-1
                 ]
                 v = np.transpose(nc_fid["y_wind_ml"][:], (transpose_indices))[
-                    :, :, :, ::-1
+                    :-1, :, :, ::-1
                 ]
                 w = np.transpose(
                     nc_fid["upward_air_velocity_ml"][:], (transpose_indices)
-                )[:, :, :, ::-1]
+                )[:-1, :, :, ::-1]
                 pressure = np.transpose(
                     nc_fid["air_pressure_ml"][:], (transpose_indices)
-                )[:, :, :, ::-1]
+                )[:-1, :, :, ::-1]
                 # u10 = nc_fid['x_wind_10m'][:]
                 # v10 = nc_fid['y_wind_10m'][:]
                 # tke = np.transpose(
@@ -300,13 +311,25 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
                 # )
                 z = quick_append(z, "geopotential_height_ml", nc_fid, transpose_indices)
                 nc_fid.close()
+    
+    u, v, w, pressure, z = [np.ma.filled(wind_field.astype(float), np.nan)
+        for wind_field in [u, v, w, pressure, z]
+    ]
+    z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure) 
+
+    u[u > 100] = 0
+    v[v > 100] = 0
+    w[w > 100] = 0
+
+    pressure[pressure > 200000] = 0
+    
     return (
         # time,
         # latitude,
         # longitude,
-        terrain,
-        x,
-        y,
+        # terrain,
+        # x,
+        # y,
         z,
         u,
         v,
@@ -319,36 +342,42 @@ def extract_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
 
 
 def slice_only_dim_dicts(
-    xy_dict={"start": 4, "max": -3, "step": 1},
-    z_dict={"start": 1, "max": 10, "step": 5},
-    *args
+    *args,
+    x_dict={"start": 4, "max": -4, "step": 1},
+    y_dict={"start": 4, "max": -3, "step": 1},
+    z_dict={"start": 1, "max": 41, "step": 1},
 ):
     value_list = []
     for val in args:
         if val.ndim == 3:
             value_list.append(
                 val[
-                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
-                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    x_dict["start"] : x_dict["max"] : x_dict["step"],
+                    y_dict["start"] : y_dict["max"] : x_dict["step"],
                     z_dict["start"] : z_dict["max"] : z_dict["step"],
                 ]
             )
         elif val.ndim == 2:
             value_list.append(
                 val[
-                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
-                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    x_dict["start"] : x_dict["max"] : x_dict["step"],
+                    y_dict["start"] : y_dict["max"] : y_dict["step"],
                 ]
             )
         elif val.ndim == 4:
             value_list.append(
                 val[
                     :,
-                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
-                    xy_dict["start"] : xy_dict["max"] : xy_dict["step"],
+                    x_dict["start"] : x_dict["max"] : x_dict["step"],
+                    y_dict["start"] : y_dict["max"] : y_dict["step"],
                     z_dict["start"] : z_dict["max"] : z_dict["step"],
                 ]
             )
+        elif val.ndim == 1:
+            if val.size == 136:
+                value_list.append(val[x_dict["start"] : x_dict["max"] : x_dict["step"]])
+            else:
+                value_list.append(val[y_dict["start"] : y_dict["max"] : y_dict["step"]])
 
     return value_list
 
@@ -362,26 +391,24 @@ def slice_data(
     v,
     w,
     pressure,
-    x_dict={"start": 4, "max": -90, "step": 1},
-    z_dict={"start": -1, "max": -30, "step": -1},
+    x_dict={"start": 4, "max": -3, "step": 1},
+    z_dict={"start": 1, "max": 41, "step": 1},
 ):
     X, Y, _ = np.meshgrid(x, y, z[0, 0, :])
     X, Y = (
-        100000
-        * X[
+        X[
             x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
             x_dict["start"] : x_dict["max"] : x_dict["step"],
             z_dict["start"] : z_dict["max"] : z_dict["step"],
         ],
-        100000
-        * Y[
+        Y[
             x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
             x_dict["start"] : x_dict["max"] : x_dict["step"],
             z_dict["start"] : z_dict["max"] : z_dict["step"],
         ],
     )
     u, v, w, pressure, z = [
-        np.ma.filled(wind_field.astype(float), np.nan)[
+        wind_field[
             :,
             x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
             x_dict["start"] : x_dict["max"] : x_dict["step"],
@@ -390,7 +417,6 @@ def slice_data(
         for wind_field in [u, v, w, pressure, z]
     ]
 
-    terrain = np.ma.filled(terrain.astype(float), np.nan)
     terrain = terrain[
         x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
         x_dict["start"] : x_dict["max"] : x_dict["step"],
@@ -398,8 +424,8 @@ def slice_data(
 
     return (
         terrain,
-        100000 * x[x_dict["start"] : x_dict["max"] : x_dict["step"]],
-        100000 * y[x_dict["start"] : x_dict["max"] - 1 : x_dict["step"]],
+        x[x_dict["start"] : x_dict["max"] : x_dict["step"]],
+        y[x_dict["start"] : x_dict["max"] - 1 : x_dict["step"]],
         X,
         Y,
         z,
@@ -413,40 +439,36 @@ def slice_data(
 def interpolate_z_axis(
     x,
     y,
-    Z_input,
-    terrain,
+    z_above_ground,
     u,
     v,
     w,
     pressure,
 ):
-    z_above_ground = np.transpose(
-        (np.transpose(Z_input, ([0, 3, 1, 2])) - terrain), ([0, 2, 3, 1])
-    )
     new_1D_z_above_ground = np.linspace(
-        np.mean(z_above_ground[:, :, :, 0]),
-        np.mean(z_above_ground[:, :, :, -1]),
-        num=z_above_ground[0, 0, 0, :].size,
+        np.mean(z_above_ground[:, :, 0]),
+        np.mean(z_above_ground[:, :, -1]),
+        num=z_above_ground[0, 0, :].size,
     )
-    X, Y, new_3D_z_above_ground = np.meshgrid(x, y, new_1D_z_above_ground)
+    _, _, new_3D_z_above_ground = np.meshgrid(x, y, new_1D_z_above_ground)
 
-    for i in tqdm(range(u.shape[0])):
+    for i in range(u.shape[0]):
         for j in range(u.shape[1]):
-            for k in range(u.shape[2]):
-                u[i, j, k, :] = np.interp(
-                    new_1D_z_above_ground, z_above_ground[i, j, k, :], u[i, j, k, :]
-                )
-                v[i, j, k, :] = np.interp(
-                    new_1D_z_above_ground, z_above_ground[i, j, k, :], v[i, j, k, :]
-                )
-                u[i, j, k, :] = np.interp(
-                    new_1D_z_above_ground, z_above_ground[i, j, k, :], w[i, j, k, :]
-                )
-                pressure[i, j, k, :] = np.interp(
-                    new_1D_z_above_ground,
-                    z_above_ground[i, j, k, :],
-                    pressure[i, j, k, :],
-                )
+                   
+            u[i, j, :] = np.interp(
+                new_1D_z_above_ground, z_above_ground[i, j, :], u[i, j, :]
+            )
+            v[i, j, :] = np.interp(
+                new_1D_z_above_ground, z_above_ground[i, j, :], v[i, j, :]
+            )
+            u[i, j, :] = np.interp(
+                new_1D_z_above_ground, z_above_ground[i, j, :], w[i, j, :]
+            )
+            pressure[i, j, :] = np.interp(
+                new_1D_z_above_ground,
+                z_above_ground[i, j, :],
+                pressure[i, j, :],
+            )
 
     return new_3D_z_above_ground, u, v, w, pressure
 
@@ -455,8 +477,7 @@ def get_interpolated_z_data(
     filename,
     x,
     y,
-    Z_input,
-    terrain,
+    z_above_ground,
     u,
     v,
     w,
@@ -465,31 +486,31 @@ def get_interpolated_z_data(
     try:
         with open(filename, "rb") as f:
             (
-                Z_interp_above_ground,
-                u_interp,
-                v_interp,
-                w_interp,
-                pressure_interp,
+                Z_interp,
+                u,
+                v,
+                w,
+                pressure,
             ) = pickle.load(f)
-        print("Loaded interpolated (z_above_ground) data from file " + filename)
+        # print("Loaded interpolated (z_above_ground) data from file " + filename)
     except:
-        print("Interpolating z axis...")
+        # print("Interpolating z axis...")
         (
-            Z_interp_above_ground,
-            u_interp,
-            v_interp,
-            w_interp,
-            pressure_interp,
-        ) = interpolate_z_axis(x, y, Z_input, terrain, u, v, w, pressure)
+            Z_interp,
+            u,
+            v,
+            w,
+            pressure,
+        ) = interpolate_z_axis(x, y, z_above_ground, u, v, w, pressure)
 
         with open(filename, "wb") as f:
             pickle.dump(
-                [Z_interp_above_ground, u_interp, v_interp, w_interp, pressure_interp],
+                [Z_interp, u, v, w, pressure],
                 f,
             )
-        print("Saved data to file " + filename)
+        # print("Saved data to file " + filename)
 
-    return Z_interp_above_ground, u_interp, v_interp, w_interp, pressure_interp
+    return Z_interp, u, v, w, pressure
 
 
 def interpolate_cartesian_3D(
@@ -544,7 +565,6 @@ def interpolate_cartesian_3D(
 
     return X_cartesian, Y_cartesian, Z_cartesian, u_cart, v_cart, w_cart
 
-
 def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1):
     mlab.figure(fig)
     mlab.quiver3d(
@@ -568,7 +588,6 @@ def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1):
             mlab.surf(X.T, Y.T, z_plot_scale * terrain.T, colormap="black-white")
 
     mlab.show()
-
 
 def plot_pressure(
     X,
@@ -685,7 +704,7 @@ def preprosess_and_plot(
                 v_interp,
                 w_interp,
                 pressure_interp,
-            ) = get_interpolated_z_data(filename, x, y, z, terrain, u, v, w, pressure)
+            ) = get_interpolated_z_data(filename, x, y, terrain, z, u, v, w, pressure)
 
             Z_interp = np.transpose(
                 np.transpose(Z_interp_above_ground, ([2, 0, 1])) + terrain, ([1, 2, 0])
@@ -717,78 +736,97 @@ def preprosess_and_plot(
 
     plot_pressure(X, Y, z, z_plot_scale, pressure[time_index], fig=2)
 
-
-def download_and_combine(data_code, start_date, end_date):
-    filename = (
-        "./combined_downloaded_bessaker_data/start_"
-        + str(start_date)
-        + "___end_"
-        + str(end_date)
-        + ".pickle"
-    )
-
-    try:
-        with open(filename, "rb") as f:
-            terrain, x, y, z, u, v, w, pressure = pickle.load(f)
-        print("Already downloaded. Loaded data from file " + filename)
-
-    except:
-        download_Bessaker_data(start_date, end_date, "./downloaded_raw_bessaker_data/")
-        transpose_indices = [0, 2, 3, 1]
-        (
-            # time,
-            # latitude,
-            # longitude,
-            terrain,
-            x,
-            y,
-            z,
+def split_into_separate_files(z,
             u,
             v,
             w,
-            # theta,
-            # tke,
-            # td,
             pressure,
-        ) = extract_3D(data_code, start_date, end_date, transpose_indices)
+            filenames, 
+            terrain,
+            folder = "./full_dataset_files/"):
+    
+    z_above_ground = np.transpose(np.transpose(z, ([0,3,1,2])) - terrain, ([0,2,3,1]))
 
-        with open(filename, "wb") as f:
-            pickle.dump([terrain, x, y, z, u, v, w, pressure], f)
-        print("Saved data to file " + filename)
+    for i in range(u.shape[0]):
+        
+        if os.path.isfile(folder+filenames[i]):
+            continue
+        with open(folder+filenames[i], "wb") as f:
+            pickle.dump(
+                [
+                    z[i],
+                    z_above_ground[i],
+                    u[i],
+                    v[i],
+                    w[i],
+                    pressure[i],
+                ],
+                f,
+            )
+        with open(folder+"max_"+filenames[i], "wb") as f:
+            pickle.dump(
+                [
+                    np.min(z[i]),
+                    np.max(z[i]),
+                    np.max(z_above_ground[i]),
+                    np.max(np.concatenate((u[i],v[i],w[i]))),
+                    np.max(pressure[i]),
+                ],
+                f,
+            )
 
-    return terrain, x, y, z, u, v, w, pressure
+def download_and_split(filenames, terrain, x_dict, y_dict, z_dict, folder = "./full_dataset_files/"):
+    data_code = "simra_BESSAKER_"
+    start_time = datetime.strptime(filenames[0][filenames[0].find("/2")+1:-7], "%Y-%m-%d")
+    end_time = datetime.strptime(filenames[-1][filenames[-1].find("/2")+1:-7], "%Y-%m-%d")
+    days = (end_time - start_time).days+1
+    transpose_indices = [0, 2, 3, 1]
+    for i in range(0, days, 5):
+        start = i
+        end = min(i+5, days)
+        start_date = (start_time + timedelta(days=start)).date()
+        end_date = (start_time + timedelta(days=end-1)).date()
+        
+        download_Bessaker_data(start_date, end_date, "./downloaded_raw_bessaker_data/")
+        
+        z, u, v, w, pressure = extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indices)
+
+        z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure, x_dict=x_dict, y_dict=y_dict, z_dict=z_dict)
+
+        split_into_separate_files(z, u, v, w, pressure, filenames[24*start : 24*end], terrain, folder=folder)
 
 
-def interp_file_name(x_dict, z_dict, start_date, end_date):
+def slice_dict_folder_name(x_dict, y_dict, z_dict):
     return (
-        str(start_date)
-        + "_"
-        + str(end_date)
-        + "_"
+        "x_"
         + str(x_dict["start"])
         + "_"
         + str(x_dict["max"])
         + "_"
         + str(x_dict["step"])
-        + "___z"
+        + "___y_"
+        + str(y_dict["start"])
+        + "_"
+        + str(y_dict["max"])
+        + "_"
+        + str(y_dict["step"])
+        + "___z_"
         + str(z_dict["start"])
         + "_"
         + str(z_dict["max"])
         + "_"
         + str(z_dict["step"])
-        + "__time_"
-        + ".pickle"
+        + "/"
     )
 
 
 if __name__ == "__main__":
-    data_code = "simra_BESSAKER_"
     start_date = date(2018, 4, 1)  # 1,2
     end_date = date(2018, 4, 2)  #
 
-    terrain, x, y, z, u, v, w, pressure = download_and_combine(
-        data_code, start_date, end_date
-    )
+    # z, u, v, w, pressure, z_min, z_max, uvw_max, p_max, filename = download_and_combine(
+    #     start_date, end_date
+    # )
 
     z_plot_scale = 5
     time_index = 3
@@ -797,6 +835,9 @@ if __name__ == "__main__":
 
     file_name = interp_file_name(X_DICT, Z_DICT, start_date, end_date)
 
+
+
+
     # terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
     #     terrain, x, y, z, u, v, w, pressure, X_DICT, Z_DICT
     # )
@@ -804,50 +845,49 @@ if __name__ == "__main__":
     # plot_images("./runs/3D_full_conv_five_channels/images/val_imgs__it_40.pkl", terrain, X, Y, z[time_index], z_plot_scale=z_plot_scale)
 
     # z = (z.transpose(2,0,1)-terrain).transpose((1,2,0))
+    # preprosess_and_plot(
+    #     terrain,
+    #     x,
+    #     y,
+    #     z,
+    #     u,
+    #     v,
+    #     w,
+    #     pressure,
+    #     X_DICT,
+    #     Z_DICT,
+    #     z_plot_scale,
+    #     time_index,
+    #     interpolate=False,
+    #     interpolated_file_name=file_name,
+    # )
 
-    preprosess_and_plot(
-        terrain,
-        x,
-        y,
-        z,
-        u,
-        v,
-        w,
-        pressure,
-        X_DICT,
-        Z_DICT,
-        z_plot_scale,
-        time_index,
-        interpolate=False,
-        interpolated_file_name=file_name,
-    )
+    # # mlab.quiver3d(X[:,:, z_start:z_lim:z_step],Y[:,:, z_start:z_lim:z_step],z_scale*z[:,:, z_start:z_lim:z_step],u_nomask[time_index][:, :, z_start:z_lim:z_step], v_nomask[time_index][:, :, z_start:z_lim:z_step], w_nomask[time_index][:,:, z_start:z_lim:z_step], mask_points=1)
+    # # mlab.surf(X_2D, Y_2D, z_scale*terrain_nomask.transpose(), colormap="black-white")
 
-    # mlab.quiver3d(X[:,:, z_start:z_lim:z_step],Y[:,:, z_start:z_lim:z_step],z_scale*z[:,:, z_start:z_lim:z_step],u_nomask[time_index][:, :, z_start:z_lim:z_step], v_nomask[time_index][:, :, z_start:z_lim:z_step], w_nomask[time_index][:,:, z_start:z_lim:z_step], mask_points=1)
-    # mlab.surf(X_2D, Y_2D, z_scale*terrain_nomask.transpose(), colormap="black-white")
+    # """
+    # delta_x = (X[135, 134] - X[0, 0])*10**5
+    # delta_y = (Y[135, 134] - Y[0, 0])*10**5
+    # X_res = delta_x/136
+    # Y_res = delta_y/135
+    # """
+    # # saving u, v, w
+    # # with open("2018_apr.pkl", "wb") as f:
+    # #     pickle.dump([u, v, w], f)
 
-    """
-    delta_x = (X[135, 134] - X[0, 0])*10**5
-    delta_y = (Y[135, 134] - Y[0, 0])*10**5
-    X_res = delta_x/136
-    Y_res = delta_y/135
-    """
-    # saving u, v, w
-    # with open("2018_apr.pickle", "wb") as f:
+    # """
+    # with open('2018_january.pkl', 'rb') as f:
+    # u_jan, v_jan, w_jan = pickle.load(f)
+    # with open('2018_february.pkl', 'rb') as f:
+    # u_feb, v_feb, w_feb = pickle.load(f)
+    # with open('2018_march.pkl', 'rb') as f:
+    # u_mar, v_mar, w_mar = pickle.load(f)
+    # with open('2018_apr.pkl', 'rb') as f:
+    # u_apr, v_apr, w_apr = pickle.load(f)
+
+    # u = np.concatenate((u_jan,u_feb,u_mar, u_apr), axis = 0)
+    # v = np.concatenate((v_jan,v_feb,v_mar, v_apr), axis = 0)
+    # w = np.concatenate((w_jan,w_feb,w_mar, w_apr), axis = 0)
+    # with open('download_data.pkl', 'wb') as f:
     #     pickle.dump([u, v, w], f)
-
-    """
-    with open('2018_january.pickle', 'rb') as f:
-    u_jan, v_jan, w_jan = pickle.load(f)
-    with open('2018_february.pickle', 'rb') as f:
-    u_feb, v_feb, w_feb = pickle.load(f)
-    with open('2018_march.pickle', 'rb') as f:
-    u_mar, v_mar, w_mar = pickle.load(f)
-    with open('2018_apr.pickle', 'rb') as f:
-    u_apr, v_apr, w_apr = pickle.load(f)
-
-    u = np.concatenate((u_jan,u_feb,u_mar, u_apr), axis = 0)
-    v = np.concatenate((v_jan,v_feb,v_mar, v_apr), axis = 0)
-    w = np.concatenate((w_jan,w_feb,w_mar, w_apr), axis = 0)
-    with open('download_data.pickle', 'wb') as f:
-        pickle.dump([u, v, w], f)
-    """
+    # """
