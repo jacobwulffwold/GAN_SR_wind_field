@@ -265,6 +265,7 @@ def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indic
             filename = "./downloaded_raw_bessaker_data/" + filename + sim_time
             try:
                 nc_fid = Dataset(filename, mode="r")
+                assert nc_fid["time"][:].shape[0] == 13
                 if index == 0:
                     # time = nc_fid["time"][:]
                     # latitude = nc_fid["longitude"][:]
