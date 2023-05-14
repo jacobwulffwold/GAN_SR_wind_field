@@ -81,6 +81,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     it = 0
     it_per_epoch = len(dataloader_train)
     count_train_epochs = 1+cfg_t.niter // it_per_epoch
+    loaded_it=0
     
     if cfg.load_model_from_save:
         status_logger.info(
@@ -105,8 +106,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             if loaded_it:
                 start_epoch = loaded_epoch
                 it = loaded_it
-    else:
-        loaded_it=0
 
     bar = displaybar.DisplayBar(
         max_value=len(dataloader_train),
@@ -132,6 +131,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
         )
     # end debugging
     status_logger.info(f"beginning run from epoch {start_epoch}, it {it}")
+    training_time_dict = {}
     with torch.profiler.profile(
     schedule=torch.profiler.schedule(
         wait=2,
@@ -145,24 +145,49 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             status_logger.debug("epoch {epoch}")
 
             # dataloader -> (LR, HR, HR_img_name)
+            if torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
+                start_data_load_check = torch.cuda.Event(enable_timing=True)
+                end_data_load_check = torch.cuda.Event(enable_timing=True)
+                start_data_load_check.record()
+    
             for i, (LR, HR, Z) in enumerate(dataloader_train):
+                
+                if torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
+                    end_data_load_check.record()
+                    training_time_dict["load_data_time"] = (start_data_load_check, end_data_load_check)
+                    start_to_device_check = torch.cuda.Event(enable_timing=True)
+                    end_to_device_check = torch.cuda.Event(enable_timing=True)
+                    start_to_device_check.record()
                 
                 if it > cfg_t.niter:
                     break
 
                 it += 1
                 bar.update(i, epoch, it)
-
+            
                 LR = LR.to(cfg.device, non_blocking=True)
                 HR = HR.to(cfg.device, non_blocking=True)
                 Z = Z.to(cfg.device, non_blocking=True)
 
+                if torch.cuda.is_available() and not training_time_dict.get("to_device_time"):
+                    end_to_device_check.record()
+                    training_time_dict["to_device_time"] = (start_to_device_check, end_to_device_check)
+                    start_update_D_iter = torch.cuda.Event(enable_timing=True)
+                    end_update_D_iter = torch.cuda.Event(enable_timing=True)
+                    start_update_D_iter.record()
+                
                 if  it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_data(x, y)
+                
+                if torch.cuda.is_available() and it == loaded_it+2:
+                    start_full_update = torch.cuda.Event(enable_timing=True)
+                    end_full_update = torch.cuda.Event(enable_timing=True)
+                    start_full_update.record()
 
                 gan.optimize_parameters(LR, HR, Z, it)
+                
                 
                 profiler.step()
                 
@@ -170,10 +195,19 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                 l = gan.get_new_status_logs()
 
+                
                 if len(l) > 0:
                     for log in l:
                         train_logger.info(log)
 
+                if torch.cuda.is_available() and not training_time_dict.get("update_D_iter_time"):
+                    end_update_D_iter.record()
+                    training_time_dict["update_D_iter_time"] = (start_update_D_iter, end_update_D_iter)
+                
+                if torch.cuda.is_available() and it == loaded_it+2:
+                    end_full_update.record()
+                    training_time_dict["full_update_time"] = (start_full_update, end_full_update)
+                
                 if it % cfg_t.save_model_period == 0:
                     status_logger.debug(f"saving model (it {it})")
                     gan.save_model(cfg.env.this_runs_folder, epoch, it)
@@ -184,6 +218,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     continue
                 if it % cfg_t.val_period == 0:
                     del LR, HR, Z
+                    if torch.cuda.is_available() and not training_time_dict.get("validation_time"):
+                        start_validation = torch.cuda.Event(enable_timing=True)
+                        end_validation = torch.cuda.Event(enable_timing=True)
+                        start_validation.record()
+                
                     status_logger.debug(f"validation epoch (it {it})")
                     loss_vals = dict(
                         (val_name, val * 0)
@@ -348,17 +387,23 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
+
+                    if torch.cuda.is_available() and not training_time_dict.get("validation_time"):
+                        end_validation.record()
+                        training_time_dict["validation_time"] = (start_validation, end_validation)
         
-        if torch.cuda.is_available() and epoch == 0:
-            prev = 0
-            for key, value in gan.memory_dict.items():
-                diff = value - prev
-                status_logger.debug(key+" memory usage (MB) "+str(value)+", diff from previous: "+str(diff))
-                prev = value
-            status_logger.info("max memory allocated: "+str(torch.cuda.max_memory_allocated(cfg.device)/1024**2))
-            torch.cuda.synchronize()
-            for key, (start_time, end_time) in gan.runtime_dict.items():
-                status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
+            if torch.cuda.is_available() and epoch == 0:
+                prev = 0
+                for key, value in gan.memory_dict.items():
+                    diff = value - prev
+                    status_logger.debug(key+" memory usage (MB) "+str(value)+", diff from previous: "+str(diff))
+                    prev = value
+                status_logger.info("max memory allocated: "+str(torch.cuda.max_memory_allocated(cfg.device)/1024**2))
+                torch.cuda.synchronize()
+                for key, (start_time, end_time) in gan.runtime_dict.items():
+                    status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
+                for key, (start_time, end_time) in training_time_dict.items():
+                    status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
         print(profiler)
     return
 
