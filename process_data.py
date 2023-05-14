@@ -9,6 +9,7 @@ from download_data import (
     slice_dict_folder_name,
     get_interpolated_z_data,
     get_static_data,
+    filenames_from_start_and_end_dates,
 )
 from datetime import datetime, timedelta, date
 import os
@@ -122,14 +123,6 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
         xy_divergence
     )
 
-def filenames_from_start_and_end_dates(start_date: date, end_date: date):
-    start_time = datetime(start_date.year, start_date.month, start_date.day)
-    end_time = datetime(end_date.year, end_date.month, end_date.day)
-    delta = end_time - start_time
-    names = []
-    for i in range((delta.days+1) * 24):
-        names.append((str(start_time + timedelta(hours=i))+".pkl").replace(" ","-").replace(":00:00",""))
-    return names
 
 def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dict, z_dict, terrain, folder:str="./full_dataset_files/", training_fraction=0.8):
     
@@ -168,13 +161,13 @@ def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dic
                     if start == -1:
                         start = i
             
-        if i == len(filenames)-1:
-            if start != -1:
-                print("Downloading new files, from ", filenames[start], " to ", filenames[i])
-                invalid_samples = invalid_samples.union(download_and_split(filenames[start:], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder))
-                start = -1
-            else:
-                finished = True
+            if i == len(filenames)-1:
+                if start != -1:
+                    print("Downloading new files, from ", filenames[start], " to ", filenames[i])
+                    invalid_samples = invalid_samples.union(download_and_split(filenames[start:], terrain, x_dict, y_dict, z_dict, folder=folder+subfolder))
+                    start = -1
+                else:
+                    finished = True
     
     filenames = [item for item in filenames if item not in invalid_samples]
     

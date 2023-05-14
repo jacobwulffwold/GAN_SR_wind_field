@@ -33,6 +33,7 @@ class wind_field_GAN_3D(BaseGAN):
         self.optimizers = []
         self.schedulers = []
         self.memory_dict={}
+        self.runtime_dict={}
         self.loss_dict = {
             "train_loss_D": 0.0,
             "train_loss_G": 0.0,
@@ -371,9 +372,16 @@ class wind_field_GAN_3D(BaseGAN):
         )
 
         # self.G.scaler.scale(loss_G).backward()
-        loss_G.backward()
-        if torch.cuda.is_available() and not self.memory_dict.get("after_G_backward"):
+        if torch.cuda.is_available() and not self.runtime_dict.get("G_backward"):
+            start_GB = torch.cuda.Event(enable_timing=True)
+            end_GB = torch.cuda.Event(enable_timing=True)
+            start_GB.record()
+            loss_G.backward()
+            end_GB.record()
+            self.runtime_dict["G_backward"] = (start_GB, end_GB)
             self.memory_dict["after_G_backward"] =torch.cuda.memory_allocated(self.device) / 1024**2 
+        else:
+            loss_G.backward()
 
         self.log_G_losses(fake_HR, loss_G, loss_G_adversarial, loss_G_pix, loss_G_xy_gradient, loss_G_z_gradient, loss_G_divergence, loss_G_xy_divergence, loss_G_feature_D, training_iteration=training_epoch)
 
@@ -386,10 +394,16 @@ class wind_field_GAN_3D(BaseGAN):
             self.G.eval()
         
         # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
-        fake_HR = self.G(LR, Z).to(self.device)
-        
-        if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward"):
+        if torch.cuda.is_available() and not self.runtime_dict.get("G_forward"):
+            start_GF = torch.cuda.Event(enable_timing=True)
+            end_GF = torch.cuda.Event(enable_timing=True)
+            start_GF.record()
+            fake_HR = self.G(LR, Z).to(self.device)
+            end_GF.record()
+            self.runtime_dict["G_forward"] = (start_GF, end_GF)
             self.memory_dict["after_G_forward"] = torch.cuda.memory_allocated(self.device) / 1024**2
+        else:
+            fake_HR = self.G(LR, Z).to(self.device)
         
         for param in self.D.parameters():
             param.requires_grad = False
@@ -404,9 +418,18 @@ class wind_field_GAN_3D(BaseGAN):
         self.calculate_and_log_G_loss(HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration)
 
         if training_iteration:
-            self.optimizer_G.step()
-            if torch.cuda.is_available() and not self.memory_dict.get("after_G_step"):
-                self.memory_dict["after_G_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2  
+            if torch.cuda.is_available() and not self.runtime_dict.get("G_step"):
+                start_Gs = torch.cuda.Event(enable_timing=True)
+                end_Gs = torch.cuda.Event(enable_timing=True)
+                start_Gs.record()
+                self.optimizer_G.step()
+                end_Gs.record()
+                self.runtime_dict["G_step"] = (start_Gs, end_Gs)
+                self.memory_dict["after_G_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+            else:
+                self.optimizer_G.step()
+
+                  
             # self.G.scaler.step(self.optimizer_G)
             # self.G.scaler.update()
         return fake_HR
@@ -449,11 +472,17 @@ class wind_field_GAN_3D(BaseGAN):
         self.optimizer_D.zero_grad(set_to_none=True)
 
         # with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
-        y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=True)
-        
-        if torch.cuda.is_available() and not self.memory_dict.get("after_D_forward"):
+        if torch.cuda.is_available() and not self.runtime_dict.get("D_forward"):
+            start_DF = torch.cuda.Event(enable_timing=True)
+            end_DF = torch.cuda.Event(enable_timing=True)
+            start_DF.record()
+            y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=True)
+            end_DF.record()
+            self.runtime_dict["D_forward"] = (start_DF, end_DF)
             self.memory_dict["after_D_forward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
-
+        else:
+            y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=True)
+        
         loss_D = None
         if self.cfg.training.gan_type == "dcgan":
             loss_D = self.criterion(y_pred, self.HR_labels) + self.criterion(
@@ -472,17 +501,31 @@ class wind_field_GAN_3D(BaseGAN):
             )
   
         # self.D.scaler.scale(loss_D).backward()
-        loss_D.backward()
-        
-        if torch.cuda.is_available() and not self.memory_dict.get("after_D_backward"):
+        if torch.cuda.is_available() and not self.runtime_dict.get("D_backward"):
+            start_DB = torch.cuda.Event(enable_timing=True)
+            end_DB = torch.cuda.Event(enable_timing=True)
+            start_DB.record()
+            loss_D.backward()
+            end_DB.record()
+            self.runtime_dict["D_backward"] = (start_DB, end_DB)
             self.memory_dict["after_D_backward"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
-        
+        else:
+            loss_D.backward()
+
         if training_epoch:
             # self.D.scaler.step(self.optimizer_D)
             # self.D.scaler.update()
-            self.optimizer_D.step()
-            if torch.cuda.is_available() and not self.memory_dict.get("after_D_step"):
+            if torch.cuda.is_available() and not self.runtime_dict.get("D_step"):
+                start_Ds = torch.cuda.Event(enable_timing=True)
+                end_Ds = torch.cuda.Event(enable_timing=True)
+                start_Ds.record()
+                self.optimizer_D.step()
+                end_Ds.record()
+                self.runtime_dict["D_step"] = (start_Ds, end_Ds)
                 self.memory_dict["after_D_step"] =torch.cuda.memory_allocated(self.device) / 1024 ** 2
+            else:
+                self.optimizer_D.step()
+
         self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
 
     def compute_losses_and_optimize(
@@ -498,10 +541,17 @@ class wind_field_GAN_3D(BaseGAN):
             fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
         else:
             with torch.no_grad():
-                fake_HR = self.G(LR, Z).to(self.device)
-            if torch.cuda.is_available() and not self.memory_dict.get("after_G_forward_no_grad"):
-                self.memory_dict["after_G_forward_no_grad"] = torch.cuda.memory_allocated(self.device) / 1024**2
-            
+                if torch.cuda.is_available() and not self.runtime_dict.get("G_forward_no_grad"):
+                    start_G_no_grad = torch.cuda.Event(enable_timing=True)
+                    end_G_no_grad = torch.cuda.Event(enable_timing=True)
+                    start_G_no_grad.record()
+                    fake_HR = self.G(LR, Z).to(self.device)
+                    end_G_no_grad.record()
+                    self.runtime_dict["G_forward_no_grad"] = (start_G_no_grad, end_G_no_grad)
+                    self.memory_dict["after_G_forward_no_grad"] = torch.cuda.memory_allocated(self.device) / 1024**2
+                else:
+                    fake_HR = self.G(LR, Z).to(self.device)
+        
         ###################
         # Update D
         ###################

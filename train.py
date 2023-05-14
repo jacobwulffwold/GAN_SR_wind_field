@@ -105,6 +105,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             if loaded_it:
                 start_epoch = loaded_epoch
                 it = loaded_it
+    else:
+        loaded_it=0
 
     bar = displaybar.DisplayBar(
         max_value=len(dataloader_train),
@@ -155,7 +157,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 HR = HR.to(cfg.device, non_blocking=True)
                 Z = Z.to(cfg.device, non_blocking=True)
 
-                if it == loaded_it + 1 if cfg_t.resume_training_from_save else it == 1:
+                if  it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_data(x, y)
@@ -354,6 +356,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 status_logger.debug(key+" memory usage (MB) "+str(value)+", diff from previous: "+str(diff))
                 prev = value
             status_logger.info("max memory allocated: "+str(torch.cuda.max_memory_allocated(cfg.device)/1024**2))
+            torch.cuda.synchronize()
+            for key, (start_time, end_time) in gan.runtime_dict.items():
+                status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
+        print(profiler)
     return
 
 
