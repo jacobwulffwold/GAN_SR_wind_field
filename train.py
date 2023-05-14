@@ -402,9 +402,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 torch.cuda.synchronize()
                 for key, (start_time, end_time) in gan.runtime_dict.items():
                     status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
+                
                 for key, (start_time, end_time) in training_time_dict.items():
                     status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
         print(profiler)
+
     return
 
 

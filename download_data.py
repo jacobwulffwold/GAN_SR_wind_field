@@ -308,11 +308,15 @@ def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indic
                     nc_fid.close()
             except:
                 invalid_filenames.append((temp,sim_time))
+    
+    if "pressure" in locals():
+        u, v, w, pressure, z = [np.ma.filled(wind_field.astype(float), np.nan)
+            for wind_field in [u, v, w, pressure, z]
+        ]
+        z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure) 
+    else:
+        return np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), invalid_filenames
 
-    u, v, w, pressure, z = [np.ma.filled(wind_field.astype(float), np.nan)
-        for wind_field in [u, v, w, pressure, z]
-    ]
-    z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure) 
     
     return (
         # time,
@@ -795,10 +799,10 @@ def download_and_split(filenames, terrain, x_dict, y_dict, z_dict, folder = "./f
         for date, sim_time in invalid_download_files:
             new_names = filenames_from_start_and_end_dates(date, date)[:12] if sim_time == "T00Z.nc" else filenames_from_start_and_end_dates(date, date)[12:]
             [invalid_samples.add(name) for name in new_names]
-
-        z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure, x_dict=x_dict, y_dict=y_dict, z_dict=z_dict)
-
-        invalid_samples = split_into_separate_files(z, u, v, w, pressure, filenames[24*start : 24*end], terrain, invalid_samples, folder=folder)
+        
+        if u.any():
+            z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure, x_dict=x_dict, y_dict=y_dict, z_dict=z_dict)
+            invalid_samples = split_into_separate_files(z, u, v, w, pressure, filenames[24*start : 24*end], terrain, invalid_samples, folder=folder)
     
     return invalid_samples
 

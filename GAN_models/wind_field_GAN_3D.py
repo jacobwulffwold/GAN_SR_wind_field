@@ -540,18 +540,20 @@ class wind_field_GAN_3D(BaseGAN):
         if it % 2 == 0:  # self.cfg.d_g_train_ratio == 0:
             fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
         else:
-            with torch.no_grad():
-                if torch.cuda.is_available() and not self.runtime_dict.get("G_forward_no_grad"):
-                    start_G_no_grad = torch.cuda.Event(enable_timing=True)
-                    end_G_no_grad = torch.cuda.Event(enable_timing=True)
-                    start_G_no_grad.record()
+            
+            if torch.cuda.is_available() and not self.runtime_dict.get("G_forward_no_grad"):
+                start_G_no_grad = torch.cuda.Event(enable_timing=True)
+                end_G_no_grad = torch.cuda.Event(enable_timing=True)
+                start_G_no_grad.record()
+                with torch.no_grad():
                     fake_HR = self.G(LR, Z).to(self.device)
-                    end_G_no_grad.record()
-                    self.runtime_dict["G_forward_no_grad"] = (start_G_no_grad, end_G_no_grad)
-                    self.memory_dict["after_G_forward_no_grad"] = torch.cuda.memory_allocated(self.device) / 1024**2
-                else:
+                end_G_no_grad.record()
+                self.runtime_dict["G_forward_no_grad"] = (start_G_no_grad, end_G_no_grad)
+                self.memory_dict["after_G_forward_no_grad"] = torch.cuda.memory_allocated(self.device) / 1024**2
+            else:
+                with torch.no_grad():
                     fake_HR = self.G(LR, Z).to(self.device)
-        
+    
         ###################
         # Update D
         ###################

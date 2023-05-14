@@ -11,7 +11,7 @@ from download_data import (
     get_static_data,
     filenames_from_start_and_end_dates,
 )
-from datetime import datetime, timedelta, date
+from datetime import date
 import os
 
 class CustomizedDataset(torch.utils.data.Dataset):
@@ -29,7 +29,8 @@ class CustomizedDataset(torch.utils.data.Dataset):
     include_z_channel=False,
     interpolate_z=False,
     include_above_ground_channel = False,
-    COARSENESS_FACTOR = 4):
+    COARSENESS_FACTOR = 4,
+    data_aug_rot = True,):
         self.filenames = filenames
         self.subfolder_name =subfolder_name
         self.include_pressure = include_pressure
@@ -44,6 +45,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.P_MAX = P_MAX
         self.x = x
         self.y = y
+        self.data_aug_rot = data_aug_rot
 
   def __len__(self):
         'Denotes the total number of samples'
