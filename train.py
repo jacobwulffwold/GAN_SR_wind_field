@@ -145,14 +145,17 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             status_logger.debug("epoch {epoch}")
 
             # dataloader -> (LR, HR, HR_img_name)
-            if torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
+            if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
                 start_data_load_check = torch.cuda.Event(enable_timing=True)
                 end_data_load_check = torch.cuda.Event(enable_timing=True)
+                start_epoch_time = torch.cuda.Event(enable_timing=True)
+                end_epoch_time = torch.cuda.Event(enable_timing=True)
+                start_epoch_time.record()
                 start_data_load_check.record()
     
             for i, (LR, HR, Z) in enumerate(dataloader_train):
                 
-                if torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
+                if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
                     end_data_load_check.record()
                     training_time_dict["load_data_time"] = (start_data_load_check, end_data_load_check)
                     start_to_device_check = torch.cuda.Event(enable_timing=True)
@@ -169,7 +172,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 HR = HR.to(cfg.device, non_blocking=True)
                 Z = Z.to(cfg.device, non_blocking=True)
 
-                if torch.cuda.is_available() and not training_time_dict.get("to_device_time"):
+                if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("to_device_time"):
                     end_to_device_check.record()
                     training_time_dict["to_device_time"] = (start_to_device_check, end_to_device_check)
                     start_update_D_iter = torch.cuda.Event(enable_timing=True)
@@ -181,13 +184,12 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_data(x, y)
                 
-                if torch.cuda.is_available() and it == loaded_it+2:
+                if epoch == start_epoch+1 and torch.cuda.is_available() and i == 1:
                     start_full_update = torch.cuda.Event(enable_timing=True)
                     end_full_update = torch.cuda.Event(enable_timing=True)
                     start_full_update.record()
 
                 gan.optimize_parameters(LR, HR, Z, it)
-                
                 
                 profiler.step()
                 
@@ -200,11 +202,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for log in l:
                         train_logger.info(log)
 
-                if torch.cuda.is_available() and not training_time_dict.get("update_D_iter_time"):
+                if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("update_D_iter_time"):
                     end_update_D_iter.record()
                     training_time_dict["update_D_iter_time"] = (start_update_D_iter, end_update_D_iter)
                 
-                if torch.cuda.is_available() and it == loaded_it+2:
+                if epoch == start_epoch+1 and torch.cuda.is_available() and i==1:
                     end_full_update.record()
                     training_time_dict["full_update_time"] = (start_full_update, end_full_update)
                 
@@ -218,7 +220,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     continue
                 if it % cfg_t.val_period == 0:
                     del LR, HR, Z
-                    if torch.cuda.is_available() and not training_time_dict.get("validation_time"):
+                    if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("validation_time"):
                         start_validation = torch.cuda.Event(enable_timing=True)
                         end_validation = torch.cuda.Event(enable_timing=True)
                         start_validation.record()
@@ -388,11 +390,13 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
 
-                    if torch.cuda.is_available() and not training_time_dict.get("validation_time"):
+                    if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("validation_time"):
                         end_validation.record()
                         training_time_dict["validation_time"] = (start_validation, end_validation)
         
-            if torch.cuda.is_available() and epoch == 0:
+            if torch.cuda.is_available() and epoch == start_epoch+1:
+                end_epoch_time.record()
+                training_time_dict["epoch_time"] = (start_epoch_time, end_epoch_time)
                 prev = 0
                 for key, value in gan.memory_dict.items():
                     diff = value - prev
@@ -470,5 +474,5 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
 
             # img_name = data["HR_name"][i]
 
-            filename_HR_generated = os.path.join(it_folder_path, f"{img_name}_{it}.png")
-            cv2.imwrite(filename_HR_generated, sr_np)
+            # filename_HR_generated = os.path.join(it_folder_path, f"{img_name}_{it}.png")
+            # cv2.imwrite(filename_HR_generated, sr_np)
