@@ -1,11 +1,11 @@
 #!/bin/sh
 #SBATCH --partition=CPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=0-01:00:00
+#SBATCH --time=0-03:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=10G
+#SBATCH --mem=20G
 #SBATCH --job-name="download_data_for_bessaker_wind_farm"
 #SBATCH --output=download2.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
