@@ -154,8 +154,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 LR = LR.to(cfg.device, non_blocking=True)
                 HR = HR.to(cfg.device, non_blocking=True)
                 Z = Z.to(cfg.device, non_blocking=True)
-                
-                if it == 1 if cfg_t.resume_training_from_save else it == loaded_it + 1:
+
+                if it == loaded_it + 1 if cfg_t.resume_training_from_save else it == 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_data(x, y)
@@ -163,13 +163,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 gan.optimize_parameters(LR, HR, Z, it)
                 
                 profiler.step()
-
-                if i == 1 and torch.cuda.is_available():
-                    prev = 0
-                    for key, value in gan.memory_dict.items():
-                        diff = value - prev
-                        status_logger.info(key+" memory usage (MB) "+str(value)+", diff from previous: "+str(diff))
-                        prev = value
                 
                 gan.update_learning_rate() if i > 0 else None
 
@@ -353,9 +346,14 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
-                    if torch.cuda.is_available() and it // cfg_t.val_period == 1:
-                        status_logger.info("max memory allocated: "+str(torch.cuda.max_memory_allocated(cfg.device)/1024**2))
-                    # store_current_visuals(cfg, 0, gan, dataloader_val) # tricky way of always having the newest images.
+        
+        if torch.cuda.is_available() and epoch == 0:
+            prev = 0
+            for key, value in gan.memory_dict.items():
+                diff = value - prev
+                status_logger.debug(key+" memory usage (MB) "+str(value)+", diff from previous: "+str(diff))
+                prev = value
+            status_logger.info("max memory allocated: "+str(torch.cuda.max_memory_allocated(cfg.device)/1024**2))
     return
 
 
@@ -417,7 +415,7 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
             # c,h,w -> cv2 img shape h,w,c
             sr_np = sr_np.transpose((1, 2, 0))
 
-            img_name = data["HR_name"][i]
+            # img_name = data["HR_name"][i]
 
             filename_HR_generated = os.path.join(it_folder_path, f"{img_name}_{it}.png")
             cv2.imwrite(filename_HR_generated, sr_np)
