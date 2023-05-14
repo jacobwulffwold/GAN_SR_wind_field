@@ -30,6 +30,7 @@ import random
 def main():
     cfg: Config = argv_to_cfg()
     # cfg.is_train = True
+    # cfg.is_download = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
@@ -91,6 +92,7 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--cfg",
         type=str,
+        # default="runs/Long_run_mulistep_lr/config_local.ini",
         default="config/wind_field_GAN_3D_config_local.ini",
         help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
@@ -115,7 +117,7 @@ def argv_to_cfg() -> Config:
         action="store_true",
         help="Only downloads data, does not train or test",
     )
-    
+
     parser.add_argument(
         "--loglevel",
         default=False,
@@ -275,6 +277,10 @@ def prepare_data(cfg: Config):
         include_z_channel=cfg_gan.include_z_channel,
         interpolate_z=cfg_gan.interpolate_z,
         include_above_ground_channel=cfg_gan.include_above_ground_channel,
+        train_aug_rot=cfg.dataset_train.data_aug_rot,
+        val_aug_rot=cfg.dataset_val.data_aug_rot,
+        test_aug_rot=cfg.dataset_test.data_aug_rot,
+        train_fraction=cfg.training.train_fraction,
     )
 
 

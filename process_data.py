@@ -79,6 +79,12 @@ class CustomizedDataset(torch.utils.data.Dataset):
             include_above_ground_channel=self.include_above_ground_channel,
         )
 
+        if self.data_aug_rot:
+            amount_of_rotations = np.random.randint(0, 4)
+            LR = torch.rot90(LR, amount_of_rotations, [1, 2])
+            HR = torch.rot90(HR, amount_of_rotations, [1, 2])
+            Z = torch.rot90(Z, amount_of_rotations, [1, 2])
+
         return LR, HR, Z
 
 def calculate_div_z(HR_data:torch.Tensor, Z:torch.Tensor):
@@ -239,7 +245,10 @@ def preprosess(
     include_z_channel=False,
     interpolate_z=False,
     include_above_ground_channel = False,
-    COARSENESS_FACTOR = 4
+    COARSENESS_FACTOR = 4,
+    train_aug_rot = False,
+    val_aug_rot = False,
+    test_aug_rot = False,
 ):
     try:
         with open("./full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
@@ -273,7 +282,8 @@ def preprosess(
         include_z_channel=include_z_channel,
         interpolate_z=interpolate_z,
         include_above_ground_channel = include_above_ground_channel,
-        COARSENESS_FACTOR = COARSENESS_FACTOR)
+        COARSENESS_FACTOR = COARSENESS_FACTOR,
+        data_aug_rot=train_aug_rot,)
 
     dataset_test = CustomizedDataset(
         filenames[number_of_train_samples:number_of_train_samples + number_of_test_samples],
@@ -289,7 +299,8 @@ def preprosess(
         include_z_channel=include_z_channel,
         interpolate_z=interpolate_z,
         include_above_ground_channel = include_above_ground_channel,
-        COARSENESS_FACTOR = COARSENESS_FACTOR)
+        COARSENESS_FACTOR = COARSENESS_FACTOR,
+        data_aug_rot=test_aug_rot,)
 
     dataset_validation = CustomizedDataset(
         filenames[number_of_train_samples + number_of_test_samples:],
@@ -305,7 +316,8 @@ def preprosess(
         include_z_channel=include_z_channel,
         interpolate_z=interpolate_z,
         include_above_ground_channel = include_above_ground_channel,
-        COARSENESS_FACTOR = COARSENESS_FACTOR)
+        COARSENESS_FACTOR = COARSENESS_FACTOR,
+        data_aug_rot=val_aug_rot,)
 
     # LR_test, HR_test, Z_test = dataset_train[:8]
     # Z = HR_test[:, -1, :, :, :]

@@ -350,6 +350,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 # tb_writer.add_image(
                                 #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
                                 # )
+                
 
                                 fig, axes = plt.subplots(2, 2)
                                 axes[0, 0].pcolor(u_LR[:, :, 3])
@@ -360,6 +361,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 axes[1, 0].set_title("SR u, z=3")
                                 axes[1, 1].pcolor(u_trilinear[:, :, 3])
                                 axes[1, 1].set_title("Trilinear u, z=3")
+                                cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+                                fig.colorbar(plt.pcolor(u_HR[:, :, 3]), cax=cbar_ax)
                                 tb_writer.add_figure("u_field_" + str(it), fig, it)
 
                                 imgs = dict()
