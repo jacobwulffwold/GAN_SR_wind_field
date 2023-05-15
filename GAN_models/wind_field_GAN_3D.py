@@ -109,7 +109,7 @@ class wind_field_GAN_3D(BaseGAN):
         if cfg.is_train:
             cfg_D: config.DiscriminatorConfig = cfg.discriminator
             if cfg.dataset_train.hr_img_size == 128:
-                self.D = Discriminator_3D(
+                self.D = torch.jit.script(Discriminator_3D(
                     cfg_D.in_num_ch + cfg_gan.include_pressure,
                     cfg_D.num_features,
                     feat_kern_size=cfg_D.feat_kern_size,
@@ -121,7 +121,7 @@ class wind_field_GAN_3D(BaseGAN):
                     conv_mode=cfg_gan.conv_mode,
                     use_mixed_precision=cfg_D.use_mixed_precision,
                     enable_slicing=cfg_gan.enable_slicing,
-                )
+                ))
             else:
                 raise NotImplementedError(
                     f"Discriminator for image size {cfg.image_size} har not been implemented.\
@@ -528,7 +528,7 @@ class wind_field_GAN_3D(BaseGAN):
                 self.optimizer_D.step()
 
         self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
-
+    
     def compute_losses_and_optimize(
         self, LR, HR, Z, it, training_iteration: bool = False
     ):
@@ -561,7 +561,10 @@ class wind_field_GAN_3D(BaseGAN):
         self.update_D(HR, fake_HR, it, training_iteration)
         
         if not training_iteration:
-            self.compute_psnr_for_SR_and_trilinear(LR, HR, fake_HR)
+            if it/self.cfg.training.niter > 0.75:
+                self.metrics_dict["val_PSNR"], self.metrics_dict["Trilinear_PSNR"]  = compute_psnr_for_SR_and_trilinear(LR, HR, fake_HR, interpolate=True)
+            else:
+                self.metrics_dict["val_PSNR"] = compute_psnr_for_SR_and_trilinear(LR, HR, fake_HR, interpolate=False)
 
         
 
@@ -570,32 +573,6 @@ class wind_field_GAN_3D(BaseGAN):
 
     def validation(self, LR, HR, Z, it):
         self.compute_losses_and_optimize(LR, HR, Z, it, training_iteration=False)
-
-
-    def compute_psnr_for_SR_and_trilinear(self, LR, HR: torch.Tensor, fake_HR: torch.Tensor, it: int, niter: int):
-
-        w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
-        SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * self.batch_size)
-        SR_batch_average_MSE = SR_batch_average_MSE.item()
-        max_diff_squared = 4.0  # HR is in [-1, 1]
-        epsilon = (
-            1e-8  # PSNR is usually ~< 50 so this should not impact the result much
-        )
-        self.metrics_dict["val_PSNR"] = (
-            10 * math.log10(max_diff_squared / (SR_batch_average_MSE + epsilon))
-        )
-        if it/niter > 0.8:
-            interpolated_LR =nn.functional.interpolate(
-                LR[:,:4, :, :, :],
-                scale_factor=(4, 4, 1),
-                mode="trilinear",
-                align_corners=True,
-            )
-            interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (w * h * l * self.batch_size)
-            interp_batch_average_MSE = interp_batch_average_MSE.item()
-            self.metrics_dict["Trilinear_PSNR"] = (
-                10 * math.log10(max_diff_squared / (interp_batch_average_MSE + epsilon))
-            )
 
     def make_new_labels(self):
         pred_real = True
@@ -707,3 +684,30 @@ class wind_field_GAN_3D(BaseGAN):
             # + str(self.F)
             + "\n"
         )
+    
+def compute_psnr_for_SR_and_trilinear(LR, HR: torch.Tensor, fake_HR: torch.Tensor, interpolate: bool = False):
+    w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
+    SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * HR.shape[0])
+    SR_batch_average_MSE = SR_batch_average_MSE.item()
+    max_diff_squared = 4.0  # HR is in [-1, 1]
+    epsilon = (
+        1e-8  # PSNR is usually ~< 50 so this should not impact the result much
+    )
+    val_PSNR = (
+        10 * math.log10(max_diff_squared / (SR_batch_average_MSE + epsilon))
+    )
+    if interpolate:
+        interpolated_LR =nn.functional.interpolate(
+            LR[:,:4, :, :, :],
+            scale_factor=(4, 4, 1),
+            mode="trilinear",
+            align_corners=True,
+        )
+        interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (w * h * l * self.batch_size)
+        interp_batch_average_MSE = interp_batch_average_MSE.item()
+        val_trilinear_PSNR = (
+            10 * math.log10(max_diff_squared / (interp_batch_average_MSE + epsilon))
+        )
+        return val_PSNR, val_trilinear_PSNR
+    else:
+        return val_PSNR
