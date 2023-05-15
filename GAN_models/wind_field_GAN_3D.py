@@ -703,7 +703,7 @@ def compute_psnr_for_SR_and_trilinear(LR, HR: torch.Tensor, fake_HR: torch.Tenso
             mode="trilinear",
             align_corners=True,
         )
-        interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (w * h * l * self.batch_size)
+        interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (w * h * l * HR.shape[0])
         interp_batch_average_MSE = interp_batch_average_MSE.item()
         val_trilinear_PSNR = (
             10 * math.log10(max_diff_squared / (interp_batch_average_MSE + epsilon))

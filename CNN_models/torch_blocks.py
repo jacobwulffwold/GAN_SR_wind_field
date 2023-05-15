@@ -245,21 +245,21 @@ class RDB(nn.Module):
             elif mode == "horizontal_3D":
                 self.add_module(
                     "conv{}".format(i),
-                    RDB_Horizontal_Conv_3D(
+                    torch.jit.script(RDB_Horizontal_Conv_3D(
                         in_channels + i * growth_channels,
                         growth_channels,
                         lrelu_negative_slope=lrelu_negative_slope,
-                    ),
+                    )),
                 )
             elif mode == "3D":
                 self.add_module(
                     "conv{}".format(i),
-                    RDB_Conv(
+                    torch.jit.script(RDB_Conv(
                         in_channels + i * growth_channels,
                         growth_channels,
                         lrelu_negative_slope=lrelu_negative_slope,
                         layer_type=nn.Conv3d,
-                    ),
+                    )),
                 )
             else:
                 raise NotImplementedError(f"Unknown RDB mode {mode}")

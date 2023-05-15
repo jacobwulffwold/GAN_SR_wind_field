@@ -92,7 +92,7 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--cfg",
         type=str,
-        default="config/wind_field_GAN_3D_config_cluster.ini",
+        default="config/wind_field_GAN_3D_config_cluster_short.ini",
         # default="config/wind_field_GAN_3D_config_local.ini",
         help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
@@ -276,10 +276,15 @@ def prepare_data(cfg: Config):
         include_pressure=cfg_gan.include_pressure,
         include_z_channel=cfg_gan.include_z_channel,
         interpolate_z=cfg_gan.interpolate_z,
+        enable_slicing=cfg_gan.enable_slicing,
+        slice_size=cfg_gan.slice_size,
         include_above_ground_channel=cfg_gan.include_above_ground_channel,
         train_aug_rot=cfg.dataset_train.data_aug_rot,
+        train_aug_flip=cfg.dataset_train.data_aug_flip,
         val_aug_rot=cfg.dataset_val.data_aug_rot,
+        val_aug_flip=cfg.dataset_val.data_aug_flip,
         test_aug_rot=cfg.dataset_test.data_aug_rot,
+        test_aug_flip=cfg.dataset_test.data_aug_flip,
         train_eval_test_ratio=cfg.training.train_eval_test_ratio,
     )
 
