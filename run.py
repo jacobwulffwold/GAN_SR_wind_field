@@ -92,8 +92,8 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--cfg",
         type=str,
-        # default="runs/Long_run_mulistep_lr/config_local.ini",
-        default="config/wind_field_GAN_3D_config_local.ini",
+        default="config/wind_field_GAN_3D_config_cluster.ini",
+        # default="config/wind_field_GAN_3D_config_local.ini",
         help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
     parser.add_argument(
@@ -280,7 +280,7 @@ def prepare_data(cfg: Config):
         train_aug_rot=cfg.dataset_train.data_aug_rot,
         val_aug_rot=cfg.dataset_val.data_aug_rot,
         test_aug_rot=cfg.dataset_test.data_aug_rot,
-        train_fraction=cfg.training.train_fraction,
+        train_eval_test_ratio=cfg.training.train_eval_test_ratio,
     )
 
 

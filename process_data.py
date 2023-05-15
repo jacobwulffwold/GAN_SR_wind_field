@@ -132,7 +132,7 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
     )
 
 
-def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dict, z_dict, terrain, folder:str="./full_dataset_files/", training_fraction=0.8):
+def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dict, z_dict, terrain, folder:str="./full_dataset_files/", train_eval_test_ratio=0.8):
     
     filenames = filenames_from_start_and_end_dates(start_date, end_date)
     Z_MIN, Z_MAX, UVW_MAX, P_MAX, Z_ABOVE_GROUND_MAX = 10000, 0, 0, 0, 0
@@ -154,7 +154,7 @@ def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dic
                         z_min, z_max, z_above_ground_max, uvw_max, p_max = pickle.load(
                             f
                         )
-                    if i < training_fraction * len(filenames):
+                    if i < train_eval_test_ratio * len(filenames):
                         Z_MIN = min(Z_MIN, z_min)
                         Z_MAX = max(Z_MAX, z_max)
                         UVW_MAX = max(UVW_MAX, uvw_max)
@@ -235,7 +235,7 @@ def reformat_to_torch(
     )
 
 def preprosess(
-    train_fraction=0.8,
+    train_eval_test_ratio=0.8,
     X_DICT={"start": 0, "max": 128, "step": 1},
     Y_DICT={"start": 0, "max": 128, "step": 1},
     Z_DICT={"start": 0, "max": 10, "step": 1},
@@ -258,14 +258,14 @@ def preprosess(
         with open("./full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
             terrain, x, y = slice_only_dim_dicts(*pickle.load(f), x_dict=X_DICT, y_dict=Y_DICT)
 
-    filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX = download_all_files_and_prepare(start_date, end_date, X_DICT, Y_DICT, Z_DICT, terrain, training_fraction=train_fraction)
+    filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX = download_all_files_and_prepare(start_date, end_date, X_DICT, Y_DICT, Z_DICT, terrain, train_eval_test_ratio=train_eval_test_ratio)
     
     if interpolate_z:
         if not os.path.exists("./saved_interpolated_z_data/"+subfolder):
             os.makedirs("./saved_interpolated_z_data/"+subfolder)
            
-    number_of_train_samples = int(len(filenames) * train_fraction)
-    number_of_test_samples = int(len(filenames) * (1 - train_fraction) / 2)
+    number_of_train_samples = int(len(filenames) * train_eval_test_ratio)
+    number_of_test_samples = int(len(filenames) * (1 - train_eval_test_ratio) / 2)
         
 
     dataset_train = CustomizedDataset(

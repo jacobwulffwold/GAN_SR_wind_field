@@ -200,7 +200,7 @@ class TrainingConfig(IniConfig):
     multistep_lr: bool = True
     multistep_lr_steps: list = [50000, 100000, 200000, 300000]
     lr_gamma: float = 0.5
-    train_fraction: float = 0.8
+    train_eval_test_ratio: float = 0.8
 
     # Loss weighting
     gan_type: str = "relativistic"
@@ -264,7 +264,7 @@ class TrainingConfig(IniConfig):
         self.log_period = train_config.getint("log_period")
         self.number_of_z_layers = train_config.getint("number_of_z_layers")
         self.conv_mode = train_config.get("conv_mode")
-        self.train_fraction = train_config.getfloat("train_fraction")
+        self.train_eval_test_ratio = train_config.getfloat("train_eval_test_ratio")
 
 
 class Config(IniConfig):
