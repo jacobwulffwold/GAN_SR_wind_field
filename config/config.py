@@ -39,6 +39,8 @@ class GANConfig(IniConfig):
     end_date = [2018, 4, 4]
     interpolate_z: bool = False
     use_D_feature_extractor_cost = False
+    enable_slicing = False
+    slice_size = 64
 
     def setGANConfig(self, gan_config):
         self.include_pressure = gan_config.getboolean("include_pressure")
@@ -50,6 +52,8 @@ class GANConfig(IniConfig):
         self.end_date = safe_list_from_string(gan_config.get("end_date"), int)
         self.interpolate_z = gan_config.getboolean("interpolate_z")
         self.use_D_feature_extractor_cost = gan_config.getboolean("use_D_feature_extractor_cost")
+        self.enable_slicing = gan_config.getboolean("enable_slicing")
+        self.slice_size = gan_config.getint("slice_size")
 
 
 class EnvConfig(IniConfig):

@@ -25,12 +25,16 @@ class CustomizedDataset(torch.utils.data.Dataset):
     Z_ABOVE_GROUND_MAX,
     x,
     y,
+    terrain,
     include_pressure=False,
     include_z_channel=False,
     interpolate_z=False,
     include_above_ground_channel = False,
     COARSENESS_FACTOR = 4,
-    data_aug_rot = True,):
+    data_aug_rot = True,
+    data_aug_flip = True,
+    enable_slicing = False,
+    slice_size = 64,):
         self.filenames = filenames
         self.subfolder_name =subfolder_name
         self.include_pressure = include_pressure
@@ -46,6 +50,10 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.x = x
         self.y = y
         self.data_aug_rot = data_aug_rot
+        self.data_aug_flip = data_aug_flip
+        self.terrain = terrain
+        self.enable_slicing = enable_slicing
+        self.slice_size = slice_size
 
   def __len__(self):
         'Denotes the total number of samples'
@@ -57,9 +65,14 @@ class CustomizedDataset(torch.utils.data.Dataset):
         z, z_above_ground, u, v, w, pressure = pickle.load(open("./full_dataset_files/"+self.subfolder_name+self.filenames[index], "rb"))
         
         if self.interpolate_z:
-            z, u, v, w, pressure = get_interpolated_z_data(
-                "./saved_interpolated_z_data/"+self.subfolder_name+self.filenames[index], self.x, self.y, z_above_ground, u, v, w, pressure
+            z, z_above_ground, u, v, w, pressure = get_interpolated_z_data(
+                "./saved_interpolated_z_data/"+self.subfolder_name+self.filenames[index], self.x, self.y, z_above_ground, self.terrain, u, v, w, pressure
             )
+        
+        if self.enable_slicing:
+            x_start = np.random.randint(0, self.x.size - self.slice_size)
+            y_start = np.random.randint(0, self.y.size - self.slice_size)
+            z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(z, z_above_ground, u, v, w, pressure, x_dict={"start":x_start, "max":x_start+self.slice_size, "step":1}, y_dict={"start":y_start, "max":y_start+self.slice_size, "step":1}, z_dict={"start":0, "max":z.shape[-1], "step":1})
 
         LR, HR, Z = reformat_to_torch(
             u,
@@ -85,6 +98,16 @@ class CustomizedDataset(torch.utils.data.Dataset):
             HR = torch.rot90(HR, amount_of_rotations, [1, 2])
             Z = torch.rot90(Z, amount_of_rotations, [1, 2])
 
+        if self.data_aug_flip:
+            if np.random.rand() > 0.5:
+                LR = torch.flip(LR, [1])
+                HR = torch.flip(HR, [1])
+                Z = torch.flip(Z, [1])    
+            if np.random.rand() > 0.5:
+                LR = torch.flip(LR, [2])
+                HR = torch.flip(HR, [2])
+                Z = torch.flip(Z, [2])
+            
         return LR, HR, Z
 
 def calculate_div_z(HR_data:torch.Tensor, Z:torch.Tensor):
@@ -244,11 +267,16 @@ def preprosess(
     include_pressure=False,
     include_z_channel=False,
     interpolate_z=False,
+    enable_slicing = False,
+    slice_size = 64,
     include_above_ground_channel = False,
     COARSENESS_FACTOR = 4,
     train_aug_rot = False,
     val_aug_rot = False,
     test_aug_rot = False,
+    train_aug_flip = False,
+    val_aug_flip = False,
+    test_aug_flip = False,
 ):
     try:
         with open("./full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
@@ -278,12 +306,16 @@ def preprosess(
         Z_ABOVE_GROUND_MAX,
         x,
         y,
+        terrain,
         include_pressure=include_pressure,
         include_z_channel=include_z_channel,
         interpolate_z=interpolate_z,
         include_above_ground_channel = include_above_ground_channel,
         COARSENESS_FACTOR = COARSENESS_FACTOR,
-        data_aug_rot=train_aug_rot,)
+        data_aug_rot=train_aug_rot,
+        data_aug_flip=train_aug_flip,
+        enable_slicing = enable_slicing,
+        slice_size = slice_size,)
 
     dataset_test = CustomizedDataset(
         filenames[number_of_train_samples:number_of_train_samples + number_of_test_samples],
@@ -295,12 +327,16 @@ def preprosess(
         Z_ABOVE_GROUND_MAX,
         x,
         y,
+        terrain,
         include_pressure=include_pressure,
         include_z_channel=include_z_channel,
         interpolate_z=interpolate_z,
         include_above_ground_channel = include_above_ground_channel,
         COARSENESS_FACTOR = COARSENESS_FACTOR,
-        data_aug_rot=test_aug_rot,)
+        data_aug_rot=test_aug_rot,
+        data_aug_flip=test_aug_flip,
+        enable_slicing = enable_slicing,
+        slice_size = slice_size,)
 
     dataset_validation = CustomizedDataset(
         filenames[number_of_train_samples + number_of_test_samples:],
@@ -312,12 +348,16 @@ def preprosess(
         Z_ABOVE_GROUND_MAX,
         x,
         y,
+        terrain,
         include_pressure=include_pressure,
         include_z_channel=include_z_channel,
         interpolate_z=interpolate_z,
         include_above_ground_channel = include_above_ground_channel,
         COARSENESS_FACTOR = COARSENESS_FACTOR,
-        data_aug_rot=val_aug_rot,)
+        data_aug_rot=val_aug_rot,
+        data_aug_flip=val_aug_flip,
+        enable_slicing = enable_slicing,
+        slice_size = slice_size,)
 
     # LR_test, HR_test, Z_test = dataset_train[:8]
     # Z = HR_test[:, -1, :, :, :]
@@ -331,6 +371,10 @@ def preprosess(
     # plot_field(X[1:-1,1:-1,1], Y[1:-1,1:-1,1], z[0,1:-1,1:-1,1], HR_test[0,0,1:-1,1:-1,1], HR_test[0,1,1:-1,1:-1,1], HR_test[0,2,1:-1,1:-1,1], terrain[1:-1,1:-1], z_plot_scale=3, fig=3)
     # plot_field(X, Y, z[time_index], HR_data_train[time_index, 0, :, :, :], HR_data_train[time_index, 1, :,:,:], HR_data_train[time_index, 2, :,:,:], terrain, fig=2)
     # plot_field(X[::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], Y[::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], z[time_index, ::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], LR_data_train[time_index, 0, :, :, :], LR_data_train[time_index, 1, :, :, :], LR_data_train[time_index, 2, :, :, :], terrain[::COARSENESS_FACTOR, ::COARSENESS_FACTOR], fig=3)
+
+    if enable_slicing:
+        x, y, = x[:slice_size], y[:slice_size]
+
 
     return (
         dataset_train,

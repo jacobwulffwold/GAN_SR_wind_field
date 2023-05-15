@@ -20,6 +20,7 @@ import tensorboardX
 from process_data import preprosess
 import config.config as config
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 # import data.imageset as imageset
@@ -82,6 +83,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     it_per_epoch = len(dataloader_train)
     count_train_epochs = 1+cfg_t.niter // it_per_epoch
     loaded_it=0
+    wind_comp_dict = {0: "u", 1: "v", 2: "w"}
     
     if cfg.load_model_from_save:
         status_logger.info(
@@ -139,7 +141,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
         active=6,
         repeat=1),
     on_trace_ready=torch.profiler.tensorboard_trace_handler(cfg.env.this_runs_tensorboard_log_folder),
-    with_stack=True
+    with_stack=True,
+    profile_memory=True,
+    record_shapes=True,
     ) as profiler:
         for epoch in range(start_epoch, count_train_epochs):
             status_logger.debug("epoch {epoch}")
@@ -182,7 +186,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if  it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
-                    gan.feed_data(x, y)
+                    gan.feed_xy(x, y)
                 
                 if epoch == start_epoch+1 and torch.cuda.is_available() and i == 1:
                     start_full_update = torch.cuda.Event(enable_timing=True)
@@ -338,7 +342,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 # Store results to file:
                                 HR_img = [u_HR, v_HR, w_HR]
                                 sr_img = [u_sr, v_sr, w_sr]
-                                bc_img = [u_trilinear, v_trilinear, w_trilinear]
+                                tl_img = [u_trilinear, v_trilinear, w_trilinear]
                                 LR_img = [u_LR, v_LR, w_LR]
 
                                 # tb_writer.add_image(
@@ -350,25 +354,16 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 # tb_writer.add_image(
                                 #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
                                 # )
-                
+                                rand_wind_comp = np.random.randint(0, 3)
+                                rand_z_index = np.random.randint(0, u_HR.shape[2])
 
-                                fig, axes = plt.subplots(2, 2)
-                                axes[0, 0].pcolor(u_LR[:, :, 3])
-                                axes[0, 0].set_title("LR u, z=3")
-                                axes[0, 1].pcolor(u_HR[:, :, 3])
-                                axes[0, 1].set_title("HR u, z=3")
-                                axes[1, 0].pcolor(u_sr[:, :, 3])
-                                axes[1, 0].set_title("SR u, z=3")
-                                axes[1, 1].pcolor(u_trilinear[:, :, 3])
-                                axes[1, 1].set_title("Trilinear u, z=3")
-                                cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-                                fig.colorbar(plt.pcolor(u_HR[:, :, 3]), cax=cbar_ax)
-                                tb_writer.add_figure("u_field_" + str(it), fig, it)
-
+                                save_validation_images("u_field_z_index", 3, u_LR, u_HR, u_sr, u_trilinear, tb_writer, it)
+                                save_validation_images(wind_comp_dict[rand_wind_comp]+"_field_z_index", rand_z_index, LR_img[rand_wind_comp], HR_img[rand_wind_comp], sr_img[rand_wind_comp], tl_img[rand_wind_comp], tb_writer, it)
+                               
                                 imgs = dict()
                                 imgs["HR"] = HR_img
                                 imgs["SR"] = sr_img
-                                imgs["BC"] = bc_img
+                                imgs["BC"] = tl_img
                                 imgs["LR"] = LR_img
 
                                 with open(
@@ -412,9 +407,23 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 
                 for key, (start_time, end_time) in training_time_dict.items():
                     status_logger.info("run time for "+key+": "+str(start_time.elapsed_time(end_time)))
-        print(profiler)
-
     return
+
+def save_validation_images(title, wind_height_index, wind_comp_LR, wind_comp_HR, wind_comp_SR, wind_comp_trilinear, tb_writer, it):
+    fig, axes = plt.subplots(2, 2)
+    axes[0, 0].pcolor(wind_comp_LR[:, :, wind_height_index])
+    axes[0, 0].set_title("LR")
+    axes[0, 1].pcolor(wind_comp_HR[:, :, wind_height_index])
+    axes[0, 1].set_title("HR")
+    axes[1, 0].pcolor(wind_comp_SR[:, :, wind_height_index])
+    axes[1, 0].set_title("SR")
+    axes[1, 1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
+    axes[1, 1].set_title("Trilinear")
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes("right", "5%", pad="3%")
+    plt.colorbar(plt.pcolor(wind_comp_HR[:, :, wind_height_index]), cax=cax)
+    fig.tight_layout()
+    tb_writer.add_figure(str(it)+"___"+title+str(wind_height_index), fig, it)
 
 
 def log_status_logs(status_logger: logging.Logger, logs: list):

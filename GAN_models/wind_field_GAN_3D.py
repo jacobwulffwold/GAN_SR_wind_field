@@ -120,6 +120,7 @@ class wind_field_GAN_3D(BaseGAN):
                     number_of_z_layers=cfg_gan.number_of_z_layers,
                     conv_mode=cfg_gan.conv_mode,
                     use_mixed_precision=cfg_D.use_mixed_precision,
+                    enable_slicing=cfg_gan.enable_slicing,
                 )
             else:
                 raise NotImplementedError(
@@ -194,7 +195,7 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             return
 
-    def feed_data(
+    def feed_xy(
         self,
         x: torch.Tensor,
         y: torch.Tensor,
@@ -571,19 +572,11 @@ class wind_field_GAN_3D(BaseGAN):
         self.compute_losses_and_optimize(LR, HR, Z, it, training_iteration=False)
 
 
-    def compute_psnr_for_SR_and_trilinear(self, LR, HR: torch.Tensor, fake_HR: torch.Tensor):
-        interpolated_LR =nn.functional.interpolate(
-            LR[:,:4, :, :, :],
-            scale_factor=(4, 4, 1),
-            mode="trilinear",
-            align_corners=True,
-        )
-        
+    def compute_psnr_for_SR_and_trilinear(self, LR, HR: torch.Tensor, fake_HR: torch.Tensor, it: int, niter: int):
+
         w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
         SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * self.batch_size)
-        interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (w * h * l * self.batch_size)
         SR_batch_average_MSE = SR_batch_average_MSE.item()
-        interp_batch_average_MSE = interp_batch_average_MSE.item()
         max_diff_squared = 4.0  # HR is in [-1, 1]
         epsilon = (
             1e-8  # PSNR is usually ~< 50 so this should not impact the result much
@@ -591,9 +584,18 @@ class wind_field_GAN_3D(BaseGAN):
         self.metrics_dict["val_PSNR"] = (
             10 * math.log10(max_diff_squared / (SR_batch_average_MSE + epsilon))
         )
-        self.metrics_dict["Trilinear_PSNR"] = (
-            10 * math.log10(max_diff_squared / (interp_batch_average_MSE + epsilon))
-        )
+        if it/niter > 0.8:
+            interpolated_LR =nn.functional.interpolate(
+                LR[:,:4, :, :, :],
+                scale_factor=(4, 4, 1),
+                mode="trilinear",
+                align_corners=True,
+            )
+            interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (w * h * l * self.batch_size)
+            interp_batch_average_MSE = interp_batch_average_MSE.item()
+            self.metrics_dict["Trilinear_PSNR"] = (
+                10 * math.log10(max_diff_squared / (interp_batch_average_MSE + epsilon))
+            )
 
     def make_new_labels(self):
         pred_real = True

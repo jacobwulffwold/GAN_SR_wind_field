@@ -4,6 +4,7 @@ full_dataset_files/
 downloaded_raw_bessaker_data/
 log/
 tensorboard_log/
+tensorboard_log_cluster/
 runs/
 .vscode/
 __pycache__/

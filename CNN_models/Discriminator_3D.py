@@ -34,6 +34,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         number_of_z_layers=10,
         conv_mode: str = "3D",
         use_mixed_precision: bool = False,
+        enable_slicing: bool = False,
     ):
         super(Discriminator_3D, self).__init__()
         self.base_number_of_features = base_number_of_features
@@ -51,14 +52,16 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         features = []
         # self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
-        # 128x128x10 -> 64x64x10
         remainder_z_layers = [number_of_z_layers]
         for i in range(5):
             if i == 0 and number_of_z_layers <= 19:
                 remainder_z_layers.append(number_of_z_layers)
+            elif i in {1, 3}:
+                remainder_z_layers.append(remainder_z_layers[i])
             else:
                 remainder_z_layers.append(remainder_z_layers[i] // 2 + remainder_z_layers[i] % 2)
 
+        # 128x128x10 -> 64x64x10
         features.append(
             create_discriminator_block(
                 in_channels,
@@ -72,7 +75,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 mode=conv_mode,
             )
         )
-        # 64x64x10 -> 32x32x5
+        # 64x64x10 -> 32x32x10
         features.append(
             create_discriminator_block(
                 base_number_of_features,
@@ -81,12 +84,12 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=False,
-                halve_z_dim=True,
+                halve_z_dim=False,
                 number_of_z_layers=remainder_z_layers[1],
                 mode=conv_mode,
             )
         )
-        # 32x32x5 -> 16x16x3
+        # 32x32x10 -> 16x16x5
         features.append(
             create_discriminator_block(
                 base_number_of_features * 2,
@@ -100,34 +103,51 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 mode=conv_mode,
             )
         )
-        # 16x16x3 -> 8x8x2
-        features.append(
-            create_discriminator_block(
-                base_number_of_features * 4,
-                base_number_of_features * 8,
-                feat_kern_size=feat_kern_size,
-                lrelu_negative_slope=slope,
-                normalization_type=normalization_type,
-                drop_first_norm=False,
-                halve_z_dim=True,
-                number_of_z_layers=remainder_z_layers[3],
-                mode=conv_mode,
+        if not enable_slicing:
+            # 16x16x5 -> 8x8x5
+            features.append(
+                create_discriminator_block(
+                    base_number_of_features * 4,
+                    base_number_of_features * 8,
+                    feat_kern_size=feat_kern_size,
+                    lrelu_negative_slope=slope,
+                    normalization_type=normalization_type,
+                    drop_first_norm=False,
+                    halve_z_dim=False,
+                    number_of_z_layers=remainder_z_layers[3],
+                    mode=conv_mode,
+                )
             )
-        )
-        # 8x8x2 -> 4x4x1
-        features.append(
-            create_discriminator_block(
-                base_number_of_features * 8,
-                base_number_of_features * 8,
-                feat_kern_size=feat_kern_size,
-                lrelu_negative_slope=slope,
-                normalization_type=normalization_type,
-                drop_first_norm=False,
-                halve_z_dim=True,
-                number_of_z_layers=remainder_z_layers[4],
-                mode=conv_mode,
+            # 8x8x5 -> 4x4x3
+            features.append(
+                create_discriminator_block(
+                    base_number_of_features * 8,
+                    base_number_of_features * 8,
+                    feat_kern_size=feat_kern_size,
+                    lrelu_negative_slope=slope,
+                    normalization_type=normalization_type,
+                    drop_first_norm=False,
+                    halve_z_dim=True,
+                    number_of_z_layers=remainder_z_layers[4],
+                    mode=conv_mode,
+                )
             )
-        )
+        else:
+            # 8x8x5 -> 4x4x3
+            features.append(
+                create_discriminator_block(
+                    base_number_of_features * 4,
+                    base_number_of_features * 8,
+                    feat_kern_size=feat_kern_size,
+                    lrelu_negative_slope=slope,
+                    normalization_type=normalization_type,
+                    drop_first_norm=False,
+                    halve_z_dim=True,
+                    number_of_z_layers=remainder_z_layers[3],
+                    mode=conv_mode,
+                )
+            )
+
         # Chans: base_nf*8
         # Dims: 4x4 pixels
         # -> 100 nodes

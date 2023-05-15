@@ -475,6 +475,7 @@ def get_interpolated_z_data(
     x,
     y,
     z_above_ground,
+    terrain,
     u,
     v,
     w,
@@ -483,7 +484,8 @@ def get_interpolated_z_data(
     try:
         with open(filename, "rb") as f:
             (
-                Z_interp,
+                z,
+                Z_interp_above_ground,
                 u,
                 v,
                 w,
@@ -493,21 +495,23 @@ def get_interpolated_z_data(
     except:
         # print("Interpolating z axis...")
         (
-            Z_interp,
+            Z_interp_above_ground,
             u,
             v,
             w,
             pressure,
         ) = interpolate_z_axis(x, y, z_above_ground, u, v, w, pressure)
 
+        z = np.transpose(np.transpose(Z_interp_above_ground, ([2,0,1])) + terrain, ([1,2,0]))
+
         with open(filename, "wb") as f:
             pickle.dump(
-                [Z_interp, u, v, w, pressure],
+                [z, Z_interp_above_ground, u, v, w, pressure],
                 f,
             )
         # print("Saved data to file " + filename)
 
-    return Z_interp, u, v, w, pressure
+    return z, Z_interp_above_ground, u, v, w, pressure
 
 
 def interpolate_cartesian_3D(
