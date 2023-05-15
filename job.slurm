@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=10G
+#SBATCH --mem=12G
 #SBATCH --job-name="lr_schedule_test2"
 #SBATCH --output=lr_schedule_test2.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
