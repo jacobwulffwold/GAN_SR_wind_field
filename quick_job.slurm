@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="quick_tests_augment"
-#SBATCH --output=quick_tests_augment.out
+#SBATCH --job-name="quick_tests_enable_slicing"
+#SBATCH --output=quick_tests_enable_slicing.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
