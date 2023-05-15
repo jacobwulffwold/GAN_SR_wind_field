@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="lr_schedule_test2"
-#SBATCH --output=lr_schedule_test2.out
+#SBATCH --job-name="STD_long_lr"
+#SBATCH --output=STD_long_lr.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
