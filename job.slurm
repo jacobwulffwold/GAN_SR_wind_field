@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="STD_data_aug"
-#SBATCH --output=STD_data_aug.out
+#SBATCH --job-name="STD_enable_slicing"
+#SBATCH --output=STD_enable_slicing.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
