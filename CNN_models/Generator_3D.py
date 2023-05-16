@@ -57,7 +57,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         layer_type = nn.Conv2d if conv_mode == "2D" else nn.Conv3d
 
         hr_pad = (hr_kern_size - 1) // 2
-        # self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
+        self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
         # Low level feature extraction
         if conv_mode in {"3D", "2D"}:

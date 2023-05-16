@@ -111,20 +111,18 @@ class wind_field_GAN_3D(BaseGAN):
         if cfg.is_train:
             cfg_D: config.DiscriminatorConfig = cfg.discriminator
             if cfg.dataset_train.hr_img_size == 128:
-                self.D = torch.jit.script(
-                    Discriminator_3D(
-                        cfg_D.in_num_ch + cfg_gan.include_pressure,
-                        cfg_D.num_features,
-                        feat_kern_size=cfg_D.feat_kern_size,
-                        normalization_type=cfg_D.norm_type,
-                        act_type=cfg_D.act_type,
-                        mode=cfg_D.layer_mode,
-                        device=self.device,
-                        number_of_z_layers=cfg_gan.number_of_z_layers,
-                        conv_mode=cfg_gan.conv_mode,
-                        use_mixed_precision=cfg_D.use_mixed_precision,
-                        enable_slicing=cfg_gan.enable_slicing,
-                    )
+                self.D = Discriminator_3D(
+                    cfg_D.in_num_ch + cfg_gan.include_pressure,
+                    cfg_D.num_features,
+                    feat_kern_size=cfg_D.feat_kern_size,
+                    normalization_type=cfg_D.norm_type,
+                    act_type=cfg_D.act_type,
+                    mode=cfg_D.layer_mode,
+                    device=self.device,
+                    number_of_z_layers=cfg_gan.number_of_z_layers,
+                    conv_mode=cfg_gan.conv_mode,
+                    use_mixed_precision=cfg_D.use_mixed_precision,
+                    enable_slicing=cfg_gan.enable_slicing,
                 )
             else:
                 raise NotImplementedError(
@@ -398,19 +396,20 @@ class wind_field_GAN_3D(BaseGAN):
             + loss_G_feature_D
         )
 
-        # self.G.scaler.scale(loss_G).backward()
         if torch.cuda.is_available() and not self.runtime_dict.get("G_backward"):
             start_GB = torch.cuda.Event(enable_timing=True)
             end_GB = torch.cuda.Event(enable_timing=True)
             start_GB.record()
-            loss_G.backward()
+            self.G.scaler.scale(loss_G).backward()
+            # loss_G.backward()
             end_GB.record()
             self.runtime_dict["G_backward"] = (start_GB, end_GB)
             self.memory_dict["after_G_backward"] = (
                 torch.cuda.memory_allocated(self.device) / 1024**2
             )
         else:
-            loss_G.backward()
+            # loss_G.backward()
+            self.G.scaler.scale(loss_G).backward()
 
         self.log_G_losses(
             fake_HR,
@@ -466,17 +465,20 @@ class wind_field_GAN_3D(BaseGAN):
                 start_Gs = torch.cuda.Event(enable_timing=True)
                 end_Gs = torch.cuda.Event(enable_timing=True)
                 start_Gs.record()
-                self.optimizer_G.step()
+                # self.optimizer_G.step()
+                self.G.scaler.step(self.optimizer_G)
+                self.G.scaler.update()
                 end_Gs.record()
                 self.runtime_dict["G_step"] = (start_Gs, end_Gs)
                 self.memory_dict["after_G_step"] = (
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
             else:
-                self.optimizer_G.step()
+                # self.optimizer_G.step()
+                self.G.scaler.step(self.optimizer_G)
+                self.G.scaler.update()
 
-            # self.G.scaler.step(self.optimizer_G)
-            # self.G.scaler.update()
+            
         return fake_HR
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
@@ -548,35 +550,39 @@ class wind_field_GAN_3D(BaseGAN):
                 f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
             )
 
-        # self.D.scaler.scale(loss_D).backward()
         if torch.cuda.is_available() and not self.runtime_dict.get("D_backward"):
             start_DB = torch.cuda.Event(enable_timing=True)
             end_DB = torch.cuda.Event(enable_timing=True)
             start_DB.record()
-            loss_D.backward()
+            self.D.scaler.scale(loss_D).backward()
+            # loss_D.backward()
             end_DB.record()
             self.runtime_dict["D_backward"] = (start_DB, end_DB)
             self.memory_dict["after_D_backward"] = (
                 torch.cuda.memory_allocated(self.device) / 1024**2
             )
         else:
-            loss_D.backward()
+            # loss_D.backward()
+            self.D.scaler.scale(loss_D).backward()            
 
         if training_epoch:
-            # self.D.scaler.step(self.optimizer_D)
-            # self.D.scaler.update()
+            
             if torch.cuda.is_available() and not self.runtime_dict.get("D_step"):
                 start_Ds = torch.cuda.Event(enable_timing=True)
                 end_Ds = torch.cuda.Event(enable_timing=True)
                 start_Ds.record()
-                self.optimizer_D.step()
+                # self.optimizer_D.step()
+                self.D.scaler.step(self.optimizer_D)
+                self.D.scaler.update()
                 end_Ds.record()
                 self.runtime_dict["D_step"] = (start_Ds, end_Ds)
                 self.memory_dict["after_D_step"] = (
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
             else:
-                self.optimizer_D.step()
+                # self.optimizer_D.step()
+                self.D.scaler.step(self.optimizer_D)
+                self.D.scaler.update()
 
         self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
 

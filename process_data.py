@@ -38,12 +38,16 @@ class CustomizedDataset(torch.utils.data.Dataset):
         enable_slicing=False,
         slice_size=64,
     ):
-        invalid_filenames = set(
-            line.strip() for line in open("./data/invalid_files.txt")
-        )
-        self.filenames = [
-            filename for filename in filenames if filename not in invalid_filenames
-        ]
+        try:
+            invalid_filenames = set(
+                line.strip() for line in open("./data/invalid_files.txt")
+            )
+            self.filenames = [
+                filename for filename in filenames if filename not in invalid_filenames
+            ]
+        except FileNotFoundError:
+            self.filenames = filenames
+
         self.subfolder_name = subfolder_name
         self.include_pressure = include_pressure
         self.include_z_channel = include_z_channel
@@ -255,7 +259,7 @@ def download_all_files_and_prepare(
                             )
                         )
                         start = -1
-                except:
+                except FileNotFoundError:
                     if start == -1:
                         start = i
 
@@ -284,9 +288,6 @@ def download_all_files_and_prepare(
     filenames = [item for item in filenames if item not in invalid_samples]
 
     print("Finished downloading all files")
-    with open("./data/invalid_files.txt", "w") as f:
-        for item in invalid_samples:
-            f.write("%s\n" % item)
     return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX
 
 

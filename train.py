@@ -75,7 +75,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             f"only wind_field_GAN_2D (wind_field_GAN_2D) and wind_field_GAN_3D(wind_field_gan_3d) is supported at this time - not {cfg.name}"
         )
 
-    status_logger.info(f"GAN:\n{str(gan)}\n")
+    status_logger.debug(f"GAN:\n{str(gan)}\n")
     log_status_logs(status_logger, gan.get_new_status_logs())
 
     start_epoch = 0
@@ -501,6 +501,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         + ": "
                         + str(start_time.elapsed_time(end_time))
                     )
+    with open("./data/invalid_files.txt", "a") as f:
+        for item in invalid_filenames:
+            f.write("%s\n" % item)
     return
 
 

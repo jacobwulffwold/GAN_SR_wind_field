@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="STD_enable_slicing_fixed_data"
-#SBATCH --output=STD_enable_slicing_fixed_data.out
+#SBATCH --job-name="STD_2_enable_slicing_fixed_data"
+#SBATCH --output=STD_2_enable_slicing_fixed_data.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
