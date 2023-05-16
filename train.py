@@ -84,6 +84,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     count_train_epochs = 1+cfg_t.niter // it_per_epoch
     loaded_it=0
     wind_comp_dict = {0: "u", 1: "v", 2: "w"}
+    invalid_filenames = {}
     
     if cfg.load_model_from_save:
         status_logger.info(
@@ -157,8 +158,12 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 start_epoch_time.record()
                 start_data_load_check.record()
     
-            for i, (LR, HR, Z) in enumerate(dataloader_train):
-                
+            for i, (LR, HR, Z, ok_samples, filenames) in enumerate(dataloader_train):
+                if not torch.all(ok_samples==True):
+                    status_logger.warning(f"skipping batch {i} due to bad sample, filename: {filenames[ok_samples==False]}")
+                    invalid_filenames.add(filenames[ok_samples==False])
+                    continue
+
                 if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
                     end_data_load_check.record()
                     training_time_dict["load_data_time"] = (start_data_load_check, end_data_load_check)

@@ -92,6 +92,10 @@ class CustomizedDataset(torch.utils.data.Dataset):
             include_above_ground_channel=self.include_above_ground_channel,
         )
 
+        if torch.isnan(LR).any() or torch.isnan(HR).any() or torch.isnan(Z).any() or torch.isinf(LR).any() or torch.isinf(HR).any() or torch.isinf(Z).any():
+            print("found nan or inf in file: ", self.filenames[index])
+            return LR, HR, Z, False, self.filenames[index]
+
         if self.data_aug_rot:
             amount_of_rotations = np.random.randint(0, 4)
             LR = torch.rot90(LR, amount_of_rotations, [1, 2])
@@ -108,7 +112,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 HR = torch.flip(HR, [2])
                 Z = torch.flip(Z, [2])
             
-        return LR, HR, Z
+        return LR, HR, Z, True, self.filenames[index]
 
 def calculate_div_z(HR_data:torch.Tensor, Z:torch.Tensor):
     dZ = Z[:, 0, :, :, 1:] - Z[:, 0, :, :, :-1]
@@ -203,7 +207,9 @@ def download_all_files_and_prepare(start_date:date, end_date:date, x_dict, y_dic
     filenames = [item for item in filenames if item not in invalid_samples]
     
     print("Finished downloading all files")
-
+    with open("./invalid_files.txt", "w") as f:
+        for item in invalid_samples:
+            f.write("%s\n" % item)
     return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX
 
 # Creating coarse simulation by skipping every alternate grid
