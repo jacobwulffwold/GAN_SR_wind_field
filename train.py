@@ -7,7 +7,6 @@ Implements a GAN training loop
 Use run.py to run.
 """
 import logging
-import random
 import os
 
 import cv2
@@ -195,7 +194,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if (
                     epoch == start_epoch + 1
                     and torch.cuda.is_available()
-                    and not training_time_dict.get("to_device_time")
+                    and i == 3
                 ):
                     end_to_device_check.record()
                     training_time_dict["to_device_time"] = (
@@ -211,7 +210,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_xy(x, y)
 
-                if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 1:
+                if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 4:
                     start_full_update = torch.cuda.Event(enable_timing=True)
                     end_full_update = torch.cuda.Event(enable_timing=True)
                     start_full_update.record()
@@ -231,7 +230,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if (
                     epoch == start_epoch + 1
                     and torch.cuda.is_available()
-                    and not training_time_dict.get("update_D_iter_time")
+                    and i==3
                 ):
                     end_update_D_iter.record()
                     training_time_dict["update_D_iter_time"] = (
@@ -239,7 +238,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         end_update_D_iter,
                     )
 
-                if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 1:
+                if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 4:
                     end_full_update.record()
                     training_time_dict["full_update_time"] = (
                         start_full_update,
@@ -251,6 +250,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     gan.save_model(cfg.env.this_runs_folder, epoch, it)
                     status_logger.debug(f"storing visuals (it {it})")
                     # store_current_visuals(cfg, it, gan, dataloader_val)
+                
+                if it % cfg_t.log_period == 0:
+                    if cfg.use_tensorboard_logger:
+                        tb_writer.add_scalars("data/losses", gan.get_loss_dict_ref(), it)
 
                 if dataloader_val is None:
                     continue

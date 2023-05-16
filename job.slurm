@@ -1,14 +1,14 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=2-00:00:00
+#SBATCH --time=4-00:00:00
 #SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="STD_2_enable_slicing_fixed_data"
-#SBATCH --output=STD_2_enable_slicing_fixed_data.out
+#SBATCH --job-name="STD_scaler_long_lr_test"
+#SBATCH --output=STD_scaler_long_lr_test.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
