@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
-#SBATCH --job-name="sliced_div_cost_lower_lr"
-#SBATCH --output=sliced_div_cost_lower_lr.out
+#SBATCH --job-name="sliced_div_cost_lower_lr_"
+#SBATCH --output=sliced_div_cost_lower_lr_.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
