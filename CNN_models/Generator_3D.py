@@ -171,7 +171,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
         self.hr_convs = nn.Sequential(*hr_convs)
         self.status_logs.append(f"Generator: finished init")
-    
+
     def forward(self, x, Z):
         x = self.model(x)
         x = torch.cat((x, Z), dim=1)

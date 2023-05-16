@@ -45,13 +45,17 @@ class GANConfig(IniConfig):
     def setGANConfig(self, gan_config):
         self.include_pressure = gan_config.getboolean("include_pressure")
         self.include_z_channel = gan_config.getboolean("include_z_channel")
-        self.include_above_ground_channel = gan_config.getboolean("include_above_ground_channel")
+        self.include_above_ground_channel = gan_config.getboolean(
+            "include_above_ground_channel"
+        )
         self.number_of_z_layers = gan_config.getint("number_of_z_layers")
         self.conv_mode = gan_config.get("conv_mode")
         self.start_date = safe_list_from_string(gan_config.get("start_date"), int)
         self.end_date = safe_list_from_string(gan_config.get("end_date"), int)
         self.interpolate_z = gan_config.getboolean("interpolate_z")
-        self.use_D_feature_extractor_cost = gan_config.getboolean("use_D_feature_extractor_cost")
+        self.use_D_feature_extractor_cost = gan_config.getboolean(
+            "use_D_feature_extractor_cost"
+        )
         self.enable_slicing = gan_config.getboolean("enable_slicing")
         self.slice_size = gan_config.getint("slice_size")
 
@@ -219,7 +223,7 @@ class TrainingConfig(IniConfig):
     gradient_z_loss_weight: float = 1e-1
     divergence_loss_weight: float = 1e-1
     xy_divergence_loss_weight: float = 1e-1
-    feature_D_loss_weight:float = 0.1
+    feature_D_loss_weight: float = 0.1
 
     use_noisy_labels: bool = False
     use_one_sided_label_smoothing: bool = False
@@ -254,7 +258,9 @@ class TrainingConfig(IniConfig):
         self.gradient_xy_loss_weight = train_config.getfloat("gradient_xy_loss_weight")
         self.gradient_z_loss_weight = train_config.getfloat("gradient_z_loss_weight")
         self.divergence_loss_weight = train_config.getfloat("divergence_loss_weight")
-        self.xy_divergence_loss_weight = train_config.getfloat("xy_divergence_loss_weight")
+        self.xy_divergence_loss_weight = train_config.getfloat(
+            "xy_divergence_loss_weight"
+        )
         self.feature_D_loss_weight = train_config.getfloat("feature_D_loss_weight")
         self.use_noisy_labels = train_config.getboolean("use_noisy_labels")
         self.use_one_sided_label_smoothing = train_config.getboolean(

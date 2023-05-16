@@ -56,10 +56,12 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         for i in range(5):
             if i == 0 and number_of_z_layers <= 19:
                 remainder_z_layers.append(number_of_z_layers)
-            elif i in {1, 3}:
+            elif i in {1, 2, 3}:
                 remainder_z_layers.append(remainder_z_layers[i])
             else:
-                remainder_z_layers.append(remainder_z_layers[i] // 2 + remainder_z_layers[i] % 2)
+                remainder_z_layers.append(
+                    remainder_z_layers[i] // 2 + remainder_z_layers[i] % 2
+                )
 
         # 128x128x10 -> 64x64x10
         features.append(
@@ -70,7 +72,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=True,
-                halve_z_dim=False if number_of_z_layers<=19 else True,
+                halve_z_dim=False if number_of_z_layers <= 19 else True,
                 number_of_z_layers=remainder_z_layers[0],
                 mode=conv_mode,
             )
@@ -89,7 +91,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 mode=conv_mode,
             )
         )
-        # 32x32x10 -> 16x16x5
+        # 32x32x10 -> 16x16x10
         features.append(
             create_discriminator_block(
                 base_number_of_features * 2,
@@ -98,7 +100,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 lrelu_negative_slope=slope,
                 normalization_type=normalization_type,
                 drop_first_norm=False,
-                halve_z_dim=True,
+                halve_z_dim=False,
                 number_of_z_layers=remainder_z_layers[2],
                 mode=conv_mode,
             )
@@ -118,7 +120,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                     mode=conv_mode,
                 )
             )
-            # 8x8x5 -> 4x4x3
+            # 8x8x10 -> 4x4x5
             features.append(
                 create_discriminator_block(
                     base_number_of_features * 8,
@@ -133,7 +135,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 )
             )
         else:
-            # 8x8x5 -> 4x4x3
+            # 8x8x10 -> 4x4x5
             features.append(
                 create_discriminator_block(
                     base_number_of_features * 4,
@@ -152,7 +154,9 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         # Dims: 4x4 pixels
         # -> 100 nodes
         classifier = []
-        classifier.append(nn.Linear(base_number_of_features * 8 * 4 * 4*remainder_z_layers[5], 100))
+        classifier.append(
+            nn.Linear(base_number_of_features * 8 * 4 * 4 * remainder_z_layers[5], 100)
+        )
         classifier.append(nn.LeakyReLU(negative_slope=slope))
         classifier.append(nn.Linear(100, 1))
 

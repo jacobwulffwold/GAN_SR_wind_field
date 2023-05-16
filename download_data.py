@@ -83,15 +83,21 @@ def check(url):
     except:
         return False
 
+
 def filenames_from_start_and_end_dates(start_date: date, end_date: date):
     start_time = datetime(start_date.year, start_date.month, start_date.day)
     end_time = datetime(end_date.year, end_date.month, end_date.day)
     delta = end_time - start_time
     names = []
-    for i in range((delta.days+1) * 24):
-        names.append((str(start_time + timedelta(hours=i))+".pkl").replace(" ","-").replace(":00:00",""))
-    
+    for i in range((delta.days + 1) * 24):
+        names.append(
+            (str(start_time + timedelta(hours=i)) + ".pkl")
+            .replace(" ", "-")
+            .replace(":00:00", "")
+        )
+
     return names
+
 
 def download_Bessaker_data(start_date, end_date, destination_folder):
     start_date = start_date
@@ -185,7 +191,7 @@ def extract_XY_plane(data_code, start_date, end_date, iz):
         for sim_time in sim_times:
             temp = start_date + timedelta(days=i)
             filename = data_code + ((str(temp)).replace("-", ""))
-            filename = "./downloaded_raw_bessaker_data/" + filename + sim_time
+            filename = "./data/downloaded_raw_bessaker_data/" + filename + sim_time
             if index == 0:
                 nc_fid = Dataset(filename, mode="r")
                 time = nc_fid["time"][:]
@@ -237,23 +243,27 @@ def quick_append(var, key, nc_fid, transpose_indices=[0, 2, 3, 1]):
         axis=0,
     )
 
+
 def get_static_data():
-    filename = os.listdir("./downloaded_raw_bessaker_data/")[0]
-    
-    nc_fid = Dataset("./downloaded_raw_bessaker_data/" + filename, mode="r")
-    
-    x = 100000*nc_fid["x"][:]
-    y = 100000*nc_fid["y"][:]
+    filename = os.listdir("./data/downloaded_raw_bessaker_data/")[0]
+
+    nc_fid = Dataset("./data/downloaded_raw_bessaker_data/" + filename, mode="r")
+
+    x = 100000 * nc_fid["x"][:]
+    y = 100000 * nc_fid["y"][:]
     terrain = nc_fid["surface_altitude"][:]
     nc_fid.close()
 
     terrain = np.ma.filled(terrain.astype(float), np.nan)
     terrain, x, y = slice_only_dim_dicts(terrain, x, y)
 
-    with open("./full_dataset_files/static_terrain_x_y.pkl", "wb") as f:
-            pickle.dump([terrain, x, y], f)
+    with open("./data/full_dataset_files/static_terrain_x_y.pkl", "wb") as f:
+        pickle.dump([terrain, x, y], f)
 
-def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]):
+
+def extract_slice_and_filter_3D(
+    data_code, start_date, end_date, transpose_indices=[0, 2, 3, 1]
+):
     delta = end_date - start_date
     sim_times = ["T00Z.nc", "T12Z.nc"]
     index = 0
@@ -262,7 +272,7 @@ def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indic
         for sim_time in sim_times:
             temp = start_date + timedelta(days=i)
             filename = data_code + ((str(temp)).replace("-", ""))
-            filename = "./downloaded_raw_bessaker_data/" + filename + sim_time
+            filename = "./data/downloaded_raw_bessaker_data/" + filename + sim_time
             try:
                 nc_fid = Dataset(filename, mode="r")
                 assert nc_fid["time"][:].shape[0] == 13
@@ -301,24 +311,35 @@ def extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indic
                 else:
                     u = quick_append(u, "x_wind_ml", nc_fid, transpose_indices)
                     v = quick_append(v, "y_wind_ml", nc_fid, transpose_indices)
-                    w = quick_append(w, "upward_air_velocity_ml", nc_fid, transpose_indices)
+                    w = quick_append(
+                        w, "upward_air_velocity_ml", nc_fid, transpose_indices
+                    )
                     pressure = quick_append(
                         pressure, "air_pressure_ml", nc_fid, transpose_indices
                     )
-                    z = quick_append(z, "geopotential_height_ml", nc_fid, transpose_indices)
+                    z = quick_append(
+                        z, "geopotential_height_ml", nc_fid, transpose_indices
+                    )
                     nc_fid.close()
             except:
-                invalid_filenames.append((temp,sim_time))
-    
+                invalid_filenames.append((temp, sim_time))
+
     if "pressure" in locals():
-        u, v, w, pressure, z = [np.ma.filled(wind_field.astype(float), np.nan)
+        u, v, w, pressure, z = [
+            np.ma.filled(wind_field.astype(float), np.nan)
             for wind_field in [u, v, w, pressure, z]
         ]
-        z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure) 
+        z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure)
     else:
-        return np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), np.asarray([]), invalid_filenames
+        return (
+            np.asarray([]),
+            np.asarray([]),
+            np.asarray([]),
+            np.asarray([]),
+            np.asarray([]),
+            invalid_filenames,
+        )
 
-    
     return (
         # time,
         # latitude,
@@ -451,7 +472,6 @@ def interpolate_z_axis(
 
     for i in range(u.shape[0]):
         for j in range(u.shape[1]):
-                   
             u[i, j, :] = np.interp(
                 new_1D_z_above_ground, z_above_ground[i, j, :], u[i, j, :]
             )
@@ -502,7 +522,9 @@ def get_interpolated_z_data(
             pressure,
         ) = interpolate_z_axis(x, y, z_above_ground, u, v, w, pressure)
 
-        z = np.transpose(np.transpose(Z_interp_above_ground, ([2,0,1])) + terrain, ([1,2,0]))
+        z = np.transpose(
+            np.transpose(Z_interp_above_ground, ([2, 0, 1])) + terrain, ([1, 2, 0])
+        )
 
         with open(filename, "wb") as f:
             pickle.dump(
@@ -566,6 +588,7 @@ def interpolate_cartesian_3D(
 
     return X_cartesian, Y_cartesian, Z_cartesian, u_cart, v_cart, w_cart
 
+
 def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1):
     mlab.figure(fig)
     mlab.quiver3d(
@@ -589,6 +612,7 @@ def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1):
             mlab.surf(X.T, Y.T, z_plot_scale * terrain.T, colormap="black-white")
 
     mlab.show()
+
 
 def plot_pressure(
     X,
@@ -656,7 +680,9 @@ def preprosess_and_plot(
     if interpolate:
         # [print(x.shape) for x in [terrain, x, y, X, Y, z, u, v, w]]
         if cartesian:
-            filename = "./saved_interpolated_cartesian_data/" + interpolated_file_name
+            filename = (
+                "./data/saved_interpolated_cartesian_data/" + interpolated_file_name
+            )
             try:
                 with open(filename, "rb") as f:
                     (
@@ -697,7 +723,7 @@ def preprosess_and_plot(
                     fig=3,
                 )
         else:
-            filename = "./saved_interpolated_z_data/" + interpolated_file_name
+            filename = "./data/saved_interpolated_z_data/" + interpolated_file_name
 
             (
                 Z_interp_above_ground,
@@ -737,28 +763,61 @@ def preprosess_and_plot(
 
     plot_pressure(X, Y, z, z_plot_scale, pressure[time_index], fig=2)
 
-def split_into_separate_files(z,
-            u,
-            v,
-            w,
-            pressure,
-            filenames, 
-            terrain,
-            invalid_samples:set,
-            folder = "./full_dataset_files/"):
-    
-    z_above_ground = np.transpose(np.transpose(z, ([0,3,1,2])) - terrain, ([0,2,3,1]))
-    index=0
+
+def split_into_separate_files(
+    z,
+    u,
+    v,
+    w,
+    pressure,
+    filenames,
+    terrain,
+    invalid_samples: set,
+    folder="./data/full_dataset_files/",
+):
+    z_above_ground = np.transpose(
+        np.transpose(z, ([0, 3, 1, 2])) - terrain, ([0, 2, 3, 1])
+    )
+    index = 0
     for i in range(len(filenames)):
         if filenames[i] not in invalid_samples:
-            if os.path.isfile(folder+filenames[i]):
+            if os.path.isfile(folder + filenames[i]):
                 continue
-            
-            if np.isnan(np.concatenate((z[index],z_above_ground[index],u[index],v[index],w[index],pressure[index]))).any() or np.isinf(np.concatenate((z[index],z_above_ground[index],u[index],v[index],w[index],pressure[index]))).any() or u[index][u[index]>100].any() or v[index][v[index]>100].any() or w[index][w[index]>100].any() or pressure[index][pressure[index]>200000].any():
+
+            if (
+                np.isnan(
+                    np.concatenate(
+                        (
+                            z[index],
+                            z_above_ground[index],
+                            u[index],
+                            v[index],
+                            w[index],
+                            pressure[index],
+                        )
+                    )
+                ).any()
+                or np.isinf(
+                    np.concatenate(
+                        (
+                            z[index],
+                            z_above_ground[index],
+                            u[index],
+                            v[index],
+                            w[index],
+                            pressure[index],
+                        )
+                    )
+                ).any()
+                or u[index][u[index] > 100].any()
+                or v[index][v[index] > 100].any()
+                or w[index][w[index] > 100].any()
+                or pressure[index][pressure[index] > 200000].any()
+            ):
                 invalid_samples.add(filenames[i])
                 continue
 
-            with open(folder+filenames[i], "wb") as f:
+            with open(folder + filenames[i], "wb") as f:
                 pickle.dump(
                     [
                         z[index],
@@ -770,46 +829,70 @@ def split_into_separate_files(z,
                     ],
                     f,
                 )
-            with open(folder+"max_"+filenames[i], "wb") as f:
+            with open(folder + "max_" + filenames[i], "wb") as f:
                 pickle.dump(
                     [
                         np.min(z[index]),
                         np.max(z[index]),
                         np.max(z_above_ground[index]),
-                        np.max(np.concatenate((u[index],v[index],w[index]))),
+                        np.max(np.concatenate((u[index], v[index], w[index]))),
                         np.max(pressure[index]),
                     ],
                     f,
                 )
-            index+=1
+            index += 1
     return invalid_samples
 
-def download_and_split(filenames, terrain, x_dict, y_dict, z_dict, folder = "./full_dataset_files/"):
+
+def download_and_split(
+    filenames, terrain, x_dict, y_dict, z_dict, folder="./data/full_dataset_files/"
+):
     data_code = "simra_BESSAKER_"
     start_time = datetime.strptime(filenames[0][:-7], "%Y-%m-%d")
     end_time = datetime.strptime(filenames[-1][:-7], "%Y-%m-%d")
-    days = (end_time - start_time).days+1
+    days = (end_time - start_time).days + 1
     transpose_indices = [0, 2, 3, 1]
     invalid_samples = set()
     for i in range(0, days, 5):
         start = i
-        end = min(i+5, days)
+        end = min(i + 5, days)
         start_date = (start_time + timedelta(days=start)).date()
-        end_date = (start_time + timedelta(days=end-1)).date()
-        
-        download_Bessaker_data(start_date, end_date, "./downloaded_raw_bessaker_data/")
-        
-        z, u, v, w, pressure, invalid_download_files = extract_slice_and_filter_3D(data_code, start_date, end_date, transpose_indices)
+        end_date = (start_time + timedelta(days=end - 1)).date()
+
+        download_Bessaker_data(
+            start_date, end_date, "./data/downloaded_raw_bessaker_data/"
+        )
+
+        z, u, v, w, pressure, invalid_download_files = extract_slice_and_filter_3D(
+            data_code, start_date, end_date, transpose_indices
+        )
 
         for date, sim_time in invalid_download_files:
-            new_names = filenames_from_start_and_end_dates(date, date)[:12] if sim_time == "T00Z.nc" else filenames_from_start_and_end_dates(date, date)[12:]
+            new_names = (
+                filenames_from_start_and_end_dates(date, date)[:12]
+                if sim_time == "T00Z.nc"
+                else filenames_from_start_and_end_dates(date, date)[12:]
+            )
             [invalid_samples.add(name) for name in new_names]
-        
+
         if u.any():
-            z, u, v, w, pressure = slice_only_dim_dicts(z, u, v, w, pressure, x_dict=x_dict, y_dict=y_dict, z_dict=z_dict)
-            invalid_samples = split_into_separate_files(z, u, v, w, pressure, filenames[24*start : 24*end], terrain, invalid_samples, folder=folder)
-    
+            z, u, v, w, pressure = slice_only_dim_dicts(
+                z, u, v, w, pressure, x_dict=x_dict, y_dict=y_dict, z_dict=z_dict
+            )
+            invalid_samples = split_into_separate_files(
+                z,
+                u,
+                v,
+                w,
+                pressure,
+                filenames[24 * start : 24 * end],
+                terrain,
+                invalid_samples,
+                folder=folder,
+            )
+
     return invalid_samples
+
 
 def slice_dict_folder_name(x_dict, y_dict, z_dict):
     return (
@@ -849,9 +932,6 @@ if __name__ == "__main__":
     # Z_DICT = {"start": 1, "max": 41, "step": 10}
 
     # file_name = interp_file_name(X_DICT, Z_DICT, start_date, end_date)
-
-
-
 
     # terrain, x, y, X, Y, z, u, v, w, pressure = slice_data(
     #     terrain, x, y, z, u, v, w, pressure, X_DICT, Z_DICT

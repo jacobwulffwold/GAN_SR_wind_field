@@ -1,7 +1,4 @@
-saved_interpolated_cartesian_data/
-saved_interpolated_z_data/
-full_dataset_files/
-downloaded_raw_bessaker_data/
+data/
 log/
 tensorboard_log/
 tensorboard_log_cluster/

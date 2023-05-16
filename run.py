@@ -57,10 +57,23 @@ def main():
 
     if cfg.is_download:
         start_date = date(
-        cfg.gan_config.start_date[0], cfg.gan_config.start_date[1], cfg.gan_config.start_date[2])
-        
-        end_date = date(cfg.gan_config.end_date[0], cfg.gan_config.end_date[1], cfg.gan_config.end_date[2])
-        status_logger.info("run.py: starting download of all data for Bessaker Wind farm from "+str(start_date)+" to "+str(end_date)+" not previously downloaded.")
+            cfg.gan_config.start_date[0],
+            cfg.gan_config.start_date[1],
+            cfg.gan_config.start_date[2],
+        )
+
+        end_date = date(
+            cfg.gan_config.end_date[0],
+            cfg.gan_config.end_date[1],
+            cfg.gan_config.end_date[2],
+        )
+        status_logger.info(
+            "run.py: starting download of all data for Bessaker Wind farm from "
+            + str(start_date)
+            + " to "
+            + str(end_date)
+            + " not previously downloaded."
+        )
 
     dataset_train, dataset_test, dataset_validation, x, y = prepare_data(cfg)
 
@@ -73,12 +86,11 @@ def main():
         train.train(cfg, dataset_train, dataset_validation, x, y)
         status_logger.info("run.py: finished training")
         cfg.is_train = False
-    
+
     if cfg.is_test:
         status_logger.info("run.py: starting testing")
         test.test(cfg, dataset_test)
         status_logger.info("run.py: finished testing")
-
 
     status_logger.info(
         f"run.py: log file location: {cfg.env.status_log_file}  run file location: {cfg.env.train_log_file}"
@@ -92,8 +104,8 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--cfg",
         type=str,
-        default="config/wind_field_GAN_3D_config_cluster_short.ini",
-        # default="config/wind_field_GAN_3D_config_local.ini",
+        # default="config/wind_field_GAN_3D_config_cluster_short.ini",
+        default="config/wind_field_GAN_3D_config_local.ini",
         help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
     parser.add_argument(
@@ -160,7 +172,14 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
     # make necessary paths, but warn user if the run folder overlaps with existing folder.
     makedirs(cfg.env.log_folder)
     makedirs(cfg.env.tensorboard_log_folder)
-    [makedirs(path) for path in ["./saved_interpolated_z_data/", "./downloaded_raw_bessaker_data", "./full_dataset_files"]]
+    [
+        makedirs(path)
+        for path in [
+            "./data/saved_interpolated_z_data/",
+            "./data/downloaded_raw_bessaker_data",
+            "./data/full_dataset_files",
+        ]
+    ]
     is_ok = makedirs_ensure_user_ok(cfg.env.this_runs_folder)
     makedirs(cfg.env.this_runs_folder + "/images")
     makedirs(cfg.env.this_runs_tensorboard_log_folder)
