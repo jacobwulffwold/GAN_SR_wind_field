@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="STD_scaler_data_augment"
-#SBATCH --output=STD_scaler_data_augment.out
+#SBATCH --job-name="STD_scaler_lrD_and_augment"
+#SBATCH --output=STD_scaler_lrD_and_augment.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

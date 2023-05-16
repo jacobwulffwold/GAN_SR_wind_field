@@ -240,12 +240,12 @@ def setup_torch(cfg: Config):
 
 def makedirs(path):
     if not os.path.exists(path):
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
 
 def makedirs_ensure_user_ok(path) -> bool:
     if not os.path.exists(path):
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
         return True
     else:
         print(
