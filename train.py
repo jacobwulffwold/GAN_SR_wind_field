@@ -158,10 +158,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 start_epoch_time.record()
                 start_data_load_check.record()
     
-            for i, (LR, HR, Z, ok_samples, filenames) in enumerate(dataloader_train):
-                if not torch.all(ok_samples==True):
-                    status_logger.warning(f"skipping batch {i} due to bad sample, filename: {filenames[ok_samples==False]}")
-                    invalid_filenames.add(filenames[ok_samples==False])
+            for i, (LR, HR, Z, is_ok, filenames) in enumerate(dataloader_train):
+                if not torch.all(is_ok==True):
+                    status_logger.warning(f"skipping batch {i} due to bad sample, filename: {filenames[is_ok==False]}")
+                    invalid_filenames.add(filenames[is_ok==False])
                     continue
 
                 if epoch == start_epoch+1 and torch.cuda.is_available() and not training_time_dict.get("load_data_time"):
@@ -251,7 +251,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     os.makedirs("images/training/grnd_est", exist_ok=True)
 
                     i_val = 0
-                    for _, (val_LR, val_HR, val_Z) in enumerate(dataloader_val):
+                    for _, (val_LR, val_HR, val_Z, is_ok, filenames) in enumerate(dataloader_val):
+                        if not torch.all(is_ok==True):
+                            status_logger.warning(f"skipping batch {i} due to bad sample, filename: {filenames[is_ok==False]}")
+                            invalid_filenames.add(filenames[is_ok==False])
+                            continue 
                         i_val += 1
                         val_LR = val_LR.to(cfg.device, non_blocking=True)
                         val_HR = val_HR.to(cfg.device, non_blocking=True)
