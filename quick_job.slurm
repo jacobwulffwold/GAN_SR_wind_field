@@ -2,13 +2,13 @@
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
 #SBATCH --time=0-00:30:00
-#SBATCH --gres=gpu:V10032:1
+#SBATCH --gres=gpu:A100m40:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="runtime_slice_aug"
-#SBATCH --output=runtime_slice_aug.out
+#SBATCH --job-name="runtime_no_slice_no_aug"
+#SBATCH --output=runtime_no_slice_no_aug.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

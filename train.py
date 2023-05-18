@@ -261,7 +261,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if dataloader_val is None:
                     continue
                 if it % cfg_t.val_period == 0:
-                    del LR, HR, Z
                     if (
                         epoch == start_epoch + 1
                         and torch.cuda.is_available()
@@ -288,7 +287,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     # os.makedirs("images/training/grnd_est", exist_ok=True)
 
                     i_val = 0
-                    for _, (val_LR, val_HR, val_Z, is_ok, filenames) in enumerate(
+                    for _, (LR, HR, Z, is_ok, filenames) in enumerate(
                         dataloader_val
                     ):
                         if not torch.all(is_ok == True):
@@ -298,10 +297,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                             invalid_filenames.add(filenames[is_ok == False])
                             continue
                         i_val += 1
-                        val_LR = val_LR.to(cfg.device, non_blocking=True)
-                        val_HR = val_HR.to(cfg.device, non_blocking=True)
-                        val_Z = val_Z.to(cfg.device, non_blocking=True)
-                        gan.validation(val_LR, val_HR, val_Z, it)
+                        LR = LR.to(cfg.device, non_blocking=True)
+                        HR = HR.to(cfg.device, non_blocking=True)
+                        Z = Z.to(cfg.device, non_blocking=True)
+                        gan.validation(LR, HR, Z, it)
                         for val_name, val in gan.get_loss_dict_ref().items():
                             loss_vals[val_name] += val.item() / n
 
@@ -312,16 +311,16 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         if i_val % len(dataloader_val) == 0:
                             with torch.no_grad():
                                 batch_quiver = torch.randint(
-                                    val_LR.shape[0], size=(1,), device=cfg.device
+                                    LR.shape[0], size=(1,), device=cfg.device
                                 )[0]
 
                                 # Fetch validation sample from device, using random index
                                 LR_i = torch.index_select(
-                                    val_LR, 0, batch_quiver, out=None
+                                    LR, 0, batch_quiver, out=None
                                 )
                                 HR_i = (
                                     torch.index_select(
-                                        val_HR, 0, batch_quiver, out=None
+                                        HR, 0, batch_quiver, out=None
                                     )
                                     .squeeze()
                                     .detach()
@@ -366,7 +365,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     gan.G(
                                         LR_i,
                                         torch.index_select(
-                                            val_Z, 0, batch_quiver, out=None
+                                            Z, 0, batch_quiver, out=None
                                         ),
                                     )
                                     .squeeze()
@@ -461,7 +460,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
-
+                    
                     if (
                         epoch == start_epoch + 1
                         and torch.cuda.is_available()
