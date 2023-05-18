@@ -597,7 +597,7 @@ class wind_field_GAN_3D(BaseGAN):
                 end_G_no_grad = torch.cuda.Event(enable_timing=True)
                 start_G_no_grad.record()
                 with torch.no_grad():
-                    fake_HR = self.G(LR, Z).to(self.device)
+                    fake_HR = self.G(LR, Z)
                 end_G_no_grad.record()
                 self.runtime_dict["G_forward_no_grad"] = (
                     start_G_no_grad,
