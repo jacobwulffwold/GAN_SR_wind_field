@@ -2,13 +2,13 @@
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
 #SBATCH --time=2-12:00:00
-#SBATCH --gres=gpu:A100m40:1
+#SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --job-name="LONG_run_aug"
-#SBATCH --output=LONG_run_aug.out
+#SBATCH --job-name="LONG_run_sliced"
+#SBATCH --output=LONG_run_sliced.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
