@@ -571,6 +571,7 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             else:
                 # self.optimizer_D.step()
+                self.D.scaler.scale(loss_D).backward()
                 self.D.scaler.step(self.optimizer_D)
                 self.D.scaler.update()       
             
