@@ -46,9 +46,9 @@ def noisy_labels(
 
 
 def instance_noise(
-    sigma_base: float, shape: torch.Size, it: int, niter: int
+    sigma_base: float, shape: torch.Size, it: int, niter: int, device=torch.device("cpu")
 ) -> torch.Tensor:
-    noise = torch.rand(shape)  # N(0,1)
+    noise = torch.rand(shape, device=device)  # N(0,1)
     var_desired = sigma_base * (1 - (it - 1) / niter)
 
     return noise * math.sqrt(var_desired)

@@ -72,7 +72,7 @@ class wind_field_GAN_3D(BaseGAN):
             "val_PSNR": torch.zeros(1),
             "Trilinear_PSNR": torch.zeros(1),
         }
-        self.batch_size = 1
+        self.batch_size = torch.ones(1, device=self.device)
         self.make_new_labels()  # updates self.HR_labels, self.fake_HR_labels
 
         ###################
@@ -123,7 +123,7 @@ class wind_field_GAN_3D(BaseGAN):
                     conv_mode=cfg_gan.conv_mode,
                     use_mixed_precision=cfg_D.use_mixed_precision,
                     enable_slicing=cfg_gan.enable_slicing,
-                )
+                ).to(cfg.device, non_blocking=True)
             else:
                 raise NotImplementedError(
                     f"Discriminator for image size {cfg.image_size} har not been implemented.\
@@ -131,9 +131,8 @@ class wind_field_GAN_3D(BaseGAN):
                 )
 
             # move to CUDA if available
-            self.D = self.D.to(cfg.device, non_blocking=True)
-            self.HR_labels = self.HR_labels.to(cfg.device, non_blocking=True)
-            self.fake_HR_labels = self.fake_HR_labels.to(cfg.device, non_blocking=True)
+            # self.HR_labels = self.HR_labels.to(cfg.device, non_blocking=True)
+            # self.fake_HR_labels = self.fake_HR_labels.to(cfg.device, non_blocking=True)
 
             initialization.init_weights(self.D, scale=cfg_D.weight_init_scale)
             if torch.cuda.is_available() and not self.memory_dict.get("G_and_D"):
@@ -152,12 +151,14 @@ class wind_field_GAN_3D(BaseGAN):
                 lr=cfg_t.learning_rate_g,
                 weight_decay=cfg_t.adam_weight_decay_g,
                 betas=(cfg_t.adam_beta1_g, 0.999),
+                device=self.device
             )
             self.optimizer_D = torch.optim.Adam(
                 self.D.parameters(),
                 lr=cfg_t.learning_rate_d,
                 weight_decay=cfg_t.adam_weight_decay_d,
                 betas=(cfg_t.adam_beta1_d, 0.999),
+                device=self.device,
             )
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
@@ -173,18 +174,18 @@ class wind_field_GAN_3D(BaseGAN):
                 self.schedulers.append(self.scheduler_D)
 
             # pixel loss
-            self.gradient_xy_criterion = nn.MSELoss()
-            self.gradient_z_criterion = nn.MSELoss()
-            self.divergence_criterion = nn.MSELoss()
-            self.xy_divergence_criterion = nn.MSELoss()
-            self.feature_D_criterion = nn.L1Loss()
+            self.gradient_xy_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
+            self.gradient_z_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
+            self.divergence_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
+            self.xy_divergence_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
+            self.feature_D_criterion = nn.L1Loss().to(cfg.device, non_blocking=True)
 
             if cfg_t.pixel_criterion is None or cfg_t.pixel_criterion == "none":
                 self.pixel_criterion = None
             elif cfg_t.pixel_criterion == "l1":
-                self.pixel_criterion = nn.L1Loss()
+                self.pixel_criterion = nn.L1Loss().to(cfg.device, non_blocking=True)
             elif cfg_t.pixel_criterion == "l2":
-                self.pixel_criterion = nn.MSELoss()
+                self.pixel_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
             else:
                 raise NotImplementedError(
                     f"Only l1 and l2 (MSE) loss have been implemented for pixel loss, not {cfg_t.pixel_criterion}"
@@ -201,13 +202,15 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             return
 
-    def feed_xy(
+    def feed_xy_niter(
         self,
         x: torch.Tensor,
         y: torch.Tensor,
+        niter: torch.Tensor,
     ):
         self.x = x
         self.y = y
+        self.niter = niter
 
     def D_forward(
         self,
@@ -222,13 +225,13 @@ class wind_field_GAN_3D(BaseGAN):
                 y_pred = self.D(
                     HR
                     + trainingtricks.instance_noise(
-                        1, HR.size(), it, self.cfg.training.niter
-                    ).to(self.device, non_blocking=True)
+                        torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
+                    )
                 ).squeeze()
                 fake_y_pred = self.D(
                     fake_HR.detach()
                     + trainingtricks.instance_noise(
-                        1, HR.size(), it, self.cfg.training.niter
+                        torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
                     )
                 ).squeeze()  # detach -> avoid BP to G
             else:
@@ -241,7 +244,7 @@ class wind_field_GAN_3D(BaseGAN):
                     self.D(
                         HR
                         + trainingtricks.instance_noise(
-                            1.0, HR.size(), it, self.cfg.training.niter
+                            torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
                         )
                     )
                     .squeeze()
@@ -250,7 +253,7 @@ class wind_field_GAN_3D(BaseGAN):
                 fake_y_pred = self.D(
                     fake_HR
                     + trainingtricks.instance_noise(
-                        1, HR.size(), it, self.cfg.training.niter
+                        torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
                     )
                 ).squeeze()
             else:
@@ -580,6 +583,7 @@ class wind_field_GAN_3D(BaseGAN):
     ):
         self.batch_size = HR.size(0)
         self.make_new_labels()
+        it = torch.tensor(it, device=self.device)
 
         ###################
         # Update G

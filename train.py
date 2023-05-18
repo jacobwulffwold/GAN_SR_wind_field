@@ -208,7 +208,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
-                    gan.feed_xy(x, y)
+                    gan.feed_xy_niter(x, y, torch.tensor(cfg_t.niter, device=cfg.device))
 
                 if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 4:
                     start_full_update = torch.cuda.Event(enable_timing=True)
