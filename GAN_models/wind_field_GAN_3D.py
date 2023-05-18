@@ -658,8 +658,8 @@ class wind_field_GAN_3D(BaseGAN):
                     self.batch_size,
                     true_label_val=real_label,
                     false_label_val=fake_label,
+                    device=self.device,
                 )
-                .to(self.device, non_blocking=True)
                 .squeeze()
             )
             self.fake_HR_labels = (
@@ -668,8 +668,8 @@ class wind_field_GAN_3D(BaseGAN):
                     self.batch_size,
                     true_label_val=real_label,
                     false_label_val=fake_label,
+                    device=self.device
                 )
-                .to(self.device, non_blocking=True)
                 .squeeze()
             )
         else:  # no noise std dev -> no noise
@@ -680,8 +680,8 @@ class wind_field_GAN_3D(BaseGAN):
                     noise_stddev=0.0,
                     true_label_val=real_label,
                     false_label_val=fake_label,
+                    device=self.device,
                 )
-                .to(self.device, non_blocking=True)
                 .squeeze()
             )
             self.fake_HR_labels = (
@@ -691,8 +691,8 @@ class wind_field_GAN_3D(BaseGAN):
                     noise_stddev=0.0,
                     true_label_val=real_label,
                     false_label_val=fake_label,
+                    device=self.device
                 )
-                .to(self.device, non_blocking=True)
                 .squeeze()
             )
 

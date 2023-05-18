@@ -23,6 +23,7 @@ def noisy_labels(
     true_label_val: torch.Tensor=torch.tensor(1.0),
     val_lower_lim: torch.Tensor=torch.tensor(0.0),
     val_upper_lim: torch.Tensor=torch.tensor(1.0),
+    device:torch.device=torch.device("cpu")
 ) -> torch.Tensor:
     """
     noisy_labels adds gaussian noise to True/False GAN label values,
@@ -33,7 +34,7 @@ def noisy_labels(
     @arg [false|true]_label_val: label values without noise.
     @arg val_[lower|upper]_lim: thresholds for label val cutoff
     """
-    label_val=torch.normal(mean=0.0, std=torch.full(torch.Size([batch_size]), noise_stddev))
+    label_val=torch.normal(mean=0.0, std=torch.full(torch.Size([batch_size]), noise_stddev)).to(device)
     if label_type == True:
         label_val += true_label_val
     else:
