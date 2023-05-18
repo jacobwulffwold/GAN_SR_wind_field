@@ -72,7 +72,7 @@ class wind_field_GAN_3D(BaseGAN):
             "val_PSNR": torch.zeros(1),
             "Trilinear_PSNR": torch.zeros(1),
         }
-        self.batch_size = torch.ones(1, device=self.device)
+        self.batch_size = 1
         self.make_new_labels()  # updates self.HR_labels, self.fake_HR_labels
 
         ###################
@@ -151,14 +151,12 @@ class wind_field_GAN_3D(BaseGAN):
                 lr=cfg_t.learning_rate_g,
                 weight_decay=cfg_t.adam_weight_decay_g,
                 betas=(cfg_t.adam_beta1_g, 0.999),
-                device=self.device
             )
             self.optimizer_D = torch.optim.Adam(
                 self.D.parameters(),
                 lr=cfg_t.learning_rate_d,
                 weight_decay=cfg_t.adam_weight_decay_d,
                 betas=(cfg_t.adam_beta1_d, 0.999),
-                device=self.device,
             )
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
@@ -641,17 +639,17 @@ class wind_field_GAN_3D(BaseGAN):
             pred_real = False
             pred_fake = True
 
-        real_label = 1.0
-        fake_label = 0.0
+        real_label = torch.tensor(1.0, device=self.device)
+        fake_label = torch.tensor(0.0, device=self.device)
         if (
             self.cfg.training.use_one_sided_label_smoothing
             and self.cfg.training.flip_labels
         ):
-            real_label = 1.0
-            fake_label = 0.1
+            real_label = torch.tensor(1.0, device=self.device)
+            fake_label = torch.tensor(0.1, device=self.device)
         elif self.cfg.training.use_one_sided_label_smoothing:
-            real_label = 0.9
-            fake_label = 0.0
+            real_label = torch.tensor(1.0, device=self.device)
+            fake_label = torch.tensor(0.0, device=self.device)
 
         if self.cfg.training.use_noisy_labels:
             self.HR_labels = (

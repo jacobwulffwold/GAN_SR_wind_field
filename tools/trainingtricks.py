@@ -17,13 +17,13 @@ import math
 
 def noisy_labels(
     label_type: bool,
-    batch_size: int,
-    noise_stddev: float = 0.05,
-    false_label_val: float = 0.0,
-    true_label_val: float = 1.0,
-    val_lower_lim: float = 0.0,
-    val_upper_lim: float = 1.0,
-) -> float:
+    batch_size: torch.Tensor,
+    noise_stddev: torch.Tensor=torch.tensor(0.05),
+    false_label_val: torch.Tensor=torch.tensor(0.0),
+    true_label_val: torch.Tensor=torch.tensor(1.0),
+    val_lower_lim: torch.Tensor=torch.tensor(0.0),
+    val_upper_lim: torch.Tensor=torch.tensor(1.0),
+) -> torch.Tensor:
     """
     noisy_labels adds gaussian noise to True/False GAN label values,
     but keeps the resulting value within a specified range,
@@ -33,16 +33,14 @@ def noisy_labels(
     @arg [false|true]_label_val: label values without noise.
     @arg val_[lower|upper]_lim: thresholds for label val cutoff
     """
-    label_val: float = random.gauss(mu=0.0, sigma=noise_stddev)
+    label_val=torch.normal(mean=0.0, std=torch.full(torch.Size([batch_size]), noise_stddev))
     if label_type == True:
         label_val += true_label_val
     else:
         label_val += false_label_val
-    if label_val > val_upper_lim:
-        label_val = val_upper_lim
-    elif label_val < val_lower_lim:
-        label_val = val_lower_lim
-    return torch.FloatTensor(batch_size).fill_(label_val)
+    label_val[label_val>val_upper_lim] = val_upper_lim
+    label_val[label_val<val_lower_lim] = val_lower_lim
+    return label_val
 
 
 def instance_noise(
