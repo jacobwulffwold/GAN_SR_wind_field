@@ -1,14 +1,14 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=0-00:45:00
+#SBATCH --time=0-00:30:00
 #SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="Fix_data_nan_inf"
-#SBATCH --output=Fix_data_nan_inf.out
+#SBATCH --job-name="runtime_no_slice_no_aug"
+#SBATCH --output=runtime_no_slice_no_aug.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

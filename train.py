@@ -253,7 +253,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 
                 if it % cfg_t.log_period == 0:
                     if cfg.use_tensorboard_logger:
-                        tb_writer.add_scalars("data/losses", gan.get_loss_dict_ref(), it)
+                        losses = dict(
+                            (val_name, val.item()) for val_name, val in gan.get_loss_dict_ref().items()
+                        )
+                        tb_writer.add_scalars("data/losses", losses, it)
 
                 if dataloader_val is None:
                     continue
@@ -270,12 +273,12 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                     status_logger.debug(f"validation epoch (it {it})")
                     loss_vals = dict(
-                        (val_name, val * 0)
-                        for (val_name, val) in gan.get_loss_dict_ref().items()
+                        (val_name, 0)
+                        for (val_name) in gan.get_loss_dict_ref().keys()
                     )
                     metrics_vals = dict(
-                        (val_name, val * 0)
-                        for (val_name, val) in gan.get_metrics_dict_ref().items()
+                        (val_name, 0)
+                        for (val_name) in gan.get_metrics_dict_ref().keys()
                     )
                     n = len(dataloader_val)
                     # VISUALIZING
@@ -300,10 +303,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         val_Z = val_Z.to(cfg.device, non_blocking=True)
                         gan.validation(val_LR, val_HR, val_Z, it)
                         for val_name, val in gan.get_loss_dict_ref().items():
-                            loss_vals[val_name] += val / n
+                            loss_vals[val_name] += val.item() / n
 
                         for val_name, val in gan.get_metrics_dict_ref().items():
-                            metrics_vals[val_name] += val / n
+                            metrics_vals[val_name] += val.item() / n
                         # VISUALIZING
                         # if (it % 40000 == 0):
                         if i_val % len(dataloader_val) == 0:

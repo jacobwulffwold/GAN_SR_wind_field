@@ -309,20 +309,17 @@ def reformat_to_torch(
     include_z_channel=False,
     include_above_ground_channel=False,
 ):
-    u, v, w, p, z = [
-        wind_component[np.newaxis, :, :, :] for wind_component in [u, v, w, p, z]
-    ]
 
-    HR_arr = np.concatenate((u, v, w), axis=0)
+    HR_arr = np.concatenate((u[np.newaxis, :,:,:], v[np.newaxis, :,:,:], w[np.newaxis, :,:,:]), axis=0)
     del u, v, w
 
     if include_pressure:
-        HR_arr = np.concatenate((HR_arr / UVW_MAX, p / P_MAX), axis=0)
+        HR_arr = np.concatenate((HR_arr / UVW_MAX, p[np.newaxis, :,:,:] / P_MAX), axis=0)
     else:
         HR_arr = HR_arr / UVW_MAX
 
     if include_z_channel:
-        arr_norm_LR = np.concatenate((HR_arr, (z - Z_MIN) / (Z_MAX - Z_MIN)), axis=0)[
+        arr_norm_LR = np.concatenate((HR_arr, (z[np.newaxis, :,:,:] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0)[
             :, ::coarseness_factor, ::coarseness_factor, :
         ]
     else:
@@ -332,7 +329,7 @@ def reformat_to_torch(
         arr_norm_LR = np.concatenate(
             (
                 arr_norm_LR,
-                z_above_ground[:, ::coarseness_factor, ::coarseness_factor, :]
+                z_above_ground[np.newaxis, ::coarseness_factor, ::coarseness_factor, :]
                 / Z_ABOVE_GROUND_MAX,
             ),
             axis=0,
@@ -341,7 +338,7 @@ def reformat_to_torch(
 
     HR_data = torch.from_numpy(HR_arr).float()
     LR_data = torch.from_numpy(arr_norm_LR).float()
-    z = torch.from_numpy(z).float()
+    z = torch.from_numpy(z[np.newaxis, :,:,:]).float()
 
     return (
         LR_data,
