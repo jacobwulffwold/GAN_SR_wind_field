@@ -2,13 +2,13 @@
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
 #SBATCH --time=0-00:20:00
-#SBATCH --gres=gpu:A100m40:1
+#SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="fix_D_forward_check2"
-#SBATCH --output=fix_D_forward_check2.out
+#SBATCH --job-name="fix_D_forward_check3"
+#SBATCH --output=fix_D_forward_check3.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

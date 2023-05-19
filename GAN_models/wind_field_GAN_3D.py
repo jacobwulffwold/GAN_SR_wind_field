@@ -232,7 +232,7 @@ class wind_field_GAN_3D(BaseGAN):
                 + str(fake_HR.detach().device)
                 + str(it.device)
                 + str(self.niter.device)
-                + str(self.D.device)
+                + str(next(self.D.parameters()).device)
                 + str(
                     trainingtricks.instance_noise(
                         torch.tensor(1.0, device=self.device),
