@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="test_mem_fix"
-#SBATCH --output=test_mem_fix.out
+#SBATCH --job-name="mem_fix"
+#SBATCH --output=mem_fix.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
