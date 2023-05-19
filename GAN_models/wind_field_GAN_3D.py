@@ -73,10 +73,12 @@ class wind_field_GAN_3D(BaseGAN):
             "Trilinear_PSNR": torch.zeros(1),
         }
         self.device_check = ""
-        self.batch_size:int = 1
+        self.batch_size: int = 1
         self.make_new_labels()  # updates self.HR_labels, self.fake_HR_labels
         self.max_diff_squared = torch.tensor(4.0, device=cfg.device)  # HR is in [-1, 1]
-        self.epsilon_PSNR = torch.tensor(1e-8, device=cfg.device)  # PSNR is usually ~< 50 so this should not impact the result much
+        self.epsilon_PSNR = torch.tensor(
+            1e-8, device=cfg.device
+        )  # PSNR is usually ~< 50 so this should not impact the result much
 
         ###################
         # Define generator, discriminator, feature extractor
@@ -103,7 +105,7 @@ class wind_field_GAN_3D(BaseGAN):
             number_of_z_layers=cfg_gan.number_of_z_layers,
             conv_mode=cfg_gan.conv_mode,
             use_mixed_precision=cfg_G.use_mixed_precision,
-            terrain_number_of_features = cfg_G.terrain_number_of_features,
+            terrain_number_of_features=cfg_G.terrain_number_of_features,
         ).to(self.device, non_blocking=True)
         initialization.init_weights(self.G, scale=cfg_G.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
@@ -179,7 +181,9 @@ class wind_field_GAN_3D(BaseGAN):
             self.gradient_xy_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
             self.gradient_z_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
             self.divergence_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
-            self.xy_divergence_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
+            self.xy_divergence_criterion = nn.MSELoss().to(
+                cfg.device, non_blocking=True
+            )
             self.feature_D_criterion = nn.L1Loss().to(cfg.device, non_blocking=True)
 
             if cfg_t.pixel_criterion is None or cfg_t.pixel_criterion == "none":
@@ -221,22 +225,46 @@ class wind_field_GAN_3D(BaseGAN):
         it: torch.Tensor,
         train_D: bool,
     ):
-        # if self.device_check =="":
-        #     self.device_check += str(HR.device) + str(fake_HR.device) + str(it.device) + str(self.niter.device) + str(self.D.device)+ str()
-        #     self.device_check += (str(var.device) for var in [HR, fake_HR, fake_HR.detach(), self.D, it, self.niter, trainingtricks.instance_noise(torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device)])
+        if self.device_check == "":
+            self.device_check += (
+                str(HR.device)
+                + str(fake_HR.device)
+                + str(fake_HR.detach().device)
+                + str(it.device)
+                + str(self.niter.device)
+                + str(self.D.device)
+                + str(
+                    trainingtricks.instance_noise(
+                        torch.tensor(1.0, device=self.device),
+                        HR.size(),
+                        it,
+                        self.niter,
+                        device=self.device,
+                    ).device
+                )
+                + str(self.device)
+            )
         if train_D:
             self.D.train()
             if self.cfg.training.use_instance_noise:
                 y_pred = self.D(
                     HR
                     + trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
+                        torch.tensor(1.0, device=self.device),
+                        HR.size(),
+                        it,
+                        self.niter,
+                        device=self.device,
                     )
                 ).squeeze()
                 fake_y_pred = self.D(
                     fake_HR.detach()
                     + trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
+                        torch.tensor(1.0, device=self.device),
+                        HR.size(),
+                        it,
+                        self.niter,
+                        device=self.device,
                     )
                 ).squeeze()  # detach -> avoid BP to G
             else:
@@ -249,7 +277,11 @@ class wind_field_GAN_3D(BaseGAN):
                     self.D(
                         HR
                         + trainingtricks.instance_noise(
-                            torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
+                            torch.tensor(1.0, device=self.device),
+                            HR.size(),
+                            it,
+                            self.niter,
+                            device=self.device,
                         )
                     )
                     .squeeze()
@@ -258,7 +290,11 @@ class wind_field_GAN_3D(BaseGAN):
                 fake_y_pred = self.D(
                     fake_HR
                     + trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device
+                        torch.tensor(1.0, device=self.device),
+                        HR.size(),
+                        it,
+                        self.niter,
+                        device=self.device,
                     )
                 ).squeeze()
             else:
@@ -352,10 +388,13 @@ class wind_field_GAN_3D(BaseGAN):
         if self.pixel_criterion:
             loss_G_pix = self.pixel_criterion(HR, fake_HR)
 
-        
-        HR_wind_gradient = calculate_gradient_of_wind_field(HR[:, :3], self.x, self.y, Z)
-        SR_wind_gradient = calculate_gradient_of_wind_field(fake_HR[:, :3], self.x, self.y, Z)
-        
+        HR_wind_gradient = calculate_gradient_of_wind_field(
+            HR[:, :3], self.x, self.y, Z
+        )
+        SR_wind_gradient = calculate_gradient_of_wind_field(
+            fake_HR[:, :3], self.x, self.y, Z
+        )
+
         loss_G_xy_gradient = self.gradient_xy_criterion(
             SR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
             HR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
@@ -365,17 +404,35 @@ class wind_field_GAN_3D(BaseGAN):
             HR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
         )
         max_divergence = torch.max(
-            abs(HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:] + HR_wind_gradient[:,8,:,:,:])
+            abs(
+                HR_wind_gradient[:, 0, :, :, :]
+                + HR_wind_gradient[:, 4, :, :, :]
+                + HR_wind_gradient[:, 8, :, :, :]
+            )
         )
         loss_G_divergence = self.divergence_criterion(
-            (HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:] + HR_wind_gradient[:,8,:,:,:]) / max_divergence, (SR_wind_gradient[:,0,:,:,:] + SR_wind_gradient[:,4,:,:,:] + SR_wind_gradient[:,8,:,:,:]) / max_divergence
+            (
+                HR_wind_gradient[:, 0, :, :, :]
+                + HR_wind_gradient[:, 4, :, :, :]
+                + HR_wind_gradient[:, 8, :, :, :]
+            )
+            / max_divergence,
+            (
+                SR_wind_gradient[:, 0, :, :, :]
+                + SR_wind_gradient[:, 4, :, :, :]
+                + SR_wind_gradient[:, 8, :, :, :]
+            )
+            / max_divergence,
         )
 
         max_xy_divergence = torch.max(
-            abs((HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:]))
+            abs((HR_wind_gradient[:, 0, :, :, :] + HR_wind_gradient[:, 4, :, :, :]))
         )
         loss_G_xy_divergence = self.xy_divergence_criterion(
-            (HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:]) / max_xy_divergence, (SR_wind_gradient[:,0,:,:,:] + SR_wind_gradient[:,4,:,:,:]) / max_xy_divergence
+            (HR_wind_gradient[:, 0, :, :, :] + HR_wind_gradient[:, 4, :, :, :])
+            / max_xy_divergence,
+            (SR_wind_gradient[:, 0, :, :, :] + SR_wind_gradient[:, 4, :, :, :])
+            / max_xy_divergence,
         )
 
         loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
@@ -454,7 +511,7 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             else:
                 fake_HR = self.G(LR, Z)
-            
+
             for param in self.D.parameters():
                 param.requires_grad = False
 
@@ -465,7 +522,7 @@ class wind_field_GAN_3D(BaseGAN):
             self.calculate_optimize_and_log_G_loss(
                 HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
             )
-        
+
         else:
             self.G.eval()
             with torch.no_grad():
@@ -477,11 +534,8 @@ class wind_field_GAN_3D(BaseGAN):
 
         # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
 
-
         # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
 
-        
-            
         return fake_HR
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
@@ -522,7 +576,7 @@ class wind_field_GAN_3D(BaseGAN):
                 param.requires_grad = True
                 self.optimizer_D.zero_grad(set_to_none=True)
 
-        # with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
+            # with torch.autocast(self.device.type, enabled=self.cfg.discriminator.use_mixed_precision):
             if torch.cuda.is_available() and not self.runtime_dict.get("D_forward"):
                 start_DF = torch.cuda.Event(enable_timing=True)
                 end_DF = torch.cuda.Event(enable_timing=True)
@@ -583,8 +637,8 @@ class wind_field_GAN_3D(BaseGAN):
                 # self.optimizer_D.step()
                 self.D.scaler.scale(loss_D).backward()
                 self.D.scaler.step(self.optimizer_D)
-                self.D.scaler.update()       
-            
+                self.D.scaler.update()
+
         self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
 
     def compute_losses_and_optimize(
@@ -619,7 +673,7 @@ class wind_field_GAN_3D(BaseGAN):
             else:
                 with torch.no_grad():
                     fake_HR = self.G(LR, Z)
-        
+
         ###################
         # Update D
         ###################
@@ -630,10 +684,24 @@ class wind_field_GAN_3D(BaseGAN):
                 (
                     self.metrics_dict["val_PSNR"],
                     self.metrics_dict["Trilinear_PSNR"],
-                ) = compute_psnr_for_SR_and_trilinear(LR, HR, fake_HR, self.max_diff_squared, self.epsilon_PSNR, interpolate=True, device=self.device)
+                ) = compute_psnr_for_SR_and_trilinear(
+                    LR,
+                    HR,
+                    fake_HR,
+                    self.max_diff_squared,
+                    self.epsilon_PSNR,
+                    interpolate=True,
+                    device=self.device,
+                )
             else:
                 self.metrics_dict["val_PSNR"] = compute_psnr_for_SR_and_trilinear(
-                    LR, HR, fake_HR, self.max_diff_squared, self.epsilon_PSNR, interpolate=False, device=self.device
+                    LR,
+                    HR,
+                    fake_HR,
+                    self.max_diff_squared,
+                    self.epsilon_PSNR,
+                    interpolate=False,
+                    device=self.device,
                 )
         return
 
@@ -664,49 +732,37 @@ class wind_field_GAN_3D(BaseGAN):
             fake_label = torch.tensor(0.0, device=self.device)
 
         if self.cfg.training.use_noisy_labels:
-            self.HR_labels = (
-                trainingtricks.noisy_labels(
-                    pred_real,
-                    self.batch_size,
-                    true_label_val=real_label,
-                    false_label_val=fake_label,
-                    device=self.device,
-                )
-                .squeeze()
-            )
-            self.fake_HR_labels = (
-                trainingtricks.noisy_labels(
-                    pred_fake,
-                    self.batch_size,
-                    true_label_val=real_label,
-                    false_label_val=fake_label,
-                    device=self.device
-                )
-                .squeeze()
-            )
+            self.HR_labels = trainingtricks.noisy_labels(
+                pred_real,
+                self.batch_size,
+                true_label_val=real_label,
+                false_label_val=fake_label,
+                device=self.device,
+            ).squeeze()
+            self.fake_HR_labels = trainingtricks.noisy_labels(
+                pred_fake,
+                self.batch_size,
+                true_label_val=real_label,
+                false_label_val=fake_label,
+                device=self.device,
+            ).squeeze()
         else:  # no noise std dev -> no noise
-            self.HR_labels = (
-                trainingtricks.noisy_labels(
-                    pred_real,
-                    self.batch_size,
-                    noise_stddev=0.0,
-                    true_label_val=real_label,
-                    false_label_val=fake_label,
-                    device=self.device,
-                )
-                .squeeze()
-            )
-            self.fake_HR_labels = (
-                trainingtricks.noisy_labels(
-                    pred_fake,
-                    self.batch_size,
-                    noise_stddev=0.0,
-                    true_label_val=real_label,
-                    false_label_val=fake_label,
-                    device=self.device
-                )
-                .squeeze()
-            )
+            self.HR_labels = trainingtricks.noisy_labels(
+                pred_real,
+                self.batch_size,
+                noise_stddev=0.0,
+                true_label_val=real_label,
+                false_label_val=fake_label,
+                device=self.device,
+            ).squeeze()
+            self.fake_HR_labels = trainingtricks.noisy_labels(
+                pred_fake,
+                self.batch_size,
+                noise_stddev=0.0,
+                true_label_val=real_label,
+                false_label_val=fake_label,
+                device=self.device,
+            ).squeeze()
 
     def test(self):
         raise NotImplementedError("test has not been implemented.")
@@ -756,12 +812,20 @@ class wind_field_GAN_3D(BaseGAN):
 
 
 def compute_psnr_for_SR_and_trilinear(
-    LR, HR: torch.Tensor, fake_HR: torch.Tensor, max_diff_squared, epsilon_PSNR, interpolate: bool = False, device=torch.device("cpu")
+    LR,
+    HR: torch.Tensor,
+    fake_HR: torch.Tensor,
+    max_diff_squared,
+    epsilon_PSNR,
+    interpolate: bool = False,
+    device=torch.device("cpu"),
 ):
     w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
     SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * HR.shape[0])
-    
-    val_PSNR = torch.tensor(10, device=device) * math.log10(max_diff_squared / (SR_batch_average_MSE + epsilon_PSNR))
+
+    val_PSNR = torch.tensor(10, device=device) * math.log10(
+        max_diff_squared / (SR_batch_average_MSE + epsilon_PSNR)
+    )
     if interpolate:
         interpolated_LR = nn.functional.interpolate(
             LR[:, :4, :, :, :],
@@ -772,7 +836,7 @@ def compute_psnr_for_SR_and_trilinear(
         interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (
             w * h * l * HR.shape[0]
         )
-        val_trilinear_PSNR =  torch.tensor(10, device=device) * math.log10(
+        val_trilinear_PSNR = torch.tensor(10, device=device) * math.log10(
             max_diff_squared / (interp_batch_average_MSE + epsilon_PSNR)
         )
         return val_PSNR, val_trilinear_PSNR

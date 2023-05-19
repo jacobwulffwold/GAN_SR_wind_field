@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=12G
-#SBATCH --job-name="fix_D_forward_check"
-#SBATCH --output=fix_D_forward_check.out
+#SBATCH --job-name="fix_D_forward_check2"
+#SBATCH --output=fix_D_forward_check2.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

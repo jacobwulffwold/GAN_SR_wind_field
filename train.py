@@ -191,11 +191,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 HR = HR.to(cfg.device, non_blocking=True)
                 Z = Z.to(cfg.device, non_blocking=True)
 
-                if (
-                    epoch == start_epoch + 1
-                    and torch.cuda.is_available()
-                    and i == 3
-                ):
+                if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 3:
                     end_to_device_check.record()
                     training_time_dict["to_device_time"] = (
                         start_to_device_check,
@@ -208,7 +204,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
-                    gan.feed_xy_niter(x, y, torch.tensor(cfg_t.niter, device=cfg.device))
+                    gan.feed_xy_niter(
+                        x, y, torch.tensor(cfg_t.niter, device=cfg.device)
+                    )
 
                 if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 4:
                     start_full_update = torch.cuda.Event(enable_timing=True)
@@ -227,11 +225,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for log in l:
                         train_logger.info(log)
 
-                if (
-                    epoch == start_epoch + 1
-                    and torch.cuda.is_available()
-                    and i==3
-                ):
+                if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 3:
                     end_update_D_iter.record()
                     training_time_dict["update_D_iter_time"] = (
                         start_update_D_iter,
@@ -250,11 +244,12 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     gan.save_model(cfg.env.this_runs_folder, epoch, it)
                     status_logger.debug(f"storing visuals (it {it})")
                     # store_current_visuals(cfg, it, gan, dataloader_val)
-                
+
                 if it % cfg_t.log_period == 0:
                     if cfg.use_tensorboard_logger:
                         losses = dict(
-                            (val_name, val.item()) for val_name, val in gan.get_loss_dict_ref().items()
+                            (val_name, val.item())
+                            for val_name, val in gan.get_loss_dict_ref().items()
                         )
                         tb_writer.add_scalars("data/losses", losses, it)
 
@@ -272,8 +267,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                     status_logger.debug(f"validation epoch (it {it})")
                     loss_vals = dict(
-                        (val_name, 0)
-                        for (val_name) in gan.get_loss_dict_ref().keys()
+                        (val_name, 0) for (val_name) in gan.get_loss_dict_ref().keys()
                     )
                     metrics_vals = dict(
                         (val_name, 0)
@@ -287,9 +281,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     # os.makedirs("images/training/grnd_est", exist_ok=True)
 
                     i_val = 0
-                    for _, (LR, HR, Z, is_ok, filenames) in enumerate(
-                        dataloader_val
-                    ):
+                    for _, (LR, HR, Z, is_ok, filenames) in enumerate(dataloader_val):
                         if not torch.all(is_ok == True):
                             status_logger.warning(
                                 f"skipping batch {i} due to bad sample, filename: {filenames[is_ok==False]}"
@@ -315,13 +307,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 )[0]
 
                                 # Fetch validation sample from device, using random index
-                                LR_i = torch.index_select(
-                                    LR, 0, batch_quiver, out=None
-                                )
+                                LR_i = torch.index_select(LR, 0, batch_quiver, out=None)
                                 HR_i = (
-                                    torch.index_select(
-                                        HR, 0, batch_quiver, out=None
-                                    )
+                                    torch.index_select(HR, 0, batch_quiver, out=None)
                                     .squeeze()
                                     .detach()
                                     .cpu()
@@ -460,7 +448,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
-                    
+
                     if (
                         epoch == start_epoch + 1
                         and torch.cuda.is_available()
@@ -506,7 +494,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         + ": "
                         + str(start_time.elapsed_time(end_time))
                     )
-                # status_logger.debug("devices D_forward: "+gan.device_check)
+                status_logger.info("devices D_forward: "+gan.device_check)
     with open("./data/invalid_files.txt", "a") as f:
         for item in invalid_filenames:
             f.write("%s\n" % item)
