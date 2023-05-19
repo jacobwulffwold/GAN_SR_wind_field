@@ -462,6 +462,7 @@ def interpolate_z_axis(
     v,
     w,
     pressure,
+    terrain,
 ):
     new_1D_z_above_ground = np.linspace(
         np.mean(z_above_ground[:, :, 0]),
@@ -486,8 +487,11 @@ def interpolate_z_axis(
                 z_above_ground[i, j, :],
                 pressure[i, j, :],
             )
+    z = np.transpose(
+        np.transpose(new_3D_z_above_ground, ([2, 0, 1])) + terrain, ([1, 2, 0])
+    )
 
-    return new_3D_z_above_ground, u, v, w, pressure
+    return z, new_3D_z_above_ground, u, v, w, pressure
 
 
 def get_interpolated_z_data(
@@ -515,16 +519,13 @@ def get_interpolated_z_data(
     except:
         # print("Interpolating z axis...")
         (
+            z,
             Z_interp_above_ground,
             u,
             v,
             w,
             pressure,
-        ) = interpolate_z_axis(x, y, z_above_ground, u, v, w, pressure)
-
-        z = np.transpose(
-            np.transpose(Z_interp_above_ground, ([2, 0, 1])) + terrain, ([1, 2, 0])
-        )
+        ) = interpolate_z_axis(x, y, z_above_ground, u, v, w, pressure, terrain)
 
         with open(filename, "wb") as f:
             pickle.dump(

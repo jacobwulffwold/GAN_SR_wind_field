@@ -175,7 +175,6 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
     [
         makedirs(path)
         for path in [
-            "./data/saved_interpolated_z_data/",
             "./data/downloaded_raw_bessaker_data",
             "./data/full_dataset_files",
         ]
