@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --job-name="LONG_aug_slice"
-#SBATCH --output=LONG_aug_slice.out
+#SBATCH --job-name="LONG_aug_slice_interpolate"
+#SBATCH --output=LONG_aug_slice_interpolate.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
