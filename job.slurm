@@ -1,14 +1,14 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=3-00:00:00
+#SBATCH --time=2-12:00:00
 #SBATCH --gres=gpu:V10032:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --job-name="LONG_aug"
-#SBATCH --output=LONG_aug.out
+#SBATCH --job-name="LONG_aug_interpolated"
+#SBATCH --output=LONG_aug_interpolated.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
