@@ -183,12 +183,6 @@ def calculate_div_z(HR_data: torch.Tensor, Z: torch.Tensor):
 def calculate_gradient_of_wind_field(HR_data, x, y, Z):
     grad_x, grad_y = torch.gradient(HR_data, dim=(2, 3), spacing=(x, y))
     grad_z = calculate_div_z(HR_data, Z)
-    divergence = (
-        grad_x[:, 0, 1:-1, 1:-1, 1:-1]
-        + grad_y[:, 1, 1:-1, 1:-1, 1:-1]
-        + grad_z[:, 2, 1:-1, 1:-1, :]
-    )
-    xy_divergence = grad_x[:, 0, 1:-1, 1:-1, 1:-1] + grad_y[:, 1, 1:-1, 1:-1, 1:-1]
 
     return (
         torch.cat(
@@ -198,9 +192,7 @@ def calculate_gradient_of_wind_field(HR_data, x, y, Z):
                 grad_z[:, :, 1:-1, 1:-1, :],
             ),
             dim=1,
-        ),
-        divergence,
-        xy_divergence,
+        )
     )
 
 

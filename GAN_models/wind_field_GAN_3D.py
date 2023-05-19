@@ -72,8 +72,10 @@ class wind_field_GAN_3D(BaseGAN):
             "val_PSNR": torch.zeros(1),
             "Trilinear_PSNR": torch.zeros(1),
         }
-        self.batch_size = 1
+        self.batch_size:int = 1
         self.make_new_labels()  # updates self.HR_labels, self.fake_HR_labels
+        self.max_diff_squared = torch.tensor(4.0, device=cfg.device)  # HR is in [-1, 1]
+        self.epsilon_PSNR = torch.tensor(1e-8, device=cfg.device)  # PSNR is usually ~< 50 so this should not impact the result much
 
         ###################
         # Define generator, discriminator, feature extractor
@@ -345,17 +347,10 @@ class wind_field_GAN_3D(BaseGAN):
         if self.pixel_criterion:
             loss_G_pix = self.pixel_criterion(HR, fake_HR)
 
-        (
-            HR_wind_gradient,
-            HR_divergence,
-            HR_xy_divergence,
-        ) = calculate_gradient_of_wind_field(HR[:, :3], self.x, self.y, Z)
-        (
-            SR_wind_gradient,
-            SR_divergence,
-            SR_xy_divergence,
-        ) = calculate_gradient_of_wind_field(fake_HR[:, :3], self.x, self.y, Z)
-
+        
+        HR_wind_gradient = calculate_gradient_of_wind_field(HR[:, :3], self.x, self.y, Z)
+        SR_wind_gradient = calculate_gradient_of_wind_field(fake_HR[:, :3], self.x, self.y, Z)
+        
         loss_G_xy_gradient = self.gradient_xy_criterion(
             SR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
             HR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
@@ -364,19 +359,18 @@ class wind_field_GAN_3D(BaseGAN):
             SR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
             HR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
         )
-
         max_divergence = torch.max(
-            abs(HR_divergence)
+            abs(HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:] + HR_wind_gradient[:,8,:,:,:])
         )
         loss_G_divergence = self.divergence_criterion(
-            HR_divergence / max_divergence, SR_divergence / max_divergence
+            (HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:] + HR_wind_gradient[:,8,:,:,:]) / max_divergence, (SR_wind_gradient[:,0,:,:,:] + SR_wind_gradient[:,4,:,:,:] + SR_wind_gradient[:,8,:,:,:]) / max_divergence
         )
 
         max_xy_divergence = torch.max(
-            abs((HR_xy_divergence))
+            abs((HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:]))
         )
         loss_G_xy_divergence = self.xy_divergence_criterion(
-            HR_xy_divergence / max_xy_divergence, SR_xy_divergence / max_xy_divergence
+            (HR_wind_gradient[:,0,:,:,:] + HR_wind_gradient[:,4,:,:,:]) / max_xy_divergence, (SR_wind_gradient[:,0,:,:,:] + SR_wind_gradient[:,4,:,:,:]) / max_xy_divergence
         )
 
         loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
@@ -620,10 +614,10 @@ class wind_field_GAN_3D(BaseGAN):
                 (
                     self.metrics_dict["val_PSNR"],
                     self.metrics_dict["Trilinear_PSNR"],
-                ) = compute_psnr_for_SR_and_trilinear(LR, HR, fake_HR, interpolate=True, device=self.device)
+                ) = compute_psnr_for_SR_and_trilinear(LR, HR, fake_HR, self.max_diff_squared, self.epsilon_PSNR, interpolate=True, device=self.device)
             else:
                 self.metrics_dict["val_PSNR"] = compute_psnr_for_SR_and_trilinear(
-                    LR, HR, fake_HR, interpolate=False, device=self.device
+                    LR, HR, fake_HR, self.max_diff_squared, self.epsilon_PSNR, interpolate=False, device=self.device
                 )
 
     def optimize_parameters(self, LR, HR, Z, it):
@@ -649,7 +643,7 @@ class wind_field_GAN_3D(BaseGAN):
             real_label = torch.tensor(1.0, device=self.device)
             fake_label = torch.tensor(0.1, device=self.device)
         elif self.cfg.training.use_one_sided_label_smoothing:
-            real_label = torch.tensor(1.0, device=self.device)
+            real_label = torch.tensor(0.9, device=self.device)
             fake_label = torch.tensor(0.0, device=self.device)
 
         if self.cfg.training.use_noisy_labels:
@@ -745,14 +739,13 @@ class wind_field_GAN_3D(BaseGAN):
 
 
 def compute_psnr_for_SR_and_trilinear(
-    LR, HR: torch.Tensor, fake_HR: torch.Tensor, interpolate: bool = False, device=torch.device("cpu")
+    LR, HR: torch.Tensor, fake_HR: torch.Tensor, max_diff_squared, epsilon_PSNR, interpolate: bool = False, device=torch.device("cpu")
 ):
     w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
     SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * HR.shape[0])
     SR_batch_average_MSE = SR_batch_average_MSE
-    max_diff_squared = torch.tensor(4.0, device=device)  # HR is in [-1, 1]
-    epsilon = torch.tensor(1e-8, device=device)  # PSNR is usually ~< 50 so this should not impact the result much
-    val_PSNR = torch.tensor(10, device=device) * math.log10(max_diff_squared / (SR_batch_average_MSE + epsilon))
+    
+    val_PSNR = torch.tensor(10, device=device) * math.log10(max_diff_squared / (SR_batch_average_MSE + epsilon_PSNR))
     if interpolate:
         interpolated_LR = nn.functional.interpolate(
             LR[:, :4, :, :, :],
@@ -765,7 +758,7 @@ def compute_psnr_for_SR_and_trilinear(
         )
         interp_batch_average_MSE = interp_batch_average_MSE
         val_trilinear_PSNR =  torch.tensor(10, device=device) * math.log10(
-            max_diff_squared / (interp_batch_average_MSE + epsilon)
+            max_diff_squared / (interp_batch_average_MSE + epsilon_PSNR)
         )
         return val_PSNR, val_trilinear_PSNR
     else:
