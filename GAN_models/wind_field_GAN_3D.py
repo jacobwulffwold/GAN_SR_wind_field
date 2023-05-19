@@ -72,6 +72,7 @@ class wind_field_GAN_3D(BaseGAN):
             "val_PSNR": torch.zeros(1),
             "Trilinear_PSNR": torch.zeros(1),
         }
+        self.device_check = ""
         self.batch_size:int = 1
         self.make_new_labels()  # updates self.HR_labels, self.fake_HR_labels
         self.max_diff_squared = torch.tensor(4.0, device=cfg.device)  # HR is in [-1, 1]
@@ -102,7 +103,8 @@ class wind_field_GAN_3D(BaseGAN):
             number_of_z_layers=cfg_gan.number_of_z_layers,
             conv_mode=cfg_gan.conv_mode,
             use_mixed_precision=cfg_G.use_mixed_precision,
-        ).to(cfg.device, non_blocking=True)
+            terrain_number_of_features = cfg_G.terrain_number_of_features,
+        ).to(self.device, non_blocking=True)
         initialization.init_weights(self.G, scale=cfg_G.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
             self.memory_dict["G"] = torch.cuda.memory_allocated(self.device) / 1024**2
@@ -125,7 +127,7 @@ class wind_field_GAN_3D(BaseGAN):
                     conv_mode=cfg_gan.conv_mode,
                     use_mixed_precision=cfg_D.use_mixed_precision,
                     enable_slicing=cfg_gan.enable_slicing,
-                ).to(cfg.device, non_blocking=True)
+                ).to(self.device, non_blocking=True)
             else:
                 raise NotImplementedError(
                     f"Discriminator for image size {cfg.image_size} har not been implemented.\
@@ -216,9 +218,12 @@ class wind_field_GAN_3D(BaseGAN):
         self,
         HR: torch.Tensor,
         fake_HR: torch.Tensor,
-        it: int,
+        it: torch.Tensor,
         train_D: bool,
     ):
+        # if self.device_check =="":
+        #     self.device_check += str(HR.device) + str(fake_HR.device) + str(it.device) + str(self.niter.device) + str(self.D.device)+ str()
+        #     self.device_check += (str(var.device) for var in [HR, fake_HR, fake_HR.detach(), self.D, it, self.niter, trainingtricks.instance_noise(torch.tensor(1.0, device=self.device), HR.size(), it, self.niter, device=self.device)])
         if train_D:
             self.D.train()
             if self.cfg.training.use_instance_noise:
@@ -613,7 +618,7 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             else:
                 with torch.no_grad():
-                    fake_HR = self.G(LR, Z).to(self.device)
+                    fake_HR = self.G(LR, Z)
         
         ###################
         # Update D

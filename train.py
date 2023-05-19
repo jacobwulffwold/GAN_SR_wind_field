@@ -506,6 +506,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         + ": "
                         + str(start_time.elapsed_time(end_time))
                     )
+                # status_logger.debug("devices D_forward: "+gan.device_check)
     with open("./data/invalid_files.txt", "a") as f:
         for item in invalid_filenames:
             f.write("%s\n" % item)

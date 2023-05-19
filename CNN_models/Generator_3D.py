@@ -40,7 +40,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         use_mixed_precision: bool = False,
         # device=torch.device("mps" if torch.backends.mps.is_available() else "cpu"),
         device="cpu",
-        number_of_terrain_features:int = 16,
+        terrain_number_of_features:int = 16,
     ):
         super(Generator_3D, self).__init__()
 
@@ -81,15 +81,15 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             )
             hr_convs = [
                 create_conv_lrelu_layer(
-                    number_of_features + number_of_terrain_features,
-                    number_of_features + number_of_terrain_features,
+                    number_of_features + terrain_number_of_features,
+                    number_of_features + terrain_number_of_features,
                     kernel_size=hr_kern_size,
                     padding=hr_pad,
                     lrelu_negative_slope=slope,
                     layer_type=layer_type,
                 ),
                 layer_type(
-                    number_of_features + number_of_terrain_features,
+                    number_of_features + terrain_number_of_features,
                     out_channels,
                     kernel_size=hr_kern_size,
                     padding=hr_pad,
@@ -97,7 +97,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             ]
             terrain_conv = create_conv_lrelu_layer(
                 1,
-                number_of_terrain_features,
+                terrain_number_of_features,
                 3,
                 padding=1,
                 layer_type=layer_type,
@@ -122,14 +122,14 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             )
             hr_convs = [
                 Horizontal_Conv_3D(
-                    number_of_features + number_of_terrain_features,
-                    number_of_features + number_of_terrain_features,
+                    number_of_features + terrain_number_of_features,
+                    number_of_features + terrain_number_of_features,
                     kernel_size=hr_kern_size,
                     lrelu_negative_slope=slope,
                     number_of_z_layers=number_of_z_layers,
                 ),
                 Horizontal_Conv_3D(
-                    number_of_features + number_of_terrain_features,
+                    number_of_features + terrain_number_of_features,
                     out_channels,
                     kernel_size=hr_kern_size,
                     number_of_z_layers=number_of_z_layers,
@@ -138,7 +138,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             ]
             terrain_conv = Horizontal_Conv_3D(
                 in_channels,
-                number_of_terrain_features,
+                terrain_number_of_features,
                 3,
                 number_of_z_layers=number_of_z_layers,
                 lrelu=False,
