@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --job-name="dropout_slice"
-#SBATCH --output=dropout_slice.out
+#SBATCH --job-name="equal_D_G_training_dropout_lower_div_cost"
+#SBATCH --output=equal_D_G_training_dropout_lower_div_cost.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

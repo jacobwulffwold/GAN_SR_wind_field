@@ -198,7 +198,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_xy_niter(
-                        x, y, torch.tensor(cfg_t.niter, device=cfg.device)
+                        x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio,
                     )
 
                 if epoch == start_epoch + 1 and torch.cuda.is_available() and i == 4:

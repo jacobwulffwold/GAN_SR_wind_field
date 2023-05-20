@@ -216,10 +216,12 @@ class wind_field_GAN_3D(BaseGAN):
         x: torch.Tensor,
         y: torch.Tensor,
         niter: torch.Tensor,
+        d_g_train_ratio:int,
     ):
         self.x = x
         self.y = y
         self.niter = niter
+        self.d_g_train_ratio = d_g_train_ratio
 
     def D_forward(
         self,
@@ -656,7 +658,7 @@ class wind_field_GAN_3D(BaseGAN):
         ###################
         # Update G
         ###################
-        if it % 2 == 0:  # self.cfg.d_g_train_ratio == 0:
+        if it % self.d_g_train_ratio == 0:  # self.cfg.d_g_train_ratio == 1:
             fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
         else:
             if torch.cuda.is_available() and not self.runtime_dict.get(
