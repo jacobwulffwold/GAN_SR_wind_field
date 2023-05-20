@@ -40,7 +40,8 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         use_mixed_precision: bool = False,
         # device=torch.device("mps" if torch.backends.mps.is_available() else "cpu"),
         device="cpu",
-        terrain_number_of_features:int = 16,
+        terrain_number_of_features: int = 16,
+        dropout_probability: float = 0.0,
     ):
         super(Generator_3D, self).__init__()
 
@@ -59,6 +60,12 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
 
         hr_pad = (hr_kern_size - 1) // 2
         self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
+
+        dropout = (
+            nn.Dropout2d(p=dropout_probability)
+            if conv_mode == "2D"
+            else nn.Dropout3d(p=dropout_probability)
+        )
 
         # Low level feature extraction
         if conv_mode in {"3D", "2D"}:
@@ -79,7 +86,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 lrelu_negative_slope=slope,
                 lrelu=False,
             )
-            hr_convs = [
+            hr_convs_w_dropout = [
                 create_conv_lrelu_layer(
                     number_of_features + terrain_number_of_features,
                     number_of_features + terrain_number_of_features,
@@ -88,6 +95,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                     lrelu_negative_slope=slope,
                     layer_type=layer_type,
                 ),
+                dropout,
                 layer_type(
                     number_of_features + terrain_number_of_features,
                     out_channels,
@@ -120,7 +128,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 number_of_z_layers=number_of_z_layers,
                 lrelu=False,
             )
-            hr_convs = [
+            hr_convs_w_dropout = [
                 Horizontal_Conv_3D(
                     number_of_features + terrain_number_of_features,
                     number_of_features + terrain_number_of_features,
@@ -128,6 +136,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                     lrelu_negative_slope=slope,
                     number_of_z_layers=number_of_z_layers,
                 ),
+                dropout,
                 Horizontal_Conv_3D(
                     number_of_features + terrain_number_of_features,
                     out_channels,
@@ -137,7 +146,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 ),
             ]
             terrain_conv = Horizontal_Conv_3D(
-                in_channels,
+                1,
                 terrain_number_of_features,
                 3,
                 number_of_z_layers=number_of_z_layers,
@@ -185,12 +194,12 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         ]
 
         self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
-        self.hr_convs = nn.Sequential(*hr_convs)
+        self.hr_convs = nn.Sequential(*hr_convs_w_dropout)
         self.terrain_conv = terrain_conv
         self.status_logs.append(f"Generator: finished init")
 
     def forward(self, x, Z):
         x = self.model(x)
-        Z= self.terrain_conv(Z)
+        Z = self.terrain_conv(Z)
         x = torch.cat((x, Z), dim=1)
         return self.hr_convs(x)

@@ -84,7 +84,9 @@ class CustomizedDataset(torch.utils.data.Dataset):
         )
 
         if self.interpolate_z:
-            z, z_above_ground, u, v, w, pressure= interpolate_z_axis(self.x, self.y, z_above_ground, u, v, w, pressure, self.terrain)
+            z, z_above_ground, u, v, w, pressure = interpolate_z_axis(
+                self.x, self.y, z_above_ground, u, v, w, pressure, self.terrain
+            )
 
         if self.enable_slicing:
             x_start = np.random.randint(0, self.x.size - self.slice_size)
@@ -119,17 +121,6 @@ class CustomizedDataset(torch.utils.data.Dataset):
             include_above_ground_channel=self.include_above_ground_channel,
         )
 
-        if (
-            torch.isnan(LR).any()
-            or torch.isnan(HR).any()
-            or torch.isnan(Z).any()
-            or torch.isinf(LR).any()
-            or torch.isinf(HR).any()
-            or torch.isinf(Z).any()
-        ):
-            print("found nan or inf in file: ", self.filenames[index])
-            return LR, HR, Z, False, self.filenames[index]
-
         if self.data_aug_rot:
             amount_of_rotations = np.random.randint(0, 4)
             LR = torch.rot90(LR, amount_of_rotations, [1, 2])
@@ -146,41 +137,48 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 HR = torch.flip(HR, [2])
                 Z = torch.flip(Z, [2])
 
-        return LR, HR, Z, True, self.filenames[index]
+        return LR, HR, Z
 
 
 def calculate_div_z(HR_data: torch.Tensor, Z: torch.Tensor):
-    dZ = Z[:, 0, :, :, 1:] - Z[:, 0, :, :, :-1]
+    dZ = torch.tile(
+        Z[:, :, :, :, 1:] - Z[:, :, :, :, :-1], [1, HR_data.shape[1], 1, 1, 1]
+    )
 
-    derivatives = torch.zeros_like(HR_data)[:, :, :, :, 1:-1]
-    for i in range(1, Z.shape[-1] - 1):
-        dz1, dz2 = torch.tile(
-            dZ[:, None, :, :, i - 1], (1, HR_data.shape[1], 1, 1)
-        ), torch.tile(dZ[:, None, :, :, i], (1, HR_data.shape[1], 1, 1))
+    derivatives = torch.zeros_like(HR_data)
 
-        derivatives[:, :, :, :, i - 1] = (
-            dz1**2 * HR_data[:, :, :, :, i + 1]
-            + (dz2**2 - dz1**2) * HR_data[:, :, :, :, i]
-            - dz2**2 * HR_data[:, :, :, :, i - 1]
-        ) / (dz1 * dz2 * (dz1 + dz2))
+    derivatives[:, :, :, :, 1:-1] = (
+        dZ[:, :, :, :, :-1] ** 2 * HR_data[:, :, :, :, 2:]
+        + (dZ[:, :, :, :, 1:] ** 2 - dZ[:, :, :, :, :-1] ** 2)
+        * HR_data[:, :, :, :, 1:-1]
+        - dZ[:, :, :, :, 1:] ** 2 * HR_data[:, :, :, :, :-2]
+    ) / (
+        dZ[:, :, :, :, :-1]
+        * dZ[:, :, :, :, 1:]
+        * (dZ[:, :, :, :, :-1] + dZ[:, :, :, :, 1:])
+    )
+
+    derivatives[:, :, :, :, -1] = (
+        HR_data[:, :, :, :, -1] - HR_data[:, :, :, :, -2]
+    ) / dZ[:, :, :, :, -1]
+    derivatives[:, :, :, :, 0] = (HR_data[:, :, :, :, 1] - HR_data[:, :, :, :, 0]) / dZ[
+        :, :, :, :, 0
+    ]
 
     return derivatives
-
 
 @torch.jit.script
 def calculate_gradient_of_wind_field(HR_data, x, y, Z):
     grad_x, grad_y = torch.gradient(HR_data, dim=(2, 3), spacing=(x, y))
     grad_z = calculate_div_z(HR_data, Z)
 
-    return (
-        torch.cat(
-            (
-                grad_x[:, :, 1:-1, 1:-1, 1:-1],
-                grad_y[:, :, 1:-1, 1:-1, 1:-1],
-                grad_z[:, :, 1:-1, 1:-1, :],
-            ),
-            dim=1,
-        )
+    return torch.cat(
+        (
+            grad_x,
+            grad_y,
+            grad_z,
+        ),
+        dim=1,
     )
 
 
@@ -289,19 +287,22 @@ def reformat_to_torch(
     include_z_channel=False,
     include_above_ground_channel=False,
 ):
-
-    HR_arr = np.concatenate((u[np.newaxis, :,:,:], v[np.newaxis, :,:,:], w[np.newaxis, :,:,:]), axis=0)
+    HR_arr = np.concatenate(
+        (u[np.newaxis, :, :, :], v[np.newaxis, :, :, :], w[np.newaxis, :, :, :]), axis=0
+    )
     del u, v, w
 
     if include_pressure:
-        HR_arr = np.concatenate((HR_arr / UVW_MAX, p[np.newaxis, :,:,:] / P_MAX), axis=0)
+        HR_arr = np.concatenate(
+            (HR_arr / UVW_MAX, p[np.newaxis, :, :, :] / P_MAX), axis=0
+        )
     else:
         HR_arr = HR_arr / UVW_MAX
 
     if include_z_channel:
-        arr_norm_LR = np.concatenate((HR_arr, (z[np.newaxis, :,:,:] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0)[
-            :, ::coarseness_factor, ::coarseness_factor, :
-        ]
+        arr_norm_LR = np.concatenate(
+            (HR_arr, (z[np.newaxis, :, :, :] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0
+        )[:, ::coarseness_factor, ::coarseness_factor, :]
     else:
         arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
 
@@ -318,7 +319,7 @@ def reformat_to_torch(
 
     HR_data = torch.from_numpy(HR_arr).float()
     LR_data = torch.from_numpy(arr_norm_LR).float()
-    z = torch.from_numpy(z[np.newaxis, :,:,:]).float()
+    z = torch.from_numpy(z[np.newaxis, :, :, :]).float()
 
     return (
         LR_data,

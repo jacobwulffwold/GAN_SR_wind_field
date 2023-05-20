@@ -34,7 +34,7 @@ class wind_field_GAN_3D(BaseGAN):
         self.schedulers = []
         self.memory_dict = {}
         self.runtime_dict = {}
-        self.loss_dict = {
+        self.train_loss_dict = {
             "train_loss_D": torch.zeros(1),
             "train_loss_G": torch.zeros(1),
             "train_loss_G_adversarial": torch.zeros(1),
@@ -44,6 +44,8 @@ class wind_field_GAN_3D(BaseGAN):
             "train_loss_G_divergence": torch.zeros(1),
             "train_loss_G_xy_divergence": torch.zeros(1),
             "train_loss_G_feature_D": torch.zeros(1),
+        }
+        self.val_loss_dict = {
             "val_loss_G_xy_gradient": torch.zeros(1),
             "val_loss_G_z_gradient": torch.zeros(1),
             "val_loss_G_divergence": torch.zeros(1),
@@ -106,6 +108,7 @@ class wind_field_GAN_3D(BaseGAN):
             conv_mode=cfg_gan.conv_mode,
             use_mixed_precision=cfg_G.use_mixed_precision,
             terrain_number_of_features=cfg_G.terrain_number_of_features,
+            dropout_probability=cfg_G.dropout_probability,
         ).to(self.device, non_blocking=True)
         initialization.init_weights(self.G, scale=cfg_G.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
@@ -317,23 +320,23 @@ class wind_field_GAN_3D(BaseGAN):
         training_iteration: bool,
     ):
         if training_iteration:
-            self.loss_dict["train_loss_G"] = loss_G
-            self.loss_dict["train_loss_G_adversarial"] = loss_G_adversarial
-            self.loss_dict["train_loss_G_xy_gradient"] = loss_G_xy_gradient
-            self.loss_dict["train_loss_G_z_gradient"] = loss_G_z_gradient
-            self.loss_dict["train_loss_G_divergence"] = loss_G_divergence
-            self.loss_dict["train_loss_G_xy_divergence"] = loss_G_xy_divergence
-            self.loss_dict["train_loss_G_feature_D"] = loss_G_feature_D
-            self.loss_dict["train_loss_G_pix"] = loss_G_pix
+            self.train_loss_dict["train_loss_G"] = loss_G
+            self.train_loss_dict["train_loss_G_adversarial"] = loss_G_adversarial
+            self.train_loss_dict["train_loss_G_xy_gradient"] = loss_G_xy_gradient
+            self.train_loss_dict["train_loss_G_z_gradient"] = loss_G_z_gradient
+            self.train_loss_dict["train_loss_G_divergence"] = loss_G_divergence
+            self.train_loss_dict["train_loss_G_xy_divergence"] = loss_G_xy_divergence
+            self.train_loss_dict["train_loss_G_feature_D"] = loss_G_feature_D
+            self.train_loss_dict["train_loss_G_pix"] = loss_G_pix
         else:
-            self.loss_dict["val_loss_G"] = loss_G
-            self.loss_dict["val_loss_G_adversarial"] = loss_G_adversarial
-            self.loss_dict["val_loss_G_xy_gradient"] = loss_G_xy_gradient
-            self.loss_dict["val_loss_G_z_gradient"] = loss_G_z_gradient
-            self.loss_dict["val_loss_G_divergence"] = loss_G_divergence
-            self.loss_dict["val_loss_G_xy_divergence"] = loss_G_xy_divergence
-            self.loss_dict["val_loss_G_feature_D"] = loss_G_feature_D
-            self.loss_dict["val_loss_G_pix"] = loss_G_pix
+            self.val_loss_dict["val_loss_G"] = loss_G
+            self.val_loss_dict["val_loss_G_adversarial"] = loss_G_adversarial
+            self.val_loss_dict["val_loss_G_xy_gradient"] = loss_G_xy_gradient
+            self.val_loss_dict["val_loss_G_z_gradient"] = loss_G_z_gradient
+            self.val_loss_dict["val_loss_G_divergence"] = loss_G_divergence
+            self.val_loss_dict["val_loss_G_xy_divergence"] = loss_G_xy_divergence
+            self.val_loss_dict["val_loss_G_feature_D"] = loss_G_feature_D
+            self.val_loss_dict["val_loss_G_pix"] = loss_G_pix
             self.hist_dict["SR_pix_distribution"] = fake_HR.detach().cpu().numpy()
             # if self.conv_mode == "horizontal_3D":
             #     grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
@@ -540,7 +543,7 @@ class wind_field_GAN_3D(BaseGAN):
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
         if training_epoch:
-            self.loss_dict["train_loss_D"] = loss_D
+            self.train_loss_dict["train_loss_D"] = loss_D
             # BCEWithLogitsLoss has sigmoid activation.
         else:
             # if self.conv_mode == "horizontal_3D":
@@ -560,7 +563,7 @@ class wind_field_GAN_3D(BaseGAN):
             # self.hist_dict["val_grad_D_last_layer"] = grad_end.numpy()
             # self.hist_dict["val_weight_D_first_layer"] = weight_start.numpy()
             # self.hist_dict["val_weight_D_last_layer"] = weight_end.numpy()
-            self.loss_dict["val_loss_D"] = loss_D
+            self.val_loss_dict["val_loss_D"] = loss_D
             self.hist_dict["D_pred_HR"] = (
                 torch.sigmoid(y_pred.detach()).cpu().numpy()[np.newaxis]
             )
@@ -605,6 +608,8 @@ class wind_field_GAN_3D(BaseGAN):
                 self.criterion(y_pred - torch.mean(fake_y_pred), self.HR_labels)
                 + self.criterion(fake_y_pred - torch.mean(y_pred), self.fake_HR_labels)
             ) / 2.0
+            if torch.all(self.HR_labels == 0.9):
+                loss_D -= 0.1985
         else:
             raise NotImplementedError(
                 f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
@@ -767,8 +772,11 @@ class wind_field_GAN_3D(BaseGAN):
     def test(self):
         raise NotImplementedError("test has not been implemented.")
 
-    def get_loss_dict_ref(self):
-        return self.loss_dict
+    def get_train_loss_dict_ref(self):
+        return self.train_loss_dict
+
+    def get_val_loss_dict_ref(self):
+        return self.val_loss_dict
 
     def get_hist_dict_ref(self):
         return self.hist_dict

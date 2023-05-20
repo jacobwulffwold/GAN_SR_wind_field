@@ -100,7 +100,8 @@ class GeneratorConfig(IniConfig):
     number_of_z_layers: int = 1
     conv_mode: str = "2D"
     use_mixed_precision: bool = True
-    terrain_number_of_features:int = 16
+    terrain_number_of_features: int = 16
+    dropout_probability: float = 0.0
 
     def setGeneratorConfig(self, gen_config):
         self.norm_type = gen_config.get("norm_type")
@@ -120,7 +121,10 @@ class GeneratorConfig(IniConfig):
         self.number_of_z_layers = gen_config.getint("number_of_z_layers")
         self.conv_mode = gen_config.get("conv_mode")
         self.use_mixed_precision = gen_config.getboolean("use_mixed_precision")
-        self.terrain_number_of_features = gen_config.getint("terrain_number_of_features")
+        self.terrain_number_of_features = gen_config.getint(
+            "terrain_number_of_features"
+        )
+        self.dropout_probability = gen_config.getfloat("dropout_probability")
 
 
 class DiscriminatorConfig(IniConfig):

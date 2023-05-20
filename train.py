@@ -159,14 +159,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 start_epoch_time.record()
                 start_data_load_check.record()
 
-            for i, (LR, HR, Z, is_ok, filenames) in enumerate(dataloader_train):
-                if not torch.all(is_ok == True):
-                    status_logger.info(
-                        f"skipping batch {i} due to bad sample, filename: {filenames[is_ok==False]}"
-                    )
-                    invalid_filenames.add(filenames[is_ok == False])
-                    continue
-
+            for i, (LR, HR, Z) in enumerate(dataloader_train):
                 if (
                     epoch == start_epoch + 1
                     and torch.cuda.is_available()
@@ -249,9 +242,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     if cfg.use_tensorboard_logger:
                         losses = dict(
                             (val_name, val.item())
-                            for val_name, val in gan.get_loss_dict_ref().items()
+                            for val_name, val in gan.get_train_loss_dict_ref().items()
                         )
-                        tb_writer.add_scalars("data/losses", losses, it)
+                        tb_writer.add_scalars("Losses/train", losses, it)
 
                 if dataloader_val is None:
                     continue
@@ -267,33 +260,22 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                     status_logger.debug(f"validation epoch (it {it})")
                     loss_vals = dict(
-                        (val_name, 0) for (val_name) in gan.get_loss_dict_ref().keys()
+                        (val_name, 0)
+                        for (val_name) in gan.get_val_loss_dict_ref().keys()
                     )
                     metrics_vals = dict(
                         (val_name, 0)
                         for (val_name) in gan.get_metrics_dict_ref().keys()
                     )
                     n = len(dataloader_val)
-                    # VISUALIZING
-                    # it_folder_path = os.path.join(cfg.env.this_runs_folder + "/", f"{it}_visuals" )
-                    # if not os.path.exists(it_folder_path):
-                    #    os.makedirs(it_folder_path)
-                    # os.makedirs("images/training/grnd_est", exist_ok=True)
-
                     i_val = 0
-                    for _, (LR, HR, Z, is_ok, filenames) in enumerate(dataloader_val):
-                        if not torch.all(is_ok == True):
-                            status_logger.warning(
-                                f"skipping batch {i} due to bad sample, filename: {filenames[is_ok==False]}"
-                            )
-                            invalid_filenames.add(filenames[is_ok == False])
-                            continue
+                    for _, (LR, HR, Z) in enumerate(dataloader_val):
                         i_val += 1
                         LR = LR.to(cfg.device, non_blocking=True)
                         HR = HR.to(cfg.device, non_blocking=True)
                         Z = Z.to(cfg.device, non_blocking=True)
                         gan.validation(LR, HR, Z, it)
-                        for val_name, val in gan.get_loss_dict_ref().items():
+                        for val_name, val in gan.get_val_loss_dict_ref().items():
                             loss_vals[val_name] += val.item() / n
 
                         for val_name, val in gan.get_metrics_dict_ref().items():
@@ -437,10 +419,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     pkl.dump(imgs, f)
 
                     if cfg.use_tensorboard_logger:
-                        tb_writer.add_scalars("data/losses", loss_vals, it)
+                        tb_writer.add_scalars("Losses/validation", loss_vals, it)
                         # for hist_name, val in hist_vals.items():
                         #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
-                        tb_writer.add_scalars("data/metrics", metrics_vals, it)
+                        tb_writer.add_scalars("metrics", metrics_vals, it)
 
                     stat_log_str = f"it: {it} "
                     for k, v in loss_vals.items():
@@ -494,7 +476,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         + ": "
                         + str(start_time.elapsed_time(end_time))
                     )
-                status_logger.info("devices D_forward: "+gan.device_check)
+                status_logger.info("devices D_forward: " + gan.device_check)
     with open("./data/invalid_files.txt", "a") as f:
         for item in invalid_filenames:
             f.write("%s\n" % item)
@@ -512,19 +494,75 @@ def save_validation_images(
     it,
 ):
     fig, axes = plt.subplots(2, 2)
-    axes[0, 0].pcolor(wind_comp_LR[:, :, wind_height_index])
+    vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
+        wind_comp_HR[:, :, wind_height_index]
+    )
+    axes[0, 0].pcolor(
+        wind_comp_LR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
+    )
     axes[0, 0].set_title("LR")
-    axes[0, 1].pcolor(wind_comp_HR[:, :, wind_height_index])
+    axes[0, 1].pcolor(
+        wind_comp_HR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
+    )
     axes[0, 1].set_title("HR")
-    axes[1, 0].pcolor(wind_comp_SR[:, :, wind_height_index])
+    axes[1, 0].pcolor(
+        wind_comp_SR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
+    )
     axes[1, 0].set_title("SR")
-    axes[1, 1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
+    axes[1, 1].pcolor(
+        wind_comp_trilinear[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+    )
     axes[1, 1].set_title("Trilinear")
-    divider = make_axes_locatable(plt.gca())
-    cax = divider.append_axes("right", "5%", pad="3%")
-    plt.colorbar(plt.pcolor(wind_comp_HR[:, :, wind_height_index]), cax=cax)
-    fig.tight_layout()
-    tb_writer.add_figure(str(it) + "___" + title + str(wind_height_index), fig, it)
+    fig.subplots_adjust(hspace=0.4, wspace=0.2)
+    fig.colorbar(
+        plt.pcolor(wind_comp_HR[:, :, wind_height_index], cmap="viridis"), ax=axes
+    )
+
+    tb_writer.add_figure(
+        "im/wind_field/" + str(it) + "___" + title + str(wind_height_index), fig, it
+    )
+
+    fig2, axes2 = plt.subplots(1, 3, figsize=(12, 3), sharey=True)
+    axes2[1].pcolor(wind_comp_SR[:, :, wind_height_index])
+    axes2[1].set_title("SR scaled wind field")
+    axes2[0].pcolor(
+        wind_comp_HR[:, :, wind_height_index] - wind_comp_SR[:, :, wind_height_index],
+        cmap="viridis",
+    )
+    axes2[0].set_title("Error HR-SR")
+    axes2[2].pcolor(
+        abs(
+            wind_comp_HR[:, :, wind_height_index]
+            - wind_comp_SR[:, :, wind_height_index]
+        ),
+        cmap="jet",
+    )
+    axes2[2].set_title("Absolute error HR-SR")
+    fig2.colorbar(plt.pcolor(wind_comp_SR[:, :, wind_height_index]), ax=axes2[1])
+    fig2.colorbar(
+        plt.pcolor(
+            wind_comp_HR[:, :, wind_height_index]
+            - wind_comp_SR[:, :, wind_height_index],
+            cmap="viridis",
+        ),
+        ax=axes2[0],
+    )
+    fig2.colorbar(
+        plt.pcolor(
+            abs(
+                wind_comp_HR[:, :, wind_height_index]
+                - wind_comp_SR[:, :, wind_height_index]
+            ),
+            cmap="jet",
+        ),
+        ax=axes2[2],
+    )
+    tb_writer.add_figure(
+        "im/SR_error/" + str(it) + "___" + title + str(wind_height_index), fig2, it
+    )
 
 
 def log_status_logs(status_logger: logging.Logger, logs: list):
