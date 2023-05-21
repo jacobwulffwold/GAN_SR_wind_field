@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --job-name="dropout_slice2"
-#SBATCH --output=dropout_slice2.out
+#SBATCH --job-name="equal_D_G_training_dropout_lower_div_cost2"
+#SBATCH --output=equal_D_G_training_dropout_lower_div_cost2.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -16,4 +16,4 @@ module purge
 module load Anaconda3/2022.05
 source /cluster/apps/eb/software/Anaconda3/2022.05/etc/profile.d/conda.sh conda activate myenv
 conda activate myenv
-python run.py --train --cfg runs/dropout_slice/config.ini 
+python run.py --train --cfg runs/equal_D_G_training_dropout_lower_div_cost/config.ini 
