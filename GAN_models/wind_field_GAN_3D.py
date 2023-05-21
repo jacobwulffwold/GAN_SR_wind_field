@@ -35,26 +35,26 @@ class wind_field_GAN_3D(BaseGAN):
         self.memory_dict = {}
         self.runtime_dict = {}
         self.train_loss_dict = {
-            "train_loss_D": torch.zeros(1),
-            "train_loss_G": torch.zeros(1),
-            "train_loss_G_adversarial": torch.zeros(1),
-            "train_loss_G_pix": torch.zeros(1),
-            "train_loss_G_xy_gradient": torch.zeros(1),
-            "train_loss_G_z_gradient": torch.zeros(1),
-            "train_loss_G_divergence": torch.zeros(1),
-            "train_loss_G_xy_divergence": torch.zeros(1),
-            "train_loss_G_feature_D": torch.zeros(1),
+            "loss_D": torch.zeros(1),
+            "G_total": torch.zeros(1),
+            "G_adversarial": torch.zeros(1),
+            "G_pix": torch.zeros(1),
+            "G_xy_gradient": torch.zeros(1),
+            "G_z_gradient": torch.zeros(1),
+            "G_divergence": torch.zeros(1),
+            "G_xy_divergence": torch.zeros(1),
+            "G_feature_D": torch.zeros(1),
         }
         self.val_loss_dict = {
-            "val_loss_G_xy_gradient": torch.zeros(1),
-            "val_loss_G_z_gradient": torch.zeros(1),
-            "val_loss_G_divergence": torch.zeros(1),
-            "val_loss_G_xy_divergence": torch.zeros(1),
-            "val_loss_G_feature_D": torch.zeros(1),
-            "val_loss_D": torch.zeros(1),
-            "val_loss_G": torch.zeros(1),
-            "val_loss_G_adversarial": torch.zeros(1),
-            "val_loss_G_pix": torch.zeros(1),
+            "loss_D": torch.zeros(1),
+            "G_total": torch.zeros(1),
+            "G_adversarial": torch.zeros(1),
+            "G_pix": torch.zeros(1),
+            "G_xy_gradient": torch.zeros(1),
+            "G_z_gradient": torch.zeros(1),
+            "G_divergence": torch.zeros(1),
+            "G_xy_divergence": torch.zeros(1),
+            "G_feature_D": torch.zeros(1),
         }
         self.hist_dict = {
             "val_grad_G_first_layer": torch.zeros(1),
@@ -109,6 +109,7 @@ class wind_field_GAN_3D(BaseGAN):
             use_mixed_precision=cfg_G.use_mixed_precision,
             terrain_number_of_features=cfg_G.terrain_number_of_features,
             dropout_probability=cfg_G.dropout_probability,
+            max_norm=cfg_G.max_norm,
         ).to(self.device, non_blocking=True)
         initialization.init_weights(self.G, scale=cfg_G.weight_init_scale)
         if torch.cuda.is_available() and not self.memory_dict.get("G"):
@@ -187,7 +188,7 @@ class wind_field_GAN_3D(BaseGAN):
             self.xy_divergence_criterion = nn.MSELoss().to(
                 cfg.device, non_blocking=True
             )
-            self.feature_D_criterion = nn.L1Loss().to(cfg.device, non_blocking=True)
+            self.feature_D_criterion = nn.MSELoss().to(cfg.device, non_blocking=True)
 
             if cfg_t.pixel_criterion is None or cfg_t.pixel_criterion == "none":
                 self.pixel_criterion = None
@@ -469,6 +470,8 @@ class wind_field_GAN_3D(BaseGAN):
                 self.memory_dict["after_G_backward"] = (
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
+                self.G.scaler.unscale_(self.optimizer_G)
+                torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                 start_Gs = torch.cuda.Event(enable_timing=True)
                 end_Gs = torch.cuda.Event(enable_timing=True)
                 start_Gs.record()
@@ -483,6 +486,8 @@ class wind_field_GAN_3D(BaseGAN):
             else:
                 # loss_G.backward()
                 self.G.scaler.scale(loss_G).backward()
+                self.G.scaler.unscale_(self.optimizer_G)
+                torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                 # self.optimizer_G.step()
                 self.G.scaler.step(self.optimizer_G)
                 self.G.scaler.update()

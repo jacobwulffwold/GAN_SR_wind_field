@@ -101,6 +101,7 @@ class GeneratorConfig(IniConfig):
     use_mixed_precision: bool = True
     terrain_number_of_features: int = 16
     dropout_probability: float = 0.0
+    max_norm:float = 1.0
 
     def setGeneratorConfig(self, gen_config):
         self.norm_type = gen_config.get("norm_type")
@@ -123,6 +124,7 @@ class GeneratorConfig(IniConfig):
             "terrain_number_of_features"
         )
         self.dropout_probability = gen_config.getfloat("dropout_probability")
+        self.max_norm = gen_config.getfloat("max_norm")
 
 
 class DiscriminatorConfig(IniConfig):
@@ -295,6 +297,7 @@ class Config(IniConfig):
     is_use: bool
     is_test: bool
     is_download: bool
+    slurm_array_id:int = 1
 
     def __init__(self, ini_path):
         config = ConfigParser(allow_no_value=True)

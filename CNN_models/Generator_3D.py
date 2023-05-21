@@ -42,6 +42,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         device="cpu",
         terrain_number_of_features: int = 16,
         dropout_probability: float = 0.0,
+        max_norm:float = 1.0
     ):
         super(Generator_3D, self).__init__()
 
@@ -55,6 +56,8 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 f"Generator: warning: activation type {act_type} has not been implemented - defaulting to leaky ReLU (0.2)"
             )
             slope = 0.2
+        
+        self.max_norm = max_norm
 
         layer_type = nn.Conv2d if conv_mode == "2D" else nn.Conv3d
 

@@ -36,6 +36,31 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
+    if cfg.slurm_array_id > 5:
+        cfg.name = cfg.name + "_schedule"
+        cfg.training.multistep_lr_steps = [3000, 6000, 10000, 30000, 50000, 70000]
+
+    if cfg.slurm_array_id in {1,6}:
+        pass
+
+    elif cfg.slurm_array_id in {2,7}:
+        cfg.name = cfg.name + "_seed"
+        cfg.seed = 2021
+
+    elif cfg.slurm_array_id in {3,8}:
+        cfg.name = cfg.name + "_lr"
+        cfg.training.learning_rate_g = 0.00001
+        cfg.training.learning_rate_d = 0.00001
+
+    elif cfg.slurm_array_id in {4,9}:
+        cfg.name = cfg.name + "_noSlice"
+        cfg.gan_config.enable_slicing = False
+
+    elif cfg.slurm_array_id in {5,10}:
+        cfg.name = cfg.name + "_noDropout"
+        cfg.generator.dropout_probability = 0.0
+    else:
+        raise ValueError("slurm_array_id must be between 1 and 10")
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -136,12 +161,22 @@ def argv_to_cfg() -> Config:
         action="store_true",
         help="run tests with supplied config",
     )
+
+    parser.add_argument(
+        "--slurm_array_id",
+        type=int,
+        default=0,
+        help="ID for slurm job",
+    )
+
+
     args = parser.parse_args()
     is_test = args.test
     is_train = args.train
     is_use = args.use
     is_download = args.download
     cfg_path = args.cfg
+    slurm_array_id = args.slurm_array_id
 
     if is_use:
         cfg_path = (
@@ -154,6 +189,7 @@ def argv_to_cfg() -> Config:
     cfg.is_use = is_use
     cfg.is_train = is_train
     cfg.is_download = is_download
+    cfg.slurm_array_id = slurm_array_id
 
     return cfg
 
