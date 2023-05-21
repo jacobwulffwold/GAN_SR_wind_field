@@ -61,6 +61,9 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         hr_pad = (hr_kern_size - 1) // 2
         self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
+        if dropout_probability==None:
+            dropout_probability = 0.0
+
         dropout = (
             nn.Dropout2d(p=dropout_probability)
             if conv_mode == "2D"
