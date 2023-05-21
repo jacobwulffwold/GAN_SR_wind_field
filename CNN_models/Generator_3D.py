@@ -89,7 +89,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 lrelu_negative_slope=slope,
                 lrelu=False,
             )
-            hr_convs = [
+            hr_convs_w_dropout = [
                 create_conv_lrelu_layer(
                     number_of_features + terrain_number_of_features,
                     number_of_features + terrain_number_of_features,
@@ -98,7 +98,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                     lrelu_negative_slope=slope,
                     layer_type=layer_type,
                 ),
-                # dropout,
+                dropout,
                 layer_type(
                     number_of_features + terrain_number_of_features,
                     out_channels,
@@ -131,7 +131,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 number_of_z_layers=number_of_z_layers,
                 lrelu=False,
             )
-            hr_convs = [
+            hr_convs_w_dropout = [
                 Horizontal_Conv_3D(
                     number_of_features + terrain_number_of_features,
                     number_of_features + terrain_number_of_features,
@@ -139,7 +139,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                     lrelu_negative_slope=slope,
                     number_of_z_layers=number_of_z_layers,
                 ),
-                # dropout,
+                dropout,
                 Horizontal_Conv_3D(
                     number_of_features + terrain_number_of_features,
                     out_channels,
@@ -197,7 +197,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         ]
 
         self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
-        self.hr_convs = nn.Sequential(*hr_convs)
+        self.hr_convs = nn.Sequential(*hr_convs_w_dropout)
         self.terrain_conv = terrain_conv
         self.status_logs.append(f"Generator: finished init")
 
