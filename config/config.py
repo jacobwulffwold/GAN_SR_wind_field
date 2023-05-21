@@ -97,7 +97,6 @@ class GeneratorConfig(IniConfig):
     hr_kern_size: int = 3
     weight_init_scale: float = 1.0
     lff_kern_size: int = 3
-    number_of_z_layers: int = 1
     conv_mode: str = "2D"
     use_mixed_precision: bool = True
     terrain_number_of_features: int = 16
@@ -118,7 +117,6 @@ class GeneratorConfig(IniConfig):
         self.hr_kern_size = gen_config.getint("hr_kern_size")
         self.weight_init_scale = gen_config.getfloat("weight_init_scale")
         self.lff_kern_size = gen_config.getint("lff_kern_size")
-        self.number_of_z_layers = gen_config.getint("number_of_z_layers")
         self.conv_mode = gen_config.get("conv_mode")
         self.use_mixed_precision = gen_config.getboolean("use_mixed_precision")
         self.terrain_number_of_features = gen_config.getint(
@@ -135,7 +133,6 @@ class DiscriminatorConfig(IniConfig):
     in_num_ch: int = 3
     feat_kern_size: int = 3
     weight_init_scale: float = 1.0
-    number_of_z_layers: int = 10
     conv_mode: str = "3D"
     use_mixed_precision: bool = True
 
@@ -147,7 +144,6 @@ class DiscriminatorConfig(IniConfig):
         self.in_num_ch = disc_config.getint("in_num_ch")
         self.feat_kern_size = disc_config.getint("feat_kern_size")
         self.weight_init_scale = disc_config.getfloat("weight_init_scale")
-        self.number_of_z_layers = disc_config.getint("number_of_z_layers")
         self.conv_mode = disc_config.get("conv_mode")
         self.use_mixed_precision = disc_config.getboolean("use_mixed_precision")
 
@@ -169,9 +165,6 @@ class DatasetConfig(IniConfig):
     num_workers: int = 0
     batch_size: int = 16
     hr_img_size: int = 192
-    data_aug_gaussian_noise: bool = True
-    gaussian_stddev: float = 0.01
-    data_aug_shuffle: bool = True
     data_aug_flip: bool = True
     data_aug_rot: bool = True
 
@@ -183,9 +176,6 @@ class DatasetConfig(IniConfig):
         self.num_workers = data_config.getint("num_workers")
         self.batch_size = data_config.getint("batch_size")
         self.hr_img_size = data_config.getint("hr_img_size")
-        self.data_aug_gaussian_noise = data_config.getboolean("data_aug_gaussian_noise")
-        self.gaussian_stddev = data_config.getfloat("gaussian_stddev")
-        self.data_aug_shuffle = data_config.getboolean("data_aug_shuffle")
         self.data_aug_flip = data_config.getboolean("data_aug_flip")
         self.data_aug_rot = data_config.getboolean("data_aug_rot")
 
@@ -278,7 +268,6 @@ class TrainingConfig(IniConfig):
         self.val_period = train_config.getint("val_period")
         self.save_model_period = train_config.getint("save_model_period")
         self.log_period = train_config.getint("log_period")
-        self.number_of_z_layers = train_config.getint("number_of_z_layers")
         self.conv_mode = train_config.get("conv_mode")
         self.train_eval_test_ratio = train_config.getfloat("train_eval_test_ratio")
 
