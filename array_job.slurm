@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=1-10
+#SBATCH --array=4,9
 #SBATCH --job-name=GAN_training_LR100k
 #SBATCH --output=%a_LR100k.out
 #SBATCH --mail-user=jawold@stud.ntnu.no

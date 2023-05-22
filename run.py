@@ -55,12 +55,15 @@ def main():
     elif cfg.slurm_array_id in {4,9}:
         cfg.name = cfg.name + "_noSlice"
         cfg.gan_config.enable_slicing = False
+        cfg.dataset_train.batch_size = 8
+        cfg.dataset_test.batch_size = 8
+        cfg.dataset_val.batch_size = 8
 
     elif cfg.slurm_array_id in {5,10}:
         cfg.name = cfg.name + "_noDropout"
         cfg.generator.dropout_probability = 0.0
     else:
-        raise ValueError("slurm_array_id must be between 1 and 10")
+        raise ValueError("slurm_array_id must be in {1,2,3,4,5,6,7,8,9,10}")
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
