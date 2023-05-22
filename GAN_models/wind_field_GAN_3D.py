@@ -401,21 +401,17 @@ class wind_field_GAN_3D(BaseGAN):
             fake_HR[:, :3], self.x, self.y, Z
         )
 
+        max_xy_gradient, max_z_gradient, max_divergence, max_xy_divergence = get_norm_factors_of_gradients(HR_wind_gradient, SR_wind_gradient)
+
         loss_G_xy_gradient = self.gradient_xy_criterion(
-            SR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
-            HR_wind_gradient[:, :6] / torch.max(abs(HR_wind_gradient[:, :6])),
+            SR_wind_gradient[:, :6] / max_xy_gradient,
+            HR_wind_gradient[:, :6] / max_xy_gradient,
         )
         loss_G_z_gradient = self.gradient_z_criterion(
-            SR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
-            HR_wind_gradient[:, 6:] / torch.max(HR_wind_gradient[:, 6:]),
+            SR_wind_gradient[:, 6:] / max_z_gradient,
+            HR_wind_gradient[:, 6:] / max_z_gradient,
         )
-        max_divergence = torch.max(
-            abs(
-                HR_wind_gradient[:, 0, :, :, :]
-                + HR_wind_gradient[:, 4, :, :, :]
-                + HR_wind_gradient[:, 8, :, :, :]
-            )
-        )
+
         loss_G_divergence = self.divergence_criterion(
             (
                 HR_wind_gradient[:, 0, :, :, :]
@@ -431,9 +427,6 @@ class wind_field_GAN_3D(BaseGAN):
             / max_divergence,
         )
 
-        max_xy_divergence = torch.max(
-            abs((HR_wind_gradient[:, 0, :, :, :] + HR_wind_gradient[:, 4, :, :, :]))
-        )
         loss_G_xy_divergence = self.xy_divergence_criterion(
             (HR_wind_gradient[:, 0, :, :, :] + HR_wind_gradient[:, 4, :, :, :])
             / max_xy_divergence,
@@ -825,7 +818,6 @@ class wind_field_GAN_3D(BaseGAN):
             + "\n"
         )
 
-
 def compute_psnr_for_SR_and_trilinear(
     LR,
     HR: torch.Tensor,
@@ -857,3 +849,37 @@ def compute_psnr_for_SR_and_trilinear(
         return val_PSNR, val_trilinear_PSNR
     else:
         return val_PSNR
+
+@torch.jit.script
+def get_norm_factors_of_gradients(HR_wind_gradient:torch.Tensor, SR_wind_gradient:torch.Tensor):
+
+    max_HR_xy_gradient = torch.max(torch.abs(HR_wind_gradient[:, :6]))
+    max_SR_xy_gradient = torch.max(torch.abs(SR_wind_gradient[:, :6]))
+
+    max_HR_z_gradient = torch.max(HR_wind_gradient[:, 6:])
+    max_SR_z_gradient = torch.max(SR_wind_gradient[:, 6:])
+
+    max_HR_divergence = torch.max(
+        torch.abs(
+            HR_wind_gradient[:, 0, :, :, :]
+            + HR_wind_gradient[:, 4, :, :, :]
+            + HR_wind_gradient[:, 8, :, :, :]
+        )
+    )
+    max_SR_divergence = torch.max(
+        torch.abs(
+            SR_wind_gradient[:, 0, :, :, :]
+            + SR_wind_gradient[:, 4, :, :, :]
+            + SR_wind_gradient[:, 8, :, :, :]
+        )
+    )
+
+    max_HR_xy_divergence = torch.max(
+        torch.abs((HR_wind_gradient[:, 0, :, :, :] + HR_wind_gradient[:, 4, :, :, :]))
+    )
+
+    max_SR_xy_divergence = torch.max(
+        torch.abs((SR_wind_gradient[:, 0, :, :, :] + SR_wind_gradient[:, 4, :, :, :]))
+    )
+
+    return [HR_max if SR_max<10*HR_max else SR_max/10 for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]
