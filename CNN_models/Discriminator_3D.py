@@ -50,7 +50,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
             slope = 0.2
 
         features = []
-        self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
+        # self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
         remainder_z_layers = [number_of_z_layers]
         for i in range(5):

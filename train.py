@@ -530,7 +530,7 @@ def save_validation_images(
     axes2[1].set_title("SR scaled wind field")
     axes2[0].pcolor(
         wind_comp_HR[:, :, wind_height_index] - wind_comp_SR[:, :, wind_height_index],
-        cmap="viridis",
+        cmap="coolwarm",
     )
     axes2[0].set_title("Error HR-SR")
     axes2[2].pcolor(
