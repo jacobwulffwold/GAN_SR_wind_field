@@ -884,4 +884,4 @@ def get_norm_factors_of_gradients(HR_wind_gradient:torch.Tensor, SR_wind_gradien
         torch.abs((SR_wind_gradient[:, 0, :, :, :] + SR_wind_gradient[:, 4, :, :, :]))
     )
 
-    return [HR_max if SR_max<30*HR_max else SR_max/30 for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]
+    return [HR_max if SR_max<10*HR_max else SR_max/10 for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]
