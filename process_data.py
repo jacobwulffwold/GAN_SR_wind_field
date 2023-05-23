@@ -198,6 +198,12 @@ def download_all_files_and_prepare(
     finished = False
     start = -1
     subfolder = slice_dict_folder_name(x_dict, y_dict, z_dict)
+    if os.path.exists("./data/downloaded_raw_bessaker_data/invalid_files.txt"):
+        invalid_urls = set(
+                line.strip() for line in open("./data/downloaded_raw_bessaker_data/invalid_files.txt")
+            )
+    else:
+        invalid_urls = set()
 
     if not os.path.exists(folder + subfolder):
         os.makedirs(folder + subfolder)
@@ -233,6 +239,7 @@ def download_all_files_and_prepare(
                                 x_dict,
                                 y_dict,
                                 z_dict,
+                                invalid_urls,
                                 folder=folder + subfolder,
                             )
                         )
@@ -256,6 +263,7 @@ def download_all_files_and_prepare(
                             x_dict,
                             y_dict,
                             z_dict,
+                            invalid_urls,
                             folder=folder + subfolder,
                         )
                     )

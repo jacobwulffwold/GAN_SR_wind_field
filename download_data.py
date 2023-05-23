@@ -99,7 +99,7 @@ def filenames_from_start_and_end_dates(start_date: date, end_date: date):
     return names
 
 
-def download_Bessaker_data(start_date, end_date, destination_folder):
+def download_Bessaker_data(start_date, end_date, destination_folder, invalid_urls):
     start_date = start_date
     end_date = end_date
     delta = end_date - start_date
@@ -118,30 +118,34 @@ def download_Bessaker_data(start_date, end_date, destination_folder):
                 counter = counter + 1
                 print("Number of files downloaded ", counter, "/", no_data_points)
             elif os.path.isfile(local_filename) != True:
-                print("Attempting to download file ", filename)
-                URL = (
-                    home_dir
-                    + str(temp_date.year)
-                    + "/"
-                    + str(temp_date.month).zfill(2)
-                    + "/"
-                    + str(temp_date.day).zfill(2)
-                    + "/"
-                    + filename
-                )
-                try:
-                    if check(URL):
-                        request.urlretrieve(URL, local_filename)
-                        print("Downloaded file", filename)
-                        counter = counter + 1
-                        print(
-                            "Number of files downloaded ", counter, "/", no_data_points
-                        )
-                    else:
-                        print("File not found")
-                except TypeError as e:
-                    print("Error downlowing file {}".format(e))
-                    print("Continuing")
+                if filename not in invalid_urls:
+                    print("Attempting to download file ", filename)
+                    URL = (
+                        home_dir
+                        + str(temp_date.year)
+                        + "/"
+                        + str(temp_date.month).zfill(2)
+                        + "/"
+                        + str(temp_date.day).zfill(2)
+                        + "/"
+                        + filename
+                    )
+                    try:
+                        if check(URL):
+                            request.urlretrieve(URL, local_filename)
+                            print("Downloaded file", filename)
+                            counter = counter + 1
+                            print(
+                                "Number of files downloaded ", counter, "/", no_data_points
+                            )
+                        else:
+                            print("File not found")
+                            with open("./data/downloaded_raw_bessaker_data/invalid_files.txt", "a") as f:
+                                f.write(filename + "\n")
+
+                    except TypeError as e:
+                        print("Error downlowing file {}".format(e))
+                        print("Continuing")
 
 
 def combine_files(data_code, start_date, end_date, outfilename):
@@ -846,7 +850,7 @@ def split_into_separate_files(
 
 
 def download_and_split(
-    filenames, terrain, x_dict, y_dict, z_dict, folder="./data/full_dataset_files/"
+    filenames, terrain, x_dict, y_dict, z_dict, invalid_urls, folder="./data/full_dataset_files/"
 ):
     data_code = "simra_BESSAKER_"
     start_time = datetime.strptime(filenames[0][:-7], "%Y-%m-%d")
@@ -861,7 +865,7 @@ def download_and_split(
         end_date = (start_time + timedelta(days=end - 1)).date()
 
         download_Bessaker_data(
-            start_date, end_date, "./data/downloaded_raw_bessaker_data/"
+            start_date, end_date, "./data/downloaded_raw_bessaker_data/", invalid_urls,
         )
 
         z, u, v, w, pressure, invalid_download_files = extract_slice_and_filter_3D(
