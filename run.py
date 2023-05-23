@@ -41,7 +41,8 @@ def main():
         cfg.training.multistep_lr_steps = [3000, 6000, 10000, 30000, 50000, 70000]
 
     if cfg.slurm_array_id in {1,4}:
-        cfg.name = cfg.name + "_5"
+        pass
+        # cfg.name = cfg.name + "_5"
 
     if cfg.slurm_array_id in {2,5}:
         # cfg.name = cfg.name + "_seed"

@@ -16,10 +16,9 @@ import torch
 import torch.cuda
 import torch.nn as nn
 import tensorboardX
-from process_data import preprosess
 import config.config as config
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import pickle
 
 
 # import data.imageset as imageset
@@ -173,10 +172,21 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     start_to_device_check = torch.cuda.Event(enable_timing=True)
                     end_to_device_check = torch.cuda.Event(enable_timing=True)
                     start_to_device_check.record()
+                
+                if it > 220:
+                    stat_log_str = f"it: {it-1} "
+                    for k, v in gan.get_train_loss_dict_ref().items():
+                        stat_log_str += f"{k}: {v} "
+                    for k, v in gan.get_metrics_dict_ref().items():
+                        stat_log_str += f"{k}: {v} "
+                    status_logger.debug(stat_log_str)
+                    pickle.dump([LR, HR, Z], open("./"+str(it)+"_debug_nan_inf.pkl", "wb"))
 
-                if it > cfg_t.niter:
+                if it > 224: #cfg_t.niter
                     break
 
+                
+                
                 it += 1
                 bar.update(i, epoch, it)
 
@@ -193,6 +203,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     start_update_D_iter = torch.cuda.Event(enable_timing=True)
                     end_update_D_iter = torch.cuda.Event(enable_timing=True)
                     start_update_D_iter.record()
+                
+                
 
                 if it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
