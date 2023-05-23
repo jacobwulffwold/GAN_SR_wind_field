@@ -633,7 +633,6 @@ class wind_field_GAN_3D(BaseGAN):
                 start_Ds = torch.cuda.Event(enable_timing=True)
                 end_Ds = torch.cuda.Event(enable_timing=True)
                 start_Ds.record()
-                self.optimizer_D.step()
                 # self.D.scaler.step(self.optimizer_D)
                 # self.D.scaler.update()
                 self.optimizer_D.step()
