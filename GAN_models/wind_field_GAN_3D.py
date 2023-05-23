@@ -435,8 +435,6 @@ class wind_field_GAN_3D(BaseGAN):
             / max_xy_divergence,
         )
 
-        loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient = [0 if loss.isnan() else loss for loss in [loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient]]
-
         loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
         loss_G_feature_D *= self.cfg.training.feature_D_loss_weight
         loss_G_pix *= self.cfg.training.pixel_loss_weight
@@ -460,7 +458,8 @@ class wind_field_GAN_3D(BaseGAN):
                 end_GB = torch.cuda.Event(enable_timing=True)
                 start_GB.record()
                 # self.G.scaler.scale(loss_G).backward()
-                loss_G.backward()
+                if not(loss_G.isnan()):
+                    loss_G.backward()
                 end_GB.record()
                 self.runtime_dict["G_backward"] = (start_GB, end_GB)
                 self.memory_dict["after_G_backward"] = (
@@ -473,7 +472,8 @@ class wind_field_GAN_3D(BaseGAN):
                 start_Gs = torch.cuda.Event(enable_timing=True)
                 end_Gs = torch.cuda.Event(enable_timing=True)
                 start_Gs.record()
-                self.optimizer_G.step()
+                if not(loss_G.isnan()):
+                    self.optimizer_G.step()
                 # self.G.scaler.step(self.optimizer_G)
                 # self.G.scaler.update()
                 end_Gs.record()
@@ -482,13 +482,14 @@ class wind_field_GAN_3D(BaseGAN):
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
             else:
-                loss_G.backward()
-                # self.G.scaler.scale(loss_G).backward()
-                # self.G.scaler.unscale_(self.optimizer_G)
-                torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
-                self.optimizer_G.step()
-                # self.G.scaler.step(self.optimizer_G)
-                # self.G.scaler.update()
+                if not(loss_G.isnan()):
+                    loss_G.backward()
+                    # self.G.scaler.scale(loss_G).backward()
+                    # self.G.scaler.unscale_(self.optimizer_G)
+                    torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
+                    self.optimizer_G.step()
+                    # self.G.scaler.step(self.optimizer_G)
+                    # self.G.scaler.update()
 
         self.log_G_losses(
             fake_HR,
