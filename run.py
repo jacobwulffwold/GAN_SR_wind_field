@@ -40,11 +40,17 @@ def main():
         cfg.name = cfg.name + "_schedule"
         cfg.training.multistep_lr_steps = [3000, 6000, 10000, 30000, 50000, 70000]
 
-    if cfg.slurm_array_id in {1,4}:
-        pass
-        # cfg.name = cfg.name + "_5"
+    if cfg.slurm_array_id in {1,7}:
+        cfg.name = cfg.name + "_STD"
 
-    if cfg.slurm_array_id in {2,5}:
+    if cfg.slurm_array_id in {2,8}:
+        # cfg.name = cfg.name + "_seed"
+        # cfg.seed = 2021
+        cfg.name = cfg.name + "_5"
+        cfg.training.learning_rate_g = 1e-5
+        cfg.training.learning_rate_d = 1e-5
+
+    if cfg.slurm_array_id in {3,6}:
         # cfg.name = cfg.name + "_seed"
         # cfg.seed = 2021
         cfg.name = cfg.name + "_6"
@@ -52,17 +58,16 @@ def main():
         cfg.training.learning_rate_d = 1e-6
 
 
-    if cfg.slurm_array_id in {3,8}:
+    if cfg.slurm_array_id in {4,5}:
         cfg.name = cfg.name + "_7"
         cfg.training.learning_rate_g = 1e-7
         cfg.training.learning_rate_d = 1e-7
 
-    if cfg.slurm_array_id in {4,5}:
+    if cfg.slurm_array_id in {5,6}:
         # cfg.name = cfg.name + "_noSlice"
-        cfg.name = cfg.name + "_48batch"
-        cfg.dataset_train.batch_size = cfg.dataset_train.batch_size + 16
-        cfg.dataset_test.batch_size = cfg.dataset_test.batch_size + 16
-        cfg.dataset_val.batch_size = cfg.dataset_val.batch_size + 16
+        cfg.name = cfg.name + "_old_weight_scale"
+        cfg.generator.weight_init_scale = 0.5
+        cfg.generator.weight_init_scale = 1.0
         # cfg.gan_config.enable_slicing = False
         # cfg.dataset_train.batch_size = 8
         # cfg.dataset_test.batch_size = 8

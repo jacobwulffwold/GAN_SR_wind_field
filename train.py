@@ -547,7 +547,7 @@ def save_validation_images(
         plt.pcolor(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_SR[:, :, wind_height_index],
-            cmap="viridis",
+            cmap="coolwarm",
         ),
         ax=axes2[0],
     )
