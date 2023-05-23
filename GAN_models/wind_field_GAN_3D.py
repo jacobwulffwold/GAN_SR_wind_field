@@ -133,6 +133,7 @@ class wind_field_GAN_3D(BaseGAN):
                     conv_mode=cfg_gan.conv_mode,
                     use_mixed_precision=cfg_D.use_mixed_precision,
                     enable_slicing=cfg_gan.enable_slicing,
+                    dropout_probability=cfg_D.dropout_probability,
                 ).to(self.device, non_blocking=True)
             else:
                 raise NotImplementedError(
@@ -456,36 +457,36 @@ class wind_field_GAN_3D(BaseGAN):
                 start_GB = torch.cuda.Event(enable_timing=True)
                 end_GB = torch.cuda.Event(enable_timing=True)
                 start_GB.record()
-                self.G.scaler.scale(loss_G).backward()
-                # loss_G.backward()
+                # self.G.scaler.scale(loss_G).backward()
+                loss_G.backward()
                 end_GB.record()
                 self.runtime_dict["G_backward"] = (start_GB, end_GB)
                 self.memory_dict["after_G_backward"] = (
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
                 
-                self.G.scaler.unscale_(self.optimizer_G)
+                # self.G.scaler.unscale_(self.optimizer_G)
                 torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                 
                 start_Gs = torch.cuda.Event(enable_timing=True)
                 end_Gs = torch.cuda.Event(enable_timing=True)
                 start_Gs.record()
-                # self.optimizer_G.step()
-                self.G.scaler.step(self.optimizer_G)
-                self.G.scaler.update()
+                self.optimizer_G.step()
+                # self.G.scaler.step(self.optimizer_G)
+                # self.G.scaler.update()
                 end_Gs.record()
                 self.runtime_dict["G_step"] = (start_Gs, end_Gs)
                 self.memory_dict["after_G_step"] = (
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
             else:
-                # loss_G.backward()
-                self.G.scaler.scale(loss_G).backward()
-                self.G.scaler.unscale_(self.optimizer_G)
+                loss_G.backward()
+                # self.G.scaler.scale(loss_G).backward()
+                # self.G.scaler.unscale_(self.optimizer_G)
                 torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
-                # self.optimizer_G.step()
-                self.G.scaler.step(self.optimizer_G)
-                self.G.scaler.update()
+                self.optimizer_G.step()
+                # self.G.scaler.step(self.optimizer_G)
+                # self.G.scaler.update()
 
         self.log_G_losses(
             fake_HR,
@@ -622,8 +623,8 @@ class wind_field_GAN_3D(BaseGAN):
                 start_DB = torch.cuda.Event(enable_timing=True)
                 end_DB = torch.cuda.Event(enable_timing=True)
                 start_DB.record()
-                self.D.scaler.scale(loss_D).backward()
-                # loss_D.backward()
+                # self.D.scaler.scale(loss_D).backward()
+                loss_D.backward()
                 end_DB.record()
                 self.runtime_dict["D_backward"] = (start_DB, end_DB)
                 self.memory_dict["after_D_backward"] = (
@@ -632,9 +633,9 @@ class wind_field_GAN_3D(BaseGAN):
                 start_Ds = torch.cuda.Event(enable_timing=True)
                 end_Ds = torch.cuda.Event(enable_timing=True)
                 start_Ds.record()
-                # self.optimizer_D.step()
-                self.D.scaler.step(self.optimizer_D)
-                self.D.scaler.update()
+                self.optimizer_D.step()
+                # self.D.scaler.step(self.optimizer_D)
+                # self.D.scaler.update()
                 self.optimizer_D.step()
                 end_Ds.record()
                 self.runtime_dict["D_step"] = (start_Ds, end_Ds)
@@ -642,11 +643,11 @@ class wind_field_GAN_3D(BaseGAN):
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
             else:
-                self.D.scaler.scale(loss_D).backward()
-                self.D.scaler.step(self.optimizer_D)
-                self.D.scaler.update()
-                # loss_D.backward()
-                # self.optimizer_D.step()
+                # self.D.scaler.scale(loss_D).backward()
+                # self.D.scaler.step(self.optimizer_D)
+                # self.D.scaler.update()
+                loss_D.backward()
+                self.optimizer_D.step()
 
         self.log_D_losses(loss_D, y_pred, fake_y_pred, training_epoch=training_epoch)
 

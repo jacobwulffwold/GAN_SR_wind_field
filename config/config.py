@@ -137,6 +137,7 @@ class DiscriminatorConfig(IniConfig):
     weight_init_scale: float = 1.0
     conv_mode: str = "3D"
     use_mixed_precision: bool = True
+    dropout_probability:float = 0.2
 
     def setDiscriminatorConfig(self, disc_config):
         self.norm_type = disc_config.get("norm_type")
@@ -148,6 +149,7 @@ class DiscriminatorConfig(IniConfig):
         self.weight_init_scale = disc_config.getfloat("weight_init_scale")
         self.conv_mode = disc_config.get("conv_mode")
         self.use_mixed_precision = disc_config.getboolean("use_mixed_precision")
+        self.dropout_probability = disc_config.getfloat("dropout_probability")
 
 
 class FeatureExtractorConfig(IniConfig):

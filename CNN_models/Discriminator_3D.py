@@ -7,7 +7,6 @@ Implements VGG-style discriminators for different input resolutions.
 """
 
 import torch.nn as nn
-import torch
 
 from CNN_models.torch_blocks import create_discriminator_block
 import tools.loggingclass as lc
@@ -35,6 +34,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         conv_mode: str = "3D",
         use_mixed_precision: bool = False,
         enable_slicing: bool = False,
+        dropout_probability: float = 0.0,
     ):
         super(Discriminator_3D, self).__init__()
         self.base_number_of_features = base_number_of_features
@@ -50,7 +50,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
             slope = 0.2
 
         features = []
-        self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
+        # self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
         remainder_z_layers = [number_of_z_layers]
         for i in range(5):
@@ -160,13 +160,15 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         classifier.append(nn.LeakyReLU(negative_slope=slope))
         classifier.append(nn.Linear(100, 1))
 
+        self.dropout = nn.Dropout2d(p=dropout_probability) if conv_mode == "2D" else nn.Dropout3d(p=dropout_probability) 
+
         self.features = nn.Sequential(*features)
         self.classifier = nn.Sequential(*classifier)
 
         self.status_logs.append(f"Discriminator: finished init")
 
     def forward(self, x):
-        x = self.features(x)
+        x = self.dropout(self.features(x))
         # flatten
         x = x.reshape(x.shape[0], -1)
         return self.classifier(x)
