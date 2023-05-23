@@ -458,8 +458,7 @@ class wind_field_GAN_3D(BaseGAN):
                 end_GB = torch.cuda.Event(enable_timing=True)
                 start_GB.record()
                 # self.G.scaler.scale(loss_G).backward()
-                if not(loss_G.isnan()):
-                    loss_G.backward()
+                loss_G.backward()
                 end_GB.record()
                 self.runtime_dict["G_backward"] = (start_GB, end_GB)
                 self.memory_dict["after_G_backward"] = (
@@ -482,10 +481,10 @@ class wind_field_GAN_3D(BaseGAN):
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
             else:
-                if not(loss_G.isnan()):
-                    loss_G.backward()
+                loss_G.backward()
                     # self.G.scaler.scale(loss_G).backward()
                     # self.G.scaler.unscale_(self.optimizer_G)
+                if not(loss_G.isnan()):
                     torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                     self.optimizer_G.step()
                     # self.G.scaler.step(self.optimizer_G)
