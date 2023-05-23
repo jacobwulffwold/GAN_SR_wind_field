@@ -40,30 +40,36 @@ def main():
         cfg.name = cfg.name + "_schedule"
         cfg.training.multistep_lr_steps = [3000, 6000, 10000, 30000, 50000, 70000]
 
-    if cfg.slurm_array_id in {1,6}:
-        pass
+    if cfg.slurm_array_id in {1,4}:
+        cfg.name = cfg.name + "_5"
 
-    elif cfg.slurm_array_id in {2,7}:
-        cfg.name = cfg.name + "_seed"
-        cfg.seed = 2021
+    if cfg.slurm_array_id in {2,5}:
+        # cfg.name = cfg.name + "_seed"
+        # cfg.seed = 2021
+        cfg.name = cfg.name + "_6"
+        cfg.training.learning_rate_g = 1e-6
+        cfg.training.learning_rate_d = 1e-6
 
-    elif cfg.slurm_array_id in {3,8}:
-        cfg.name = cfg.name + "_lr"
-        cfg.training.learning_rate_g = 0.00001
-        cfg.training.learning_rate_d = 0.00001
 
-    elif cfg.slurm_array_id in {4,9}:
-        cfg.name = cfg.name + "_noSlice"
-        cfg.gan_config.enable_slicing = False
-        cfg.dataset_train.batch_size = 8
-        cfg.dataset_test.batch_size = 8
-        cfg.dataset_val.batch_size = 8
+    if cfg.slurm_array_id in {3,8}:
+        cfg.name = cfg.name + "_7"
+        cfg.training.learning_rate_g = 1e-7
+        cfg.training.learning_rate_d = 1e-7
 
-    elif cfg.slurm_array_id in {5,10}:
-        cfg.name = cfg.name + "_noDropout"
-        cfg.generator.dropout_probability = 0.0
-    else:
-        raise ValueError("slurm_array_id must be in {1,2,3,4,5,6,7,8,9,10}")
+    if cfg.slurm_array_id in {4,5}:
+        # cfg.name = cfg.name + "_noSlice"
+        cfg.name = cfg.name + "_2batch"
+        cfg.dataset_train.batch_size = 2*cfg.dataset_train.batch_size
+        cfg.dataset_test.batch_size = 2*cfg.dataset_test.batch_size
+        cfg.dataset_val.batch_size = 2*cfg.dataset_val.batch_size
+        # cfg.gan_config.enable_slicing = False
+        # cfg.dataset_train.batch_size = 8
+        # cfg.dataset_test.batch_size = 8
+        # cfg.dataset_val.batch_size = 8
+
+    # elif cfg.slurm_array_id in {5,10}:
+    #     cfg.name = cfg.name + "_noDropout"
+    #     cfg.generator.dropout_probability = 0.0
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
