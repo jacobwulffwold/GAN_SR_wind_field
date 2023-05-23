@@ -168,7 +168,7 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--slurm_array_id",
         type=int,
-        default=0,
+        default=1,
         help="ID for slurm job",
     )
 
