@@ -10,7 +10,7 @@ def create_conv_lrelu_layer(
     padding=1,
     lrelu_negative_slope=0.2,
     normalization_type="",
-    layer_type=nn.Conv2d,
+    layer_type=nn.Conv3d,
     lrelu=True,
 ):
     layers = [

@@ -8,7 +8,7 @@ Implements VGG-style discriminators for different input resolutions.
 
 import torch.nn as nn
 
-from CNN_models.torch_blocks import create_discriminator_block
+from CNN_models.torch_blocks import create_discriminator_block, create_conv_lrelu_layer
 import tools.loggingclass as lc
 
 
@@ -149,6 +149,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                     mode=conv_mode,
                 )
             )
+            features.append(create_conv_lrelu_layer(base_number_of_features * 8, base_number_of_features * 8, feat_kern_size))
 
         # Chans: base_nf*8
         # Dims: 4x4 pixels

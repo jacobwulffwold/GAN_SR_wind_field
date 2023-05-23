@@ -435,6 +435,8 @@ class wind_field_GAN_3D(BaseGAN):
             / max_xy_divergence,
         )
 
+        loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient = [torch.zeros(1).detach() if loss.isnan() else loss for loss in [loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient]]
+
         loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
         loss_G_feature_D *= self.cfg.training.feature_D_loss_weight
         loss_G_pix *= self.cfg.training.pixel_loss_weight
@@ -886,4 +888,4 @@ def get_norm_factors_of_gradients(HR_wind_gradient:torch.Tensor, SR_wind_gradien
         torch.abs((SR_wind_gradient[:, 0, :, :, :] + SR_wind_gradient[:, 4, :, :, :]))
     )
 
-    return [HR_max if SR_max<10*HR_max else SR_max/10 for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]
+    return [HR_max if SR_max<40*HR_max else SR_max/40 for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]

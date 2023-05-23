@@ -173,19 +173,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     end_to_device_check = torch.cuda.Event(enable_timing=True)
                     start_to_device_check.record()
                 
-                if it > 220:
-                    stat_log_str = f"it: {it-1} "
-                    for k, v in gan.get_train_loss_dict_ref().items():
-                        stat_log_str += f"{k}: {v} "
-                    for k, v in gan.get_metrics_dict_ref().items():
-                        stat_log_str += f"{k}: {v} "
-                    status_logger.debug(stat_log_str)
-                    pickle.dump([LR, HR, Z], open("./"+str(it)+"_debug_nan_inf.pkl", "wb"))
-
-                if it > 224: #cfg_t.niter
+                if it > cfg_t.niter:
                     break
-
-                
                 
                 it += 1
                 bar.update(i, epoch, it)
