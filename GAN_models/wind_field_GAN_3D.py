@@ -435,7 +435,7 @@ class wind_field_GAN_3D(BaseGAN):
             / max_xy_divergence,
         )
 
-        loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient = [torch.zeros(1).detach() if loss.isnan() else loss for loss in [loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient]]
+        loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient = [torch.zeros(1, device=self.device).detach() if loss.isnan() else loss for loss in [loss_G_adversarial, loss_G_feature_D, loss_G_pix, loss_G_divergence, loss_G_xy_divergence, loss_G_z_gradient, loss_G_xy_gradient]]
 
         loss_G_adversarial *= self.cfg.training.adversarial_loss_weight
         loss_G_feature_D *= self.cfg.training.feature_D_loss_weight
