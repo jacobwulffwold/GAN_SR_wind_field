@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --job-name="qlr6"
-#SBATCH --output=qlr6.out
+#SBATCH --job-name="_qlr4"
+#SBATCH --output=_qlr4.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
