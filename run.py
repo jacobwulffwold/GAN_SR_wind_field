@@ -58,10 +58,10 @@ def main():
 
     if cfg.slurm_array_id in {4,5}:
         # cfg.name = cfg.name + "_noSlice"
-        cfg.name = cfg.name + "_2batch"
-        cfg.dataset_train.batch_size = 2*cfg.dataset_train.batch_size
-        cfg.dataset_test.batch_size = 2*cfg.dataset_test.batch_size
-        cfg.dataset_val.batch_size = 2*cfg.dataset_val.batch_size
+        cfg.name = cfg.name + "_48batch"
+        cfg.dataset_train.batch_size = cfg.dataset_train.batch_size + 16
+        cfg.dataset_test.batch_size = cfg.dataset_test.batch_size + 16
+        cfg.dataset_val.batch_size = cfg.dataset_val.batch_size + 16
         # cfg.gan_config.enable_slicing = False
         # cfg.dataset_train.batch_size = 8
         # cfg.dataset_test.batch_size = 8
