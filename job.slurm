@@ -2,7 +2,6 @@
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
 #SBATCH --time=2-00:00:00
-#SBATCH --gres=gpu:A100m40:1
 #SBATCH --gres=gpu:1
 #SBATCH --constraint="A100|V10032"
 #SBATCH --nodes=1
