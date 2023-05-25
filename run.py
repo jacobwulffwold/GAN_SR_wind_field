@@ -45,7 +45,7 @@ def main():
 
     if cfg.slurm_array_id in {2,5}:
         cfg.name = cfg.name + "_seed"
-        cfg.seed = 2021
+        cfg.env.fixed_seed = 2021
 
     if cfg.slurm_array_id in {3,6}:
         cfg.name = cfg.name + "_featureD"
