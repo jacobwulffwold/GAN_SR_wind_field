@@ -7,9 +7,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=1-6
+#SBATCH --array=1,4
 #SBATCH --job-name=GAN_training_SCH100
-#SBATCH --output=%a_SCH100.out
+#SBATCH --output=%a_SCH100_large_grad.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
