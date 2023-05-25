@@ -36,42 +36,21 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    if cfg.slurm_array_id > 4:
+    if cfg.slurm_array_id > 3:
         cfg.name = cfg.name + "_schedule2"
-        cfg.training.multistep_lr_steps = [3000, 6000, 10000, 30000, 50000, 70000]
+        cfg.training.multistep_lr_steps = [10000, 30000, 50000, 70000]
 
-    if cfg.slurm_array_id in {1,7}:
-        # cfg.name = cfg.name + "_STD"
-        pass
+    if cfg.slurm_array_id in {1,4}:
+        cfg.name = cfg.name + "_STD"
 
-    if cfg.slurm_array_id in {2,8}:
-        # cfg.name = cfg.name + "_seed"
-        # cfg.seed = 2021
-        cfg.name = cfg.name + "_5"
-        cfg.training.learning_rate_g = 1e-5
-        cfg.training.learning_rate_d = 1e-5
+    if cfg.slurm_array_id in {2,5}:
+        cfg.name = cfg.name + "_seed"
+        cfg.seed = 2021
 
     if cfg.slurm_array_id in {3,6}:
-        # cfg.name = cfg.name + "_seed"
-        # cfg.seed = 2021
-        cfg.name = cfg.name + "_6"
-        cfg.training.learning_rate_g = 1e-6
-        cfg.training.learning_rate_d = 1e-6
+        cfg.name = cfg.name + "_featureD"
+        cfg.gan_config.use_D_feature_extractor_cost = True
 
-
-    if cfg.slurm_array_id in {4,5}:
-        cfg.name = cfg.name + "_7"
-        cfg.training.learning_rate_g = 1e-7
-        cfg.training.learning_rate_d = 1e-7
-
-    if cfg.slurm_array_id in {5,6}:
-        # cfg.name = cfg.name + "_noSlice"
-        cfg.name = cfg.name + "_old_weight_scale"
-        cfg.generator.weight_init_scale = 0.5
-        cfg.generator.weight_init_scale = 1.0
-        # cfg.gan_config.enable_slicing = False
-        # cfg.dataset_train.batch_size = 8
-        # cfg.dataset_test.batch_size = 8
         # cfg.dataset_val.batch_size = 8
 
     # elif cfg.slurm_array_id in {5,10}:

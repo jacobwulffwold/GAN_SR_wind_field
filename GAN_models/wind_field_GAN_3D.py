@@ -77,7 +77,7 @@ class wind_field_GAN_3D(BaseGAN):
         }
         self.device_check = ""
         self.batch_size: int = 1
-        self.make_new_labels()  # updates self.HR_labels, self.fake_HR_labels
+        # self.make_new_labels(torch.zeros(1, device=cfg.device))  # updates self.HR_labels, self.fake_HR_labels
         self.max_diff_squared = torch.tensor(4.0, device=cfg.device)  # HR is in [-1, 1]
         self.epsilon_PSNR = torch.tensor(
             1e-8, device=cfg.device
@@ -656,8 +656,8 @@ class wind_field_GAN_3D(BaseGAN):
         self, LR, HR, Z, it, training_iteration: bool = False
     ):
         self.batch_size = HR.size(0)
-        self.make_new_labels()
         it = torch.tensor(it, device=self.device)
+        self.make_new_labels(it)
 
         if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
             self.feature_extractor = copy.deepcopy(self.D.features)
@@ -725,7 +725,7 @@ class wind_field_GAN_3D(BaseGAN):
     def validation(self, LR, HR, Z, it):
         self.compute_losses_and_optimize(LR, HR, Z, it, training_iteration=False)
 
-    def make_new_labels(self):
+    def make_new_labels(self, it):
         pred_real = True
         pred_fake = False
 
@@ -740,9 +740,9 @@ class wind_field_GAN_3D(BaseGAN):
             and self.cfg.training.flip_labels
         ):
             real_label = torch.tensor(1.0, device=self.device)
-            fake_label = torch.tensor(0.1, device=self.device)
+            fake_label = torch.tensor(0.1, device=self.device)  - 0.1*it/self.niter
         elif self.cfg.training.use_one_sided_label_smoothing:
-            real_label = torch.tensor(0.9, device=self.device)
+            real_label = torch.tensor(0.9, device=self.device) + 0.1*it/self.niter
             fake_label = torch.tensor(0.0, device=self.device)
 
         if self.cfg.training.use_noisy_labels:

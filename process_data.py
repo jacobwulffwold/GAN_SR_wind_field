@@ -23,6 +23,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
         Z_MIN,
         Z_MAX,
         UVW_MAX,
+        P_MIN,
         P_MAX,
         Z_ABOVE_GROUND_MAX,
         x,
@@ -58,6 +59,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.Z_MAX = Z_MAX
         self.Z_ABOVE_GROUND_MAX = Z_ABOVE_GROUND_MAX
         self.UVW_MAX = UVW_MAX
+        self.P_MIN = P_MIN
         self.P_MAX = P_MAX
         self.x = x
         self.y = y
@@ -85,19 +87,6 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 "rb",
             )
         )
-
-        with open("./data/full_dataset_files/" + self.subfolder_name + "max/max_" + self.filenames[index], "wb") as f:
-            pickle.dump(
-                [
-                    np.min(z),
-                    np.max(z),
-                    np.max(z_above_ground),
-                    np.max(np.concatenate((u, v, w))),
-                    np.min(pressure),
-                    np.max(pressure),
-                ],
-                f,
-            )
 
         if self.interpolate_z:
             z, z_above_ground, u, v, w, pressure = interpolate_z_axis(
@@ -130,6 +119,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
             self.Z_MAX,
             self.Z_ABOVE_GROUND_MAX,
             self.UVW_MAX,
+            self.P_MIN,
             self.P_MAX,
             coarseness_factor=self.coarseness_factor,
             include_pressure=self.include_pressure,
@@ -209,7 +199,7 @@ def download_all_files_and_prepare(
     train_eval_test_ratio=0.8,
 ):
     filenames = filenames_from_start_and_end_dates(start_date, end_date)
-    Z_MIN, Z_MAX, UVW_MAX, P_MAX, Z_ABOVE_GROUND_MAX = 10000, 0, 0, 0, 0
+    Z_MIN, Z_MAX, UVW_MAX, P_MIN, P_MAX, Z_ABOVE_GROUND_MAX = 10000, 0, 0, 1000000, 0, 0
 
     finished = False
     start = -1
@@ -230,14 +220,15 @@ def download_all_files_and_prepare(
         for i in range(len(filenames)):
             if filenames[i] not in invalid_samples:
                 try:
-                    with open(folder + subfolder + "max_" + filenames[i], "rb") as f:
-                        z_min, z_max, z_above_ground_max, uvw_max, p_max = pickle.load(
+                    with open(folder + subfolder + "max/max_" + filenames[i], "rb") as f:
+                        z_min, z_max, z_above_ground_max, uvw_max, p_min, p_max = pickle.load(
                             f
                         )
                     if i < train_eval_test_ratio * len(filenames):
                         Z_MIN = min(Z_MIN, z_min)
                         Z_MAX = max(Z_MAX, z_max)
                         UVW_MAX = max(UVW_MAX, uvw_max)
+                        P_MIN = min(P_MIN, p_min)
                         P_MAX = max(P_MAX, p_max)
                         Z_ABOVE_GROUND_MAX = max(Z_ABOVE_GROUND_MAX, z_above_ground_max)
 
@@ -290,7 +281,7 @@ def download_all_files_and_prepare(
     filenames = [item for item in filenames if item not in invalid_samples]
 
     print("Finished downloading all files")
-    return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MAX
+    return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MIN, P_MAX
 
 
 # Creating coarse simulation by skipping every alternate grid
@@ -305,6 +296,7 @@ def reformat_to_torch(
     Z_MAX,
     Z_ABOVE_GROUND_MAX,
     UVW_MAX,
+    P_MIN,
     P_MAX,
     coarseness_factor=4,
     include_pressure=False,
@@ -318,7 +310,7 @@ def reformat_to_torch(
 
     if include_pressure:
         arr_norm_LR = np.concatenate(
-            (HR_arr, p[np.newaxis, :, :, :]/P_MAX), axis=0
+            (HR_arr, (p[np.newaxis, :, :, :]-P_MIN)/(P_MAX-P_MIN)), axis=0
         )[:, ::coarseness_factor, ::coarseness_factor, :]
     else:
         arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
@@ -390,6 +382,7 @@ def preprosess(
         Z_MAX,
         Z_ABOVE_GROUND_MAX,
         UVW_MAX,
+        P_MIN,
         P_MAX,
     ) = download_all_files_and_prepare(
         start_date,
@@ -410,6 +403,7 @@ def preprosess(
         Z_MIN,
         Z_MAX,
         UVW_MAX,
+        P_MIN,
         P_MAX,
         Z_ABOVE_GROUND_MAX,
         x,
@@ -434,6 +428,7 @@ def preprosess(
         Z_MIN,
         Z_MAX,
         UVW_MAX,
+        P_MIN,
         P_MAX,
         Z_ABOVE_GROUND_MAX,
         x,
@@ -456,6 +451,7 @@ def preprosess(
         Z_MIN,
         Z_MAX,
         UVW_MAX,
+        P_MIN,
         P_MAX,
         Z_ABOVE_GROUND_MAX,
         x,

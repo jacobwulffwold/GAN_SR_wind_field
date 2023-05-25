@@ -14,8 +14,6 @@ import netCDF4
 from netCDF4 import Dataset
 import numpy as np
 
-EARTH_RADIUS = 6371009
-
 
 def plot_images(
     filename,
@@ -603,14 +601,15 @@ def split_into_separate_files(
                     ],
                     f,
                 )
-            with open(folder + "max_" + filenames[i], "wb") as f:
+            with open(folder +"max/max_" + filenames[i], "wb") as f:
                 pickle.dump(
                     [
-                        np.min(z[index]),
-                        np.max(z[index]),
-                        np.max(z_above_ground[index]),
-                        np.max(np.concatenate((u[index], v[index], w[index]))),
-                        np.max(pressure[index]),
+                        np.min(z),
+                        np.max(z),
+                        np.max(z_above_ground),
+                        np.max(np.concatenate((u, v, w))),
+                        np.min(pressure),
+                        np.max(pressure),
                     ],
                     f,
                 )
