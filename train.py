@@ -423,7 +423,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         tb_writer.add_scalars("Losses/validation", loss_vals, it)
                         # for hist_name, val in hist_vals.items():
                         #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
-                        tb_writer.add_scalars("metrics", metrics_vals, it)
+                        PSNR_metrics = dict((key, value) for key, value in metrics_vals.items() if "PSNR" in key)
+                        pix_metrics = dict((key, value) for key, value in metrics_vals.items() if "pix" in key)
+                        tb_writer.add_scalars("metrics/PSNR", PSNR_metrics, it)
+                        tb_writer.add_scalars("metrics/pix", pix_metrics, it)
 
                     stat_log_str = f"it: {it} "
                     for k, v in loss_vals.items():
@@ -494,7 +497,7 @@ def save_validation_images(
     tb_writer,
     it,
 ):
-    fig, axes = plt.subplots(2, 2)
+    fig, axes = plt.subplots(2, 2, figsize=(8, 7))
     vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
         wind_comp_HR[:, :, wind_height_index]
     )
@@ -517,40 +520,41 @@ def save_validation_images(
         cmap="viridis",
     )
     axes[1, 1].set_title("Trilinear")
-    fig.subplots_adjust(hspace=0.4, wspace=0.2)
+    fig.subplots_adjust(hspace=0.3)
     fig.colorbar(
         plt.pcolor(wind_comp_HR[:, :, wind_height_index], cmap="viridis"), ax=axes
     )
 
     tb_writer.add_figure(
-        "im/wind_field/" + str(it) + "___" + title + str(wind_height_index), fig, it
+        "im/"+str(it)+"/wind_fields/" + title + str(wind_height_index), fig, it
     )
 
-    fig2, axes2 = plt.subplots(1, 3, figsize=(12, 3), sharey=True)
-    axes2[1].pcolor(wind_comp_SR[:, :, wind_height_index])
-    axes2[1].set_title("SR scaled wind field")
-    axes2[0].pcolor(
+    fig2, axes2 = plt.subplots(2, 3, figsize=(12, 6), sharey=True, sharex=True)
+    axes2[0,1].pcolor(wind_comp_SR[:, :, wind_height_index])
+    axes2[0,1].set_title("SR wind field")
+    axes2[0,0].pcolor(
         wind_comp_HR[:, :, wind_height_index] - wind_comp_SR[:, :, wind_height_index],
         cmap="coolwarm",
     )
-    axes2[0].set_title("Error HR-SR")
-    axes2[2].pcolor(
+    axes2[0,0].set_title("Error HR-SR")
+    axes2[0,2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_SR[:, :, wind_height_index]
         ),
         cmap="jet",
     )
-    axes2[2].set_title("Absolute error HR-SR")
-    fig2.colorbar(plt.pcolor(wind_comp_SR[:, :, wind_height_index]), ax=axes2[1])
+    axes2[0,2].set_title("Absolute error HR-SR")
+    fig2.colorbar(plt.pcolor(wind_comp_SR[:, :, wind_height_index]), ax=axes2[0,1])
     fig2.colorbar(
         plt.pcolor(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_SR[:, :, wind_height_index],
             cmap="coolwarm",
         ),
-        ax=axes2[0],
+        ax=axes2[0,0],
     )
+
     fig2.colorbar(
         plt.pcolor(
             abs(
@@ -559,10 +563,45 @@ def save_validation_images(
             ),
             cmap="jet",
         ),
-        ax=axes2[2],
+        ax=axes2[0,2],
     )
+    axes2[1,1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
+    axes2[1,1].set_title("Trilinear wind field")
+    axes2[1,0].pcolor(
+        wind_comp_HR[:, :, wind_height_index] - wind_comp_trilinear[:, :, wind_height_index],
+        cmap="coolwarm",
+    )
+    axes2[1,0].set_title("Error HR-SR")
+    axes2[1,2].pcolor(
+        abs(
+            wind_comp_HR[:, :, wind_height_index]
+            - wind_comp_trilinear[:, :, wind_height_index]
+        ),
+        cmap="jet",
+    )
+    axes2[1,2].set_title("Absolute error HR-SR")
+    fig2.colorbar(plt.pcolor(wind_comp_trilinear[:, :, wind_height_index]), ax=axes2[1,1])
+    fig2.colorbar(
+        plt.pcolor(
+            wind_comp_HR[:, :, wind_height_index]
+            - wind_comp_trilinear[:, :, wind_height_index],
+            cmap="coolwarm",
+        ),
+        ax=axes2[1,0],
+    )
+    fig2.colorbar(
+        plt.pcolor(
+            abs(
+                wind_comp_HR[:, :, wind_height_index]
+                - wind_comp_trilinear[:, :, wind_height_index]
+            ),
+            cmap="jet",
+        ),
+        ax=axes2[1,2],
+    )
+    fig2.subplots_adjust(hspace=0.2)
     tb_writer.add_figure(
-        "im/SR_error/" + str(it) + "___" + title + str(wind_height_index), fig2, it
+        "im/"+str(it)+"/Error/" + title + str(wind_height_index), fig2, it
     )
 
 

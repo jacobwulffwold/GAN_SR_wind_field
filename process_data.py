@@ -67,6 +67,9 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.enable_slicing = enable_slicing
         self.slice_size = slice_size
 
+        if not os.path.exists("./data/full_dataset_files/" + self.subfolder_name+"/max/"):
+            os.makedirs("./data/full_dataset_files/" + self.subfolder_name+"/max/")
+
     def __len__(self):
         "Denotes the total number of samples"
         return len(self.filenames)
@@ -82,6 +85,19 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 "rb",
             )
         )
+
+        with open("./data/full_dataset_files/" + self.subfolder_name + "max/max_" + self.filenames[index], "wb") as f:
+            pickle.dump(
+                [
+                    np.min(z),
+                    np.max(z),
+                    np.max(z_above_ground),
+                    np.max(np.concatenate((u, v, w))),
+                    np.min(pressure),
+                    np.max(pressure),
+                ],
+                f,
+            )
 
         if self.interpolate_z:
             z, z_above_ground, u, v, w, pressure = interpolate_z_axis(
@@ -297,22 +313,20 @@ def reformat_to_torch(
 ):
     HR_arr = np.concatenate(
         (u[np.newaxis, :, :, :], v[np.newaxis, :, :, :], w[np.newaxis, :, :, :]), axis=0
-    )
+    ) / UVW_MAX
     del u, v, w
 
     if include_pressure:
-        HR_arr = np.concatenate(
-            (HR_arr / UVW_MAX, p[np.newaxis, :, :, :] / P_MAX), axis=0
-        )
-    else:
-        HR_arr = HR_arr / UVW_MAX
-
-    if include_z_channel:
         arr_norm_LR = np.concatenate(
-            (HR_arr, (z[np.newaxis, :, :, :] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0
+            (HR_arr, p[np.newaxis, :, :, :]/P_MAX), axis=0
         )[:, ::coarseness_factor, ::coarseness_factor, :]
     else:
         arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
+        
+    if include_z_channel:
+        arr_norm_LR = np.concatenate(
+            (arr_norm_LR, (z[np.newaxis, ::coarseness_factor, ::coarseness_factor, :] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0
+        )
 
     if include_above_ground_channel:
         arr_norm_LR = np.concatenate(
@@ -343,7 +357,7 @@ def preprosess(
     Z_DICT={"start": 0, "max": 10, "step": 1},
     start_date=date(2018, 4, 1),
     end_date=date(2018, 4, 3),
-    include_pressure=False,
+    include_pressure=True,
     include_z_channel=False,
     interpolate_z=False,
     enable_slicing=False,
@@ -386,10 +400,6 @@ def preprosess(
         terrain,
         train_eval_test_ratio=train_eval_test_ratio,
     )
-
-    if interpolate_z:
-        if not os.path.exists("./data/saved_interpolated_z_data/" + subfolder):
-            os.makedirs("./data/saved_interpolated_z_data/" + subfolder)
 
     number_of_train_samples = int(len(filenames) * train_eval_test_ratio)
     number_of_test_samples = int(len(filenames) * (1 - train_eval_test_ratio) / 2)
@@ -495,3 +505,5 @@ def preprosess(
 
 if __name__ == "__main__":
     preprosess(include_above_ground_channel=True)
+
+

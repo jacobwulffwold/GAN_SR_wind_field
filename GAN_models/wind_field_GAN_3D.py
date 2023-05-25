@@ -7,7 +7,7 @@ Implements the ESRD GAN model
 """
 
 import math
-
+import copy
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,7 +19,6 @@ from GAN_models.baseGAN import BaseGAN
 from CNN_models.Discriminator_3D import Discriminator_3D
 from CNN_models.Generator_3D import Generator_3D
 import tools.initialization as initialization
-import tools.loggingclass as loggingclass
 import tools.trainingtricks as trainingtricks
 from process_data import calculate_gradient_of_wind_field
 
@@ -73,6 +72,8 @@ class wind_field_GAN_3D(BaseGAN):
         self.metrics_dict = {
             "val_PSNR": torch.zeros(1),
             "Trilinear_PSNR": torch.zeros(1),
+            "pix_loss_unscaled": torch.zeros(1),
+            "trilinear_pix_loss": torch.zeros(1),
         }
         self.device_check = ""
         self.batch_size: int = 1
@@ -82,8 +83,10 @@ class wind_field_GAN_3D(BaseGAN):
             1e-8, device=cfg.device
         )  # PSNR is usually ~< 50 so this should not impact the result much
 
+        self.feature_extractor = None
+
         ###################
-        # Define generator, discriminator, feature extractor
+        # Define generator, discriminator
         ###################
         cfg_G: config.GeneratorConfig = cfg.generator
         cfg_gan: config.GANConfig = cfg.gan_config
@@ -92,7 +95,7 @@ class wind_field_GAN_3D(BaseGAN):
             + cfg_gan.include_pressure
             + cfg_gan.include_z_channel
             + cfg_gan.include_above_ground_channel,
-            cfg_G.out_num_ch + cfg_gan.include_pressure,
+            cfg_G.out_num_ch,
             cfg_G.num_features,
             cfg_G.num_RRDB,
             upscale=cfg.scale,
@@ -122,7 +125,7 @@ class wind_field_GAN_3D(BaseGAN):
             cfg_D: config.DiscriminatorConfig = cfg.discriminator
             if cfg.dataset_train.hr_img_size == 128:
                 self.D = Discriminator_3D(
-                    cfg_D.in_num_ch + cfg_gan.include_pressure,
+                    cfg_D.in_num_ch,
                     cfg_D.num_features,
                     feat_kern_size=cfg_D.feat_kern_size,
                     normalization_type=cfg_D.norm_type,
@@ -242,7 +245,7 @@ class wind_field_GAN_3D(BaseGAN):
                 + str(next(self.D.parameters()).device)
                 + str(
                     trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device),
+                        torch.tensor(2.0, device=self.device),
                         HR.size(),
                         it,
                         self.niter,
@@ -257,7 +260,7 @@ class wind_field_GAN_3D(BaseGAN):
                 y_pred = self.D(
                     HR
                     + trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device),
+                        torch.tensor(2.0, device=self.device),
                         HR.size(),
                         it,
                         self.niter,
@@ -267,7 +270,7 @@ class wind_field_GAN_3D(BaseGAN):
                 fake_y_pred = self.D(
                     fake_HR.detach()
                     + trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device),
+                        torch.tensor(2.0, device=self.device),
                         HR.size(),
                         it,
                         self.niter,
@@ -284,7 +287,7 @@ class wind_field_GAN_3D(BaseGAN):
                     self.D(
                         HR
                         + trainingtricks.instance_noise(
-                            torch.tensor(1.0, device=self.device),
+                            torch.tensor(2.0, device=self.device),
                             HR.size(),
                             it,
                             self.niter,
@@ -297,7 +300,7 @@ class wind_field_GAN_3D(BaseGAN):
                 fake_y_pred = self.D(
                     fake_HR
                     + trainingtricks.instance_noise(
-                        torch.tensor(1.0, device=self.device),
+                        torch.tensor(2.0, device=self.device),
                         HR.size(),
                         it,
                         self.niter,
@@ -341,6 +344,7 @@ class wind_field_GAN_3D(BaseGAN):
             self.val_loss_dict["G_xy_divergence"] = loss_G_xy_divergence
             self.val_loss_dict["G_feature_D"] = loss_G_feature_D
             self.val_loss_dict["G_pix"] = loss_G_pix
+            self.metrics_dict["pix_loss_unscaled"] = loss_G_pix/self.cfg.training.pixel_loss_weight
             self.hist_dict["SR_pix_distribution"] = fake_HR.detach().cpu().numpy()
             # if self.conv_mode == "horizontal_3D":
             #     grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
@@ -385,13 +389,14 @@ class wind_field_GAN_3D(BaseGAN):
                 f"Only relativistic and relativisticavg GAN are implemented, not {self.cfg.training.gan_type}"
             )
 
-        loss_G_feature_D = 0
-        if self.use_D_feature_extractor_cost:
-            features = self.D.features(HR).detach()
-            fake_features = self.D.features(fake_HR)
+        loss_G_feature_D = torch.zeros(1, device=self.device)
+        
+        if self.feature_extractor is not None:
+            features = self.feature_extractor(HR).detach()
+            fake_features = self.feature_extractor(fake_HR)
             loss_G_feature_D = self.feature_D_criterion(features, fake_features)
 
-        loss_G_pix = 0
+        loss_G_pix = torch.zeros(1, device=self.device)
         if self.pixel_criterion:
             loss_G_pix = self.pixel_criterion(HR, fake_HR)
 
@@ -538,12 +543,7 @@ class wind_field_GAN_3D(BaseGAN):
                 y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
                 self.calculate_optimize_and_log_G_loss(
                     HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
-                )
-
-        # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
-
-        # with torch.autocast(self.device.type, enabled=self.cfg.generator.use_mixed_precision):
-
+                )             
         return fake_HR
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
@@ -659,6 +659,12 @@ class wind_field_GAN_3D(BaseGAN):
         self.make_new_labels()
         it = torch.tensor(it, device=self.device)
 
+        if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
+            self.feature_extractor = copy.deepcopy(self.D.features)
+            for param in self.feature_extractor.parameters():
+                param.requires_grad = False
+
+
         ###################
         # Update G
         ###################
@@ -691,28 +697,25 @@ class wind_field_GAN_3D(BaseGAN):
         self.update_D(HR, fake_HR, it, training_iteration)
 
         if not training_iteration:
-            if it / self.cfg.training.niter > 0.75:
-                (
-                    self.metrics_dict["val_PSNR"],
-                    self.metrics_dict["Trilinear_PSNR"],
-                ) = compute_psnr_for_SR_and_trilinear(
-                    LR,
-                    HR,
-                    fake_HR,
-                    self.max_diff_squared,
-                    self.epsilon_PSNR,
-                    interpolate=True,
-                    device=self.device,
-                )
-            else:
-                self.metrics_dict["val_PSNR"] = compute_psnr_for_SR_and_trilinear(
-                    LR,
-                    HR,
-                    fake_HR,
-                    self.max_diff_squared,
-                    self.epsilon_PSNR,
-                    interpolate=False,
-                    device=self.device,
+            (
+                self.metrics_dict["val_PSNR"],
+                self.metrics_dict["Trilinear_PSNR"],
+            ) = compute_psnr_for_SR_and_trilinear(
+                LR,
+                HR,
+                fake_HR,
+                self.max_diff_squared,
+                self.epsilon_PSNR,
+                interpolate=True,
+                device=self.device,
+            )
+            self.metrics_dict["trilinear_pix_loss"] = self.pixel_criterion(HR,
+                nn.functional.interpolate(
+                    LR[:, :3, :, :, :],
+                    scale_factor=(4, 4, 1),
+                    mode="trilinear",
+                    align_corners=True,
+                ),
                 )
         return
 
@@ -841,7 +844,7 @@ def compute_psnr_for_SR_and_trilinear(
     )
     if interpolate:
         interpolated_LR = nn.functional.interpolate(
-            LR[:, :4, :, :, :],
+            LR[:, :3, :, :, :],
             scale_factor=(4, 4, 1),
             mode="trilinear",
             align_corners=True,

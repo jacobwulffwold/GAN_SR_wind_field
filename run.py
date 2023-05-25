@@ -36,12 +36,13 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    if cfg.slurm_array_id > 5:
-        cfg.name = cfg.name + "_schedule"
+    if cfg.slurm_array_id > 4:
+        cfg.name = cfg.name + "_schedule2"
         cfg.training.multistep_lr_steps = [3000, 6000, 10000, 30000, 50000, 70000]
 
     if cfg.slurm_array_id in {1,7}:
-        cfg.name = cfg.name + "_STD"
+        # cfg.name = cfg.name + "_STD"
+        pass
 
     if cfg.slurm_array_id in {2,8}:
         # cfg.name = cfg.name + "_seed"
@@ -322,10 +323,10 @@ def get_yes_or_no_input() -> bool:
 
 def save_config(cfg: Config, folder: str):
     filename = folder + "/config.ini"
-    if cfg.env.discriminator_load_path == "":
-        cfg.env.discriminator_load_path = folder + "/D_X.pth"
-        cfg.env.generator_load_path = folder + "/G_X.pth"
-        cfg.env.state_load_path = folder + "/state_X.pth"
+    if cfg.env.discriminator_load_path == None:
+        cfg.env.discriminator_load_path = folder + "/D_"+str(cfg.training.niter)+".pth"
+        cfg.env.generator_load_path = folder + "/G_"+str(cfg.training.niter)+".pth"
+        cfg.env.state_load_path = folder + "/state_"+str(cfg.training.niter)+".pth"
     with open(filename, "w") as ini:
         ini.write(cfg.asINI())
 

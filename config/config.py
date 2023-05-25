@@ -224,6 +224,7 @@ class TrainingConfig(IniConfig):
     divergence_loss_weight: float = 1e-1
     xy_divergence_loss_weight: float = 1e-1
     feature_D_loss_weight: float = 0.1
+    feature_D_update_period: int = 1
 
     use_noisy_labels: bool = False
     use_one_sided_label_smoothing: bool = False
@@ -274,6 +275,7 @@ class TrainingConfig(IniConfig):
         self.log_period = train_config.getint("log_period")
         self.conv_mode = train_config.get("conv_mode")
         self.train_eval_test_ratio = train_config.getfloat("train_eval_test_ratio")
+        self.feature_D_update_period = train_config.getint("feature_D_update_period")
 
 
 class Config(IniConfig):
