@@ -316,20 +316,21 @@ def reformat_to_torch(
         arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
         
     if include_z_channel:
-        arr_norm_LR = np.concatenate(
+        if include_above_ground_channel:
+            arr_norm_LR = np.concatenate(
+                (
+                    arr_norm_LR,
+                    z_above_ground[np.newaxis, ::coarseness_factor, ::coarseness_factor, :]
+                    / Z_ABOVE_GROUND_MAX,
+                    (z - z_above_ground-Z_MIN)[np.newaxis, ::coarseness_factor, ::coarseness_factor, :]/(Z_MAX-Z_MIN-Z_ABOVE_GROUND_MAX)
+                ),
+                axis=0,
+            )
+            del z_above_ground
+        else:
+            arr_norm_LR = np.concatenate(
             (arr_norm_LR, (z[np.newaxis, ::coarseness_factor, ::coarseness_factor, :] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0
         )
-
-    if include_above_ground_channel:
-        arr_norm_LR = np.concatenate(
-            (
-                arr_norm_LR,
-                z_above_ground[np.newaxis, ::coarseness_factor, ::coarseness_factor, :]
-                / Z_ABOVE_GROUND_MAX,
-            ),
-            axis=0,
-        )
-        del z_above_ground
 
     HR_data = torch.from_numpy(HR_arr).float()
     LR_data = torch.from_numpy(arr_norm_LR).float()

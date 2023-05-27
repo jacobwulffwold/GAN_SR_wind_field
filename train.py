@@ -243,9 +243,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     if cfg.use_tensorboard_logger:
                         losses = dict(
                             (val_name, val.item())
-                            for val_name, val in gan.get_train_loss_dict_ref().items()
+                            for val_name, val in gan.get_G_train_loss_dict_ref().items()
                         )
-                        tb_writer.add_scalars("Losses/train", losses, it)
+                        tb_writer.add_scalars("G_loss/train", losses, it)
 
                 if dataloader_val is None:
                     continue
@@ -260,10 +260,15 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         start_validation.record()
 
                     status_logger.debug(f"validation epoch (it {it})")
-                    loss_vals = dict(
+                    G_loss_vals = dict(
                         (val_name, 0)
-                        for (val_name) in gan.get_val_loss_dict_ref().keys()
+                        for (val_name) in gan.get_G_val_loss_dict_ref().keys()
                     )
+                    D_loss_vals = dict(
+                        (val_name, 0)
+                        for (val_name) in gan.get_D_loss_dict_ref().keys()
+                    )
+
                     metrics_vals = dict(
                         (val_name, 0)
                         for (val_name) in gan.get_metrics_dict_ref().keys()
@@ -276,8 +281,11 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         HR = HR.to(cfg.device, non_blocking=True)
                         Z = Z.to(cfg.device, non_blocking=True)
                         gan.validation(LR, HR, Z, it)
-                        for val_name, val in gan.get_val_loss_dict_ref().items():
-                            loss_vals[val_name] += val.item() / n
+                        for val_name, val in gan.get_G_val_loss_dict_ref().items():
+                            G_loss_vals[val_name] += val.item() / n
+
+                        for val_name, val in gan.get_D_loss_dict_ref().items():
+                            D_loss_vals[val_name] += val.item() / n
 
                         for val_name, val in gan.get_metrics_dict_ref().items():
                             metrics_vals[val_name] += val.item() / n
@@ -420,7 +428,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     pkl.dump(imgs, f)
 
                     if cfg.use_tensorboard_logger:
-                        tb_writer.add_scalars("Losses/validation", loss_vals, it)
+                        tb_writer.add_scalars("G_loss/validation", G_loss_vals, it)
+                        tb_writer.add_scalars("D_loss/", D_loss_vals, it)
                         # for hist_name, val in hist_vals.items():
                         #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
                         PSNR_metrics = dict((key, value) for key, value in metrics_vals.items() if "PSNR" in key)
@@ -429,7 +438,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         tb_writer.add_scalars("metrics/pix", pix_metrics, it)
 
                     stat_log_str = f"it: {it} "
-                    for k, v in loss_vals.items():
+                    for k, v in G_loss_vals.items():
                         stat_log_str += f"{k}: {v} "
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
@@ -521,57 +530,61 @@ def save_validation_images(
     )
     axes[1, 1].set_title("Trilinear")
     fig.subplots_adjust(hspace=0.3)
-    fig.colorbar(
-        plt.pcolor(wind_comp_HR[:, :, wind_height_index], cmap="viridis"), ax=axes
-    )
+
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
+    sm.set_clim(vmin=vmin, vmax=vmax)
+    fig.colorbar(sm, ax=axes)
 
     tb_writer.add_figure(
         "im/"+str(it)+"/wind_fields/" + title + str(wind_height_index), fig, it
     )
 
+    vmin_wind_field, vmax_wind_field = np.min(np.concatenate((wind_comp_trilinear[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index]), axis=(0))), np.max(np.concatenate((wind_comp_trilinear[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index]), axis=(0)))
+    vmin_error, vmax_error = np.min(np.concatenate((wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index]), axis=(0))), np.max(np.concatenate((wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index]), axis=(0)))
+    vmin_abs_error, vmax_abs_error = 0.0, max(abs(vmax_error), abs(vmin_error))
+    sm.set_clim(vmin=vmin, vmax=vmax)
+    sm_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('coolwarm'))
+    sm_error.set_clim(vmin=vmin_error, vmax=vmax_error)
+    sm_abs_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('jet'))
+    sm_abs_error.set_clim(vmin=vmin_abs_error, vmax=vmax_abs_error)
+
     fig2, axes2 = plt.subplots(2, 3, figsize=(12, 6), sharey=True, sharex=True)
-    axes2[0,1].pcolor(wind_comp_SR[:, :, wind_height_index])
+    axes2[0,1].pcolor(wind_comp_SR[:, :, wind_height_index], vmin=vmin_wind_field, vmax=vmax_wind_field, cmap="viridis")
     axes2[0,1].set_title("SR wind field")
     axes2[0,0].pcolor(
-        wind_comp_HR[:, :, wind_height_index] - wind_comp_SR[:, :, wind_height_index],
+        wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
+        vmin=vmin_error,
+        vmax=vmax_error,
         cmap="coolwarm",
     )
-    axes2[0,0].set_title("Error HR-SR")
+    axes2[0,0].set_title("Error SR-HR")
     axes2[0,2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_SR[:, :, wind_height_index]
         ),
+        vmin=vmin_abs_error,
+        vmax=vmax_abs_error,
         cmap="jet",
     )
-    axes2[0,2].set_title("Absolute error HR-SR")
-    fig2.colorbar(plt.pcolor(wind_comp_SR[:, :, wind_height_index]), ax=axes2[0,1])
+    axes2[0,2].set_title("Absolute error SR")
+    fig2.colorbar(sm, ax=axes2[0,1])
     fig2.colorbar(
-        plt.pcolor(
-            wind_comp_HR[:, :, wind_height_index]
-            - wind_comp_SR[:, :, wind_height_index],
-            cmap="coolwarm",
-        ),
+        sm_error,
         ax=axes2[0,0],
     )
 
     fig2.colorbar(
-        plt.pcolor(
-            abs(
-                wind_comp_HR[:, :, wind_height_index]
-                - wind_comp_SR[:, :, wind_height_index]
-            ),
-            cmap="jet",
-        ),
+        sm_abs_error,
         ax=axes2[0,2],
     )
     axes2[1,1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
     axes2[1,1].set_title("Trilinear wind field")
     axes2[1,0].pcolor(
-        wind_comp_HR[:, :, wind_height_index] - wind_comp_trilinear[:, :, wind_height_index],
+        wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         cmap="coolwarm",
     )
-    axes2[1,0].set_title("Error HR-SR")
+    axes2[1,0].set_title("Error Trilinear-HR")
     axes2[1,2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
@@ -579,24 +592,15 @@ def save_validation_images(
         ),
         cmap="jet",
     )
-    axes2[1,2].set_title("Absolute error HR-SR")
-    fig2.colorbar(plt.pcolor(wind_comp_trilinear[:, :, wind_height_index]), ax=axes2[1,1])
+    axes2[1,2].set_title("Absolute error Trilinear")
+    fig2.colorbar(sm, ax=axes2[1,1])
     fig2.colorbar(
-        plt.pcolor(
-            wind_comp_HR[:, :, wind_height_index]
-            - wind_comp_trilinear[:, :, wind_height_index],
-            cmap="coolwarm",
-        ),
+        sm_error,
         ax=axes2[1,0],
     )
+
     fig2.colorbar(
-        plt.pcolor(
-            abs(
-                wind_comp_HR[:, :, wind_height_index]
-                - wind_comp_trilinear[:, :, wind_height_index]
-            ),
-            cmap="jet",
-        ),
+        sm_abs_error,
         ax=axes2[1,2],
     )
     fig2.subplots_adjust(hspace=0.2)

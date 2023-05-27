@@ -17,7 +17,7 @@ import torch.optim
 import config.config as config
 from GAN_models.baseGAN import BaseGAN
 from CNN_models.Discriminator_3D import Discriminator_3D
-from CNN_models.Generator_3D import Generator_3D
+from CNN_models.Generator_3D_Resnet_ESRGAN import Generator_3D
 import tools.initialization as initialization
 import tools.trainingtricks as trainingtricks
 from process_data import calculate_gradient_of_wind_field
@@ -33,27 +33,29 @@ class wind_field_GAN_3D(BaseGAN):
         self.schedulers = []
         self.memory_dict = {}
         self.runtime_dict = {}
-        self.train_loss_dict = {
-            "loss_D": torch.zeros(1),
-            "G_total": torch.zeros(1),
-            "G_adversarial": torch.zeros(1),
-            "G_pix": torch.zeros(1),
-            "G_xy_gradient": torch.zeros(1),
-            "G_z_gradient": torch.zeros(1),
-            "G_divergence": torch.zeros(1),
-            "G_xy_divergence": torch.zeros(1),
-            "G_feature_D": torch.zeros(1),
+        self.train_G_loss_dict = {
+            "total": torch.zeros(1),
+            "adversarial": torch.zeros(1),
+            "pix": torch.zeros(1),
+            "xy_gradient": torch.zeros(1),
+            "z_gradient": torch.zeros(1),
+            "divergence": torch.zeros(1),
+            "xy_divergence": torch.zeros(1),
+            "feature_D": torch.zeros(1),
         }
-        self.val_loss_dict = {
-            "loss_D": torch.zeros(1),
-            "G_total": torch.zeros(1),
-            "G_adversarial": torch.zeros(1),
-            "G_pix": torch.zeros(1),
-            "G_xy_gradient": torch.zeros(1),
-            "G_z_gradient": torch.zeros(1),
-            "G_divergence": torch.zeros(1),
-            "G_xy_divergence": torch.zeros(1),
-            "G_feature_D": torch.zeros(1),
+        self.D_loss_dict = {
+            "train_loss": torch.zeros(1),
+            "validation_loss": torch.zeros(1),
+        }
+        self.validation_G_loss_dict = {
+            "total": torch.zeros(1),
+            "adversarial": torch.zeros(1),
+            "pix": torch.zeros(1),
+            "xy_gradient": torch.zeros(1),
+            "z_gradient": torch.zeros(1),
+            "divergence": torch.zeros(1),
+            "xy_divergence": torch.zeros(1),
+            "feature_D": torch.zeros(1),
         }
         self.hist_dict = {
             "val_grad_G_first_layer": torch.zeros(1),
@@ -327,23 +329,23 @@ class wind_field_GAN_3D(BaseGAN):
         training_iteration: bool,
     ):
         if training_iteration:
-            self.train_loss_dict["G_total"] = loss_G
-            self.train_loss_dict["G_adversarial"] = loss_G_adversarial
-            self.train_loss_dict["G_xy_gradient"] = loss_G_xy_gradient
-            self.train_loss_dict["G_z_gradient"] = loss_G_z_gradient
-            self.train_loss_dict["G_divergence"] = loss_G_divergence
-            self.train_loss_dict["G_xy_divergence"] = loss_G_xy_divergence
-            self.train_loss_dict["G_feature_D"] = loss_G_feature_D
-            self.train_loss_dict["G_pix"] = loss_G_pix
+            self.train_G_loss_dict["total"] = loss_G
+            self.train_G_loss_dict["adversarial"] = loss_G_adversarial
+            self.train_G_loss_dict["xy_gradient"] = loss_G_xy_gradient
+            self.train_G_loss_dict["z_gradient"] = loss_G_z_gradient
+            self.train_G_loss_dict["divergence"] = loss_G_divergence
+            self.train_G_loss_dict["xy_divergence"] = loss_G_xy_divergence
+            self.train_G_loss_dict["feature_D"] = loss_G_feature_D
+            self.train_G_loss_dict["pix"] = loss_G_pix
         else:
-            self.val_loss_dict["G_total"] = loss_G
-            self.val_loss_dict["G_adversarial"] = loss_G_adversarial
-            self.val_loss_dict["G_xy_gradient"] = loss_G_xy_gradient
-            self.val_loss_dict["G_z_gradient"] = loss_G_z_gradient
-            self.val_loss_dict["G_divergence"] = loss_G_divergence
-            self.val_loss_dict["G_xy_divergence"] = loss_G_xy_divergence
-            self.val_loss_dict["G_feature_D"] = loss_G_feature_D
-            self.val_loss_dict["G_pix"] = loss_G_pix
+            self.validation_G_loss_dict["total"] = loss_G
+            self.validation_G_loss_dict["adversarial"] = loss_G_adversarial
+            self.validation_G_loss_dict["xy_gradient"] = loss_G_xy_gradient
+            self.validation_G_loss_dict["z_gradient"] = loss_G_z_gradient
+            self.validation_G_loss_dict["divergence"] = loss_G_divergence
+            self.validation_G_loss_dict["xy_divergence"] = loss_G_xy_divergence
+            self.validation_G_loss_dict["feature_D"] = loss_G_feature_D
+            self.validation_G_loss_dict["pix"] = loss_G_pix
             self.metrics_dict["pix_loss_unscaled"] = loss_G_pix/self.cfg.training.pixel_loss_weight
             self.hist_dict["SR_pix_distribution"] = fake_HR.detach().cpu().numpy()
             # if self.conv_mode == "horizontal_3D":
@@ -548,7 +550,7 @@ class wind_field_GAN_3D(BaseGAN):
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
         if training_epoch:
-            self.train_loss_dict["loss_D"] = loss_D
+            self.D_loss_dict["train_loss"] = loss_D
             # BCEWithLogitsLoss has sigmoid activation.
         else:
             # if self.conv_mode == "horizontal_3D":
@@ -568,7 +570,7 @@ class wind_field_GAN_3D(BaseGAN):
             # self.hist_dict["val_grad_D_last_layer"] = grad_end.numpy()
             # self.hist_dict["val_weight_D_first_layer"] = weight_start.numpy()
             # self.hist_dict["val_weight_D_last_layer"] = weight_end.numpy()
-            self.val_loss_dict["loss_D"] = loss_D
+            self.D_loss_dict["validation_loss"] = loss_D
             self.hist_dict["D_pred_HR"] = (
                 torch.sigmoid(y_pred.detach()).cpu().numpy()[np.newaxis]
             )
@@ -781,11 +783,14 @@ class wind_field_GAN_3D(BaseGAN):
     def test(self):
         raise NotImplementedError("test has not been implemented.")
 
-    def get_train_loss_dict_ref(self):
-        return self.train_loss_dict
+    def get_G_train_loss_dict_ref(self):
+        return self.train_G_loss_dict
 
-    def get_val_loss_dict_ref(self):
-        return self.val_loss_dict
+    def get_G_val_loss_dict_ref(self):
+        return self.validation_G_loss_dict
+    
+    def get_D_loss_dict_ref(self):
+        return self.D_loss_dict
 
     def get_hist_dict_ref(self):
         return self.hist_dict

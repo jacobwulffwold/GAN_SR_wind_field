@@ -29,27 +29,51 @@ import random
 
 def main():
     cfg: Config = argv_to_cfg()
-    # cfg.is_train = True
+    cfg.is_train = True
     # cfg.is_download = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    if cfg.slurm_array_id > 3:
-        cfg.name = cfg.name + "_schedule2"
-        cfg.training.multistep_lr_steps = [10000, 30000, 50000, 70000]
-
-    if cfg.slurm_array_id in {1,4}:
-        cfg.name = cfg.name + "_larger_grad"
-
-    if cfg.slurm_array_id in {2,5}:
+    
+    if cfg.slurm_array_id > 7:
         cfg.name = cfg.name + "_seed"
         cfg.env.fixed_seed = 2021
 
-    if cfg.slurm_array_id in {3,6}:
-        cfg.name = cfg.name + "_featureD"
-        cfg.gan_config.use_D_feature_extractor_cost = True
+    if cfg.slurm_array_id in {1,8}:
+        # pass
+        cfg.name = cfg.name + "only_wind"
+
+    if cfg.slurm_array_id in {2,9}:
+        cfg.name = cfg.name + "wind_pressure"
+        cfg.gan_config.include_pressure = True
+        
+    if cfg.slurm_array_id in {3,10}:
+        cfg.name = cfg.name + "wind_rawZ"
+        cfg.gan_config.include_z_channel = True
+    
+    if cfg.slurm_array_id in {4,11}:
+        cfg.name = cfg.name + "wind_interpZ"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.interpolate_z = True
+    
+    if cfg.slurm_array_id in {5,12}:
+        cfg.name = cfg.name + "wind_Zground"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.include_above_ground_channel = True
+    
+    if cfg.slurm_array_id in {6,13}:
+        cfg.name = cfg.name + "wind_interpZ_pressure"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.interpolate_z = True
+        cfg.gan_config.include_pressure = True
+    
+    if cfg.slurm_array_id in {7,14}:
+        cfg.name = cfg.name + "wind_Zground_pressure"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.include_above_ground_channel = True
+        cfg.gan_config.include_pressure = True
 
         # cfg.dataset_val.batch_size = 8
 
