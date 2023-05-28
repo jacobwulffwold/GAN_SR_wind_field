@@ -29,7 +29,7 @@ import random
 
 def main():
     cfg: Config = argv_to_cfg()
-    cfg.is_train = True
+    # cfg.is_train = True
     # cfg.is_download = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download:
         print(
@@ -37,15 +37,17 @@ def main():
         )
         return
     
-    if cfg.slurm_array_id > 7:
+    if cfg.slurm_array_id > 15:
         cfg.name = cfg.name + "_seed"
         cfg.env.fixed_seed = 2021
 
-    if cfg.slurm_array_id in {1,8}:
+    if cfg.slurm_array_id in {15,16}:
         # pass
-        cfg.name = cfg.name + "only_wind"
+        cfg.name = cfg.name + "only_wind_interp"
+        cfg.gan_config.interpolate_z = True
 
-    if cfg.slurm_array_id in {2,9}:
+
+    if cfg.slurm_array_id in {3,9}:
         cfg.name = cfg.name + "wind_pressure"
         cfg.gan_config.include_pressure = True
         

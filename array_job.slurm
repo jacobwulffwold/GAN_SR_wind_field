@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=1-14
+#SBATCH --array=15,16
 #SBATCH --job-name=GAN_training_Z_handling
 #SBATCH --output=%a_Z_handling.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
