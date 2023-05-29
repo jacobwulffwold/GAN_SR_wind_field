@@ -37,9 +37,11 @@ def main():
         )
         return
     
-    if cfg.slurm_array_id > 15:
-        cfg.name = cfg.name + "_seed"
+    if cfg.slurm_array_id in {1,2}:
+        cfg.name = cfg.name + "_seed_wind_rawZ_pressure"
         cfg.env.fixed_seed = 2021
+        cfg.gan_config.include_pressure = True
+        cfg.gan_config.include_z_channel = True
 
     if cfg.slurm_array_id in {15,16}:
         # pass
