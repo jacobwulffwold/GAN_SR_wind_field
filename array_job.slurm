@@ -1,15 +1,15 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=1-15:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --gres=gpu:A100m40:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=15,16
-#SBATCH --job-name=GAN_training_Z_handling
-#SBATCH --output=%a_Z_handling.out
+#SBATCH --array=11-15
+#SBATCH --job-name=GAN_training_Z100
+#SBATCH --output=%a_Z100.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

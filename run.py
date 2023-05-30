@@ -37,19 +37,15 @@ def main():
         )
         return
     
-    if cfg.slurm_array_id in {1,2}:
-        cfg.name = cfg.name + "_seed_wind_rawZ_pressure"
+    if cfg.slurm_array_id > 7:
+        cfg.name = cfg.name + "_seed_"
         cfg.env.fixed_seed = 2021
-        cfg.gan_config.include_pressure = True
-        cfg.gan_config.include_z_channel = True
 
-    if cfg.slurm_array_id in {15,16}:
+    if cfg.slurm_array_id in {1,8}:
         # pass
-        cfg.name = cfg.name + "only_wind_interp"
-        cfg.gan_config.interpolate_z = True
+        cfg.name = cfg.name + "only_wind"
 
-
-    if cfg.slurm_array_id in {3,9}:
+    if cfg.slurm_array_id in {2,9}:
         cfg.name = cfg.name + "wind_pressure"
         cfg.gan_config.include_pressure = True
         
@@ -78,8 +74,10 @@ def main():
         cfg.gan_config.include_z_channel = True
         cfg.gan_config.include_above_ground_channel = True
         cfg.gan_config.include_pressure = True
-
         # cfg.dataset_val.batch_size = 8
+    if cfg.slurm_array_id in {15}:
+        cfg.name = cfg.name + "only_wind_interp"
+        cfg.gan_config.interpolate_z = True
 
     # elif cfg.slurm_array_id in {5,10}:
     #     cfg.name = cfg.name + "_noDropout"
