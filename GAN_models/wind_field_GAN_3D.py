@@ -661,6 +661,9 @@ class wind_field_GAN_3D(BaseGAN):
         it = torch.tensor(it, device=self.device)
         self.make_new_labels(it)
 
+        if it > 0.6 * self.niter and self.d_g_train_ratio ==1:
+            self.d_g_train_ratio = 2
+
         if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
             self.feature_extractor = copy.deepcopy(self.D.features)
             for param in self.feature_extractor.parameters():
@@ -670,7 +673,7 @@ class wind_field_GAN_3D(BaseGAN):
         ###################
         # Update G
         ###################
-        if it % self.d_g_train_ratio == 0:  # self.cfg.d_g_train_ratio == 1:
+        if it % self.d_g_train_ratio == 0:
             fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
         else:
             if torch.cuda.is_available() and not self.runtime_dict.get(
