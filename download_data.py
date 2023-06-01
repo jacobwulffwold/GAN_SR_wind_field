@@ -452,6 +452,21 @@ def slice_data(
         pressure,
     )
 
+def reverse_interpolate_z_axis(
+    HR_interp,
+    Z_raw,
+    Z_interp,
+):
+    HR_no_interp = np.zeros_like(HR_interp)
+    for x in range(HR_interp.shape[0]):
+        for z in range(HR_interp.shape[1]):
+            for i in range(HR_interp.shape[2]):
+                for j in range(HR_interp.shape[3]):
+                    HR_no_interp[x, z, i, j, :] = np.interp(
+                        Z_raw[x,0,i,j,:], Z_interp[x, 0, i, j, :], HR_interp[x, z, i, j, :]
+                    )
+
+    return HR_no_interp    
 
 def interpolate_z_axis(
     x,
@@ -553,7 +568,7 @@ def split_into_separate_files(
     index = 0
     for i in range(len(filenames)):
         if filenames[i] not in invalid_samples:
-            if os.path.isfile(folder + filenames[i]):
+            if os.path.isfile(folder +"max/max_" + filenames[i]):
                 continue
 
             if (

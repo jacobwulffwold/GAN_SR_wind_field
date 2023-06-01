@@ -36,48 +36,50 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    
+
     if cfg.slurm_array_id > 7:
-        cfg.name = cfg.name + "_seed_"
+        cfg.name = cfg.name + "_seed"
         cfg.env.fixed_seed = 2021
 
     if cfg.slurm_array_id in {1,8}:
         # pass
-        cfg.name = cfg.name + "only_wind"
+        cfg.name = cfg.name + "_only_pix"
+        cfg.training.gradient_xy_loss_weight = 0.0
+        cfg.training.gradient_z_loss_weight = 0.0
+        cfg.training.xy_divergence_loss_weight = 0.0
+        cfg.training.divergence_loss_weight = 0.0
+          
 
     if cfg.slurm_array_id in {2,9}:
-        cfg.name = cfg.name + "wind_pressure"
-        cfg.gan_config.include_pressure = True
+        cfg.name = cfg.name + "_grad"
+        cfg.training.xy_divergence_loss_weight = 0.0
+        cfg.training.divergence_loss_weight = 0.0
         
     if cfg.slurm_array_id in {3,10}:
-        cfg.name = cfg.name + "wind_rawZ"
-        cfg.gan_config.include_z_channel = True
+        cfg.name = cfg.name + "_div"
+        cfg.training.gradient_xy_loss_weight = 0.0
+        cfg.training.gradient_z_loss_weight = 0.0
     
     if cfg.slurm_array_id in {4,11}:
-        cfg.name = cfg.name + "wind_interpZ"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.interpolate_z = True
-    
+        cfg.name = cfg.name + "_grad_large"
+        cfg.training.gradient_xy_loss_weight = 5.0
+        cfg.training.gradient_z_loss_weight = 1.0
+
     if cfg.slurm_array_id in {5,12}:
-        cfg.name = cfg.name + "wind_Zground"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.include_above_ground_channel = True
+        cfg.name = cfg.name + "_div_large"
+        cfg.training.xy_divergence_loss_weight = 1.25
+        cfg.training.divergence_loss_weight = 1.25
     
     if cfg.slurm_array_id in {6,13}:
-        cfg.name = cfg.name + "wind_interpZ_pressure"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.interpolate_z = True
-        cfg.gan_config.include_pressure = True
+        cfg.name = cfg.name + "_xy"
+        cfg.training.gradient_z_loss_weight = 0.0
+        cfg.training.divergence_loss_weight = 0.0
     
     if cfg.slurm_array_id in {7,14}:
-        cfg.name = cfg.name + "wind_Zground_pressure"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.include_above_ground_channel = True
-        cfg.gan_config.include_pressure = True
+        cfg.name = cfg.name + "_xy_large"
+        cfg.training.gradient_xy_loss_weight = 5.0
+        cfg.training.xy_divergence_loss_weight = 1.25
         # cfg.dataset_val.batch_size = 8
-    if cfg.slurm_array_id in {15}:
-        cfg.name = cfg.name + "only_wind_interp"
-        cfg.gan_config.interpolate_z = True
 
     # elif cfg.slurm_array_id in {5,10}:
     #     cfg.name = cfg.name + "_noDropout"
