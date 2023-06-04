@@ -493,7 +493,7 @@ def interpolate_z_axis(
             v[i, j, :] = np.interp(
                 new_1D_z_above_ground, z_above_ground[i, j, :], v[i, j, :]
             )
-            u[i, j, :] = np.interp(
+            w[i, j, :] = np.interp(
                 new_1D_z_above_ground, z_above_ground[i, j, :], w[i, j, :]
             )
             pressure[i, j, :] = np.interp(
@@ -507,17 +507,16 @@ def interpolate_z_axis(
 
     return z, new_3D_z_above_ground, u, v, w, pressure
 
-
 def get_interpolated_z_data(
     filename,
     x,
     y,
     z_above_ground,
-    terrain,
     u,
     v,
     w,
     pressure,
+    terrain,
 ):
     try:
         with open(filename, "rb") as f:

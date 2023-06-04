@@ -29,7 +29,7 @@ from param_search import param_search
 
 def main():
     cfg: Config = argv_to_cfg()
-    # cfg.is_train = True
+    cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
@@ -37,54 +37,32 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
+    if cfg.slurm_array_id > 4:
+        cfg.name = cfg.name + "_seed"
+        cfg.env.fixed_seed = 2021
 
-    # if cfg.slurm_array_id > 7:
-    #     cfg.name = cfg.name + "_seed"
-    #     cfg.env.fixed_seed = 2021
+    if cfg.slurm_array_id in {1,5}:
+        cfg.name = cfg.name + "wind_interpZ"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.interpolate_z = True
 
-    # if cfg.slurm_array_id in {1,8}:
-    #     # pass
-    #     cfg.name = cfg.name + "_only_pix"
-    #     cfg.training.gradient_xy_loss_weight = 0.0
-    #     cfg.training.gradient_z_loss_weight = 0.0
-    #     cfg.training.xy_divergence_loss_weight = 0.0
-    #     cfg.training.divergence_loss_weight = 0.0
-          
-
-    # if cfg.slurm_array_id in {2,9}:
-    #     cfg.name = cfg.name + "_grad"
-    #     cfg.training.xy_divergence_loss_weight = 0.0
-    #     cfg.training.divergence_loss_weight = 0.0
-        
-    # if cfg.slurm_array_id in {3,10}:
-    #     cfg.name = cfg.name + "_div"
-    #     cfg.training.gradient_xy_loss_weight = 0.0
-    #     cfg.training.gradient_z_loss_weight = 0.0
+    if cfg.slurm_array_id in {2,6}:
+        cfg.name = cfg.name + "wind_interpZ_pressure"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.interpolate_z = True
+        cfg.gan_config.include_pressure = True
     
-    # if cfg.slurm_array_id in {4,11}:
-    #     cfg.name = cfg.name + "_grad_large"
-    #     cfg.training.gradient_xy_loss_weight = 5.0
-    #     cfg.training.gradient_z_loss_weight = 1.0
-
-    # if cfg.slurm_array_id in {5,12}:
-    #     cfg.name = cfg.name + "_div_large"
-    #     cfg.training.xy_divergence_loss_weight = 1.25
-    #     cfg.training.divergence_loss_weight = 1.25
+    if cfg.slurm_array_id in {3,7}:
+        cfg.name = cfg.name + "only_wind"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.interpolate_z = True
+        cfg.gan_config.include_pressure = True
     
-    # if cfg.slurm_array_id in {6,13}:
-    #     cfg.name = cfg.name + "_xy"
-    #     cfg.training.gradient_z_loss_weight = 0.0
-    #     cfg.training.divergence_loss_weight = 0.0
-    
-    # if cfg.slurm_array_id in {7,14}:
-    #     cfg.name = cfg.name + "_xy_large"
-    #     cfg.training.gradient_xy_loss_weight = 5.0
-    #     cfg.training.xy_divergence_loss_weight = 1.25
-        # cfg.dataset_val.batch_size = 8
-
-    # elif cfg.slurm_array_id in {5,10}:
-    #     cfg.name = cfg.name + "_noDropout"
-    #     cfg.generator.dropout_probability = 0.0
+    if cfg.slurm_array_id in {4,8}:
+        cfg.name = cfg.name + "wind_pressure"
+        cfg.gan_config.include_z_channel = True
+        cfg.gan_config.interpolate_z = True
+        cfg.gan_config.include_pressure = True
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -253,6 +231,7 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
         for path in [
             "./data/downloaded_raw_bessaker_data",
             "./data/full_dataset_files",
+            "./data/interpolated_z_data",
         ]
     ]
     is_ok = makedirs_ensure_user_ok(cfg.env.this_runs_folder)

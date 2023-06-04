@@ -7,7 +7,7 @@ from download_data import (
     download_and_split,
     slice_only_dim_dicts,
     slice_dict_folder_name,
-    interpolate_z_axis,
+    get_interpolated_z_data,
     get_static_data,
     filenames_from_start_and_end_dates,
 )
@@ -71,6 +71,9 @@ class CustomizedDataset(torch.utils.data.Dataset):
 
         if not os.path.exists("./data/full_dataset_files/" + self.subfolder_name+"/max/"):
             os.makedirs("./data/full_dataset_files/" + self.subfolder_name+"/max/")
+        if not os.path.exists("./data/interpolated_z_data/" + self.subfolder_name):
+            os.makedirs("./data/interpolated_z_data/" + self.subfolder_name)
+
 
     def __len__(self):
         "Denotes the total number of samples"
@@ -89,8 +92,8 @@ class CustomizedDataset(torch.utils.data.Dataset):
         )
 
         if self.interpolate_z:
-            z, z_above_ground, u, v, w, pressure = interpolate_z_axis(
-                self.x, self.y, z_above_ground, u, v, w, pressure, self.terrain
+            z, z_above_ground, u, v, w, pressure = get_interpolated_z_data(
+                "./data/interpolated_z_data/"+self.subfolder_name+self.filenames[index], self.x, self.y, z_above_ground, u, v, w, pressure, self.terrain
             )
 
         if self.enable_slicing:
