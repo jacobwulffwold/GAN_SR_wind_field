@@ -8,7 +8,6 @@ Use run.py to run.
 """
 import logging
 import os
-
 import cv2
 import pickle as pkl
 import numpy as np
@@ -18,7 +17,6 @@ import torch.nn as nn
 import tensorboardX
 import config.config as config
 import matplotlib.pyplot as plt
-import pickle
 
 
 # import data.imageset as imageset

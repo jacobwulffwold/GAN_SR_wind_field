@@ -661,8 +661,8 @@ class wind_field_GAN_3D(BaseGAN):
         it = torch.tensor(it, device=self.device)
         self.make_new_labels(it)
 
-        if it > 0.6 * self.niter and self.d_g_train_ratio ==1:
-            self.d_g_train_ratio = 2
+        # if it > 0.6 * self.niter and self.d_g_train_ratio ==1:
+        #     self.d_g_train_ratio = 3
 
         if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
             self.feature_extractor = copy.deepcopy(self.D.features)

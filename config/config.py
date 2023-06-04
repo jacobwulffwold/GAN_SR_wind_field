@@ -69,6 +69,8 @@ class EnvConfig(IniConfig):
     discriminator_load_path: str = None
     state_load_path: str = None
     fixed_seed: int = 2001
+    this_runs_folder: str = None
+    this_runs_tensorboard_folder: str = None
 
     def setEnvConfig(self, env_config):
         self.root_path = env_config.get("root_path")
@@ -300,6 +302,7 @@ class Config(IniConfig):
     is_train: bool
     is_use: bool
     is_test: bool
+    is_param_search: bool
     is_download: bool
     slurm_array_id:int = 1
 

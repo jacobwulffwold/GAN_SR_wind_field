@@ -25,60 +25,61 @@ from datetime import date
 from process_data import preprosess
 import numpy as np
 import random
-
+from param_search import param_search
 
 def main():
     cfg: Config = argv_to_cfg()
     # cfg.is_train = True
     # cfg.is_download = True
-    if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download:
+    # cfg.is_param_search = True
+    if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
 
-    if cfg.slurm_array_id > 7:
-        cfg.name = cfg.name + "_seed"
-        cfg.env.fixed_seed = 2021
+    # if cfg.slurm_array_id > 7:
+    #     cfg.name = cfg.name + "_seed"
+    #     cfg.env.fixed_seed = 2021
 
-    if cfg.slurm_array_id in {1,8}:
-        # pass
-        cfg.name = cfg.name + "_only_pix"
-        cfg.training.gradient_xy_loss_weight = 0.0
-        cfg.training.gradient_z_loss_weight = 0.0
-        cfg.training.xy_divergence_loss_weight = 0.0
-        cfg.training.divergence_loss_weight = 0.0
+    # if cfg.slurm_array_id in {1,8}:
+    #     # pass
+    #     cfg.name = cfg.name + "_only_pix"
+    #     cfg.training.gradient_xy_loss_weight = 0.0
+    #     cfg.training.gradient_z_loss_weight = 0.0
+    #     cfg.training.xy_divergence_loss_weight = 0.0
+    #     cfg.training.divergence_loss_weight = 0.0
           
 
-    if cfg.slurm_array_id in {2,9}:
-        cfg.name = cfg.name + "_grad"
-        cfg.training.xy_divergence_loss_weight = 0.0
-        cfg.training.divergence_loss_weight = 0.0
+    # if cfg.slurm_array_id in {2,9}:
+    #     cfg.name = cfg.name + "_grad"
+    #     cfg.training.xy_divergence_loss_weight = 0.0
+    #     cfg.training.divergence_loss_weight = 0.0
         
-    if cfg.slurm_array_id in {3,10}:
-        cfg.name = cfg.name + "_div"
-        cfg.training.gradient_xy_loss_weight = 0.0
-        cfg.training.gradient_z_loss_weight = 0.0
+    # if cfg.slurm_array_id in {3,10}:
+    #     cfg.name = cfg.name + "_div"
+    #     cfg.training.gradient_xy_loss_weight = 0.0
+    #     cfg.training.gradient_z_loss_weight = 0.0
     
-    if cfg.slurm_array_id in {4,11}:
-        cfg.name = cfg.name + "_grad_large"
-        cfg.training.gradient_xy_loss_weight = 5.0
-        cfg.training.gradient_z_loss_weight = 1.0
+    # if cfg.slurm_array_id in {4,11}:
+    #     cfg.name = cfg.name + "_grad_large"
+    #     cfg.training.gradient_xy_loss_weight = 5.0
+    #     cfg.training.gradient_z_loss_weight = 1.0
 
-    if cfg.slurm_array_id in {5,12}:
-        cfg.name = cfg.name + "_div_large"
-        cfg.training.xy_divergence_loss_weight = 1.25
-        cfg.training.divergence_loss_weight = 1.25
+    # if cfg.slurm_array_id in {5,12}:
+    #     cfg.name = cfg.name + "_div_large"
+    #     cfg.training.xy_divergence_loss_weight = 1.25
+    #     cfg.training.divergence_loss_weight = 1.25
     
-    if cfg.slurm_array_id in {6,13}:
-        cfg.name = cfg.name + "_xy"
-        cfg.training.gradient_z_loss_weight = 0.0
-        cfg.training.divergence_loss_weight = 0.0
+    # if cfg.slurm_array_id in {6,13}:
+    #     cfg.name = cfg.name + "_xy"
+    #     cfg.training.gradient_z_loss_weight = 0.0
+    #     cfg.training.divergence_loss_weight = 0.0
     
-    if cfg.slurm_array_id in {7,14}:
-        cfg.name = cfg.name + "_xy_large"
-        cfg.training.gradient_xy_loss_weight = 5.0
-        cfg.training.xy_divergence_loss_weight = 1.25
+    # if cfg.slurm_array_id in {7,14}:
+    #     cfg.name = cfg.name + "_xy_large"
+    #     cfg.training.gradient_xy_loss_weight = 5.0
+    #     cfg.training.xy_divergence_loss_weight = 1.25
         # cfg.dataset_val.batch_size = 8
 
     # elif cfg.slurm_array_id in {5,10}:
@@ -126,7 +127,14 @@ def main():
     dataset_train, dataset_test, dataset_validation, x, y = prepare_data(cfg)
 
     status_logger.info(f"run.py: data prepared")
-
+    
+    if cfg.is_param_search:
+        cfg.is_train = True
+        status_logger.info("run.py: starting parameter search")
+        param_search(num_samples=10, number_of_GPUs=cfg.slurm_array_id, cfg=cfg, dataset_train=dataset_train, dataset_validation=dataset_validation, x=x, y=y)
+        status_logger.info("run.py: finished parameter search")
+        return
+    
     if cfg.is_train:
         status_logger.info(
             "run.py: starting training" + ("" if not cfg.is_test else " before testing")
@@ -169,6 +177,13 @@ def argv_to_cfg() -> Config:
         help="run tests with supplied config",
     )
     parser.add_argument(
+        "--param_search",
+        default=False,
+        action="store_true",
+        help="run tests with supplied config",
+    )
+    
+    parser.add_argument(
         "--use", default=False, action="store_true", help="use on LR images"
     )
     parser.add_argument(
@@ -198,6 +213,7 @@ def argv_to_cfg() -> Config:
     is_train = args.train
     is_use = args.use
     is_download = args.download
+    is_param_search = args.param_search
     cfg_path = args.cfg
     slurm_array_id = args.slurm_array_id
 
@@ -212,6 +228,7 @@ def argv_to_cfg() -> Config:
     cfg.is_use = is_use
     cfg.is_train = is_train
     cfg.is_download = is_download
+    cfg.is_param_search = is_param_search
     cfg.slurm_array_id = slurm_array_id
 
     return cfg
