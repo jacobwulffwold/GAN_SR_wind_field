@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
 #SBATCH --job-name="param_search_test"
-#SBATCH --output=V100param_search_test.out
+#SBATCH --output=oneGPU_param.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
