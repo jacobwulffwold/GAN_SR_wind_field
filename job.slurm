@@ -2,13 +2,13 @@
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
 #SBATCH --time=0-00:10:00
-#SBATCH --gres=gpu:A100m40:2
+#SBATCH --gres=gpu:V10032:2
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
 #SBATCH --job-name="param_search_test"
-#SBATCH --output=param_search_test.out
+#SBATCH --output=V100param_search_test.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
