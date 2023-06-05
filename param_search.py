@@ -14,6 +14,7 @@ from ray.tune.search import ConcurrencyLimiter
 import iocomponents.displaybar as displaybar
 import copy
 import os
+import ray
 
 def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_train, cfg_datatrain, cfg_dataval, dataset_train, dataset_validation, x, y, search_cfg:dict):
 
@@ -31,7 +32,6 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
     cfg.training.xy_divergence_loss_weight = search_cfg["xy_divergence_loss_weight"]
     cfg.training.divergence_loss_weight = search_cfg["divergence_loss_weight"]
     cfg.training.pixel_loss_weight = search_cfg["pixel_loss_weight"]
-    cfg.gpu_id = search_cfg["gpu_id"]
     cfg.name =  cfg.name+str(search_cfg.values())
 
     if torch.cuda.is_available():
@@ -232,13 +232,15 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
 
 
 def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, dataset_train=None, dataset_validation=None, x=None, y=None):
+    
+    ray.init()
+
     search_space = {
         "gradient_xy_loss_weight": tune.loguniform(1.0, 50.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
         "gradient_z_loss_weight": tune.loguniform(1.0, 50.0, 2), #0.2
         "xy_divergence_loss_weight": tune.loguniform(0.4, 20.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
         "divergence_loss_weight": tune.loguniform(0.7, 40.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
         "pixel_loss_weight": tune.uniform(0.0, 1.0), #0.5
-        'gpu_id': tune.sample_from(lambda _: torch.cuda.current_device() if torch.cuda.is_available() else -1),
     }
     scheduler = ASHAScheduler(
         time_attr="it",
@@ -254,15 +256,13 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
         "xy_divergence_loss_weight": 2.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
         "divergence_loss_weight": 4.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
         "pixel_loss_weight": 0.2, #0.5
-        'gpu_id': 0,
     },
     {
-        "gradient_xy_loss_weight": 10.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z_loss_weight": 2.0, #0.2
-        "xy_divergence_loss_weight": 5.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence_loss_weight": 2.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
-        "pixel_loss_weight": 0.2, #0.5
-        'gpu_id': 0,
+        "gradient_xy_loss_weight": 10.0,  
+        "gradient_z_loss_weight": 2.0,
+        "xy_divergence_loss_weight": 5.0, 
+        "divergence_loss_weight": 2.0, 
+        "pixel_loss_weight": 0.2,
     },
     ]
 
