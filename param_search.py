@@ -238,7 +238,7 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
         "xy_divergence_loss_weight": tune.loguniform(0.4, 20.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
         "divergence_loss_weight": tune.loguniform(0.7, 40.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
         "pixel_loss_weight": tune.uniform(0.0, 1.0), #0.5
-        'gpu_id': tune.sample_from(lambda _: torch.cuda.current_device() if torch.cuda.is_available() else -1)
+        'gpu_id': tune.sample_from(lambda _: torch.cuda.current_device() if torch.cuda.is_available() else -1),
     }
     scheduler = ASHAScheduler(
         time_attr="it",
@@ -247,16 +247,26 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
         reduction_factor=2,
     )
 
-    initial_search_config = {
+    initial_search_config = [
+    {
         "gradient_xy_loss_weight": 5.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
         "gradient_z_loss_weight": 5.0, #0.2
         "xy_divergence_loss_weight": 2.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
         "divergence_loss_weight": 4.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
         "pixel_loss_weight": 0.2, #0.5
-        'gpu_id': -1
-    }
+        'gpu_id': 0,
+    },
+    {
+        "gradient_xy_loss_weight": 10.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+        "gradient_z_loss_weight": 2.0, #0.2
+        "xy_divergence_loss_weight": 5.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+        "divergence_loss_weight": 2.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+        "pixel_loss_weight": 0.2, #0.5
+        'gpu_id': 0,
+    },
+    ]
 
-    search_algorithm = OptunaSearch() #points_to_evaluate=[initial_search_config]
+    search_algorithm = OptunaSearch() #points_to_evaluate=initial_search_config
     search_algorithm = ConcurrencyLimiter(search_algorithm, max_concurrent=number_of_GPUs)
 
     

@@ -29,40 +29,40 @@ from param_search import param_search
 
 def main():
     cfg: Config = argv_to_cfg()
-    cfg.is_train = True
+    # cfg.is_train = True
     # cfg.is_download = True
-    # cfg.is_param_search = True
+    cfg.is_param_search = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    if cfg.slurm_array_id > 4:
-        cfg.name = cfg.name + "_seed"
-        cfg.env.fixed_seed = 2021
+    # if cfg.slurm_array_id > 4:
+    #     cfg.name = cfg.name + "_seed"
+    #     cfg.env.fixed_seed = 2021
 
-    if cfg.slurm_array_id in {1,5}:
-        cfg.name = cfg.name + "wind_interpZ"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.interpolate_z = True
+    # if cfg.slurm_array_id in {1,5}:
+    #     cfg.name = cfg.name + "wind_interpZ"
+    #     cfg.gan_config.include_z_channel = True
+    #     cfg.gan_config.interpolate_z = True
 
-    if cfg.slurm_array_id in {2,6}:
-        cfg.name = cfg.name + "wind_interpZ_pressure"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.interpolate_z = True
-        cfg.gan_config.include_pressure = True
+    # if cfg.slurm_array_id in {2,6}:
+    #     cfg.name = cfg.name + "wind_interpZ_pressure"
+    #     cfg.gan_config.include_z_channel = True
+    #     cfg.gan_config.interpolate_z = True
+    #     cfg.gan_config.include_pressure = True
     
-    if cfg.slurm_array_id in {3,7}:
-        cfg.name = cfg.name + "only_wind"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.interpolate_z = True
-        cfg.gan_config.include_pressure = True
+    # if cfg.slurm_array_id in {3,7}:
+    #     cfg.name = cfg.name + "only_wind"
+    #     cfg.gan_config.include_z_channel = True
+    #     cfg.gan_config.interpolate_z = True
+    #     cfg.gan_config.include_pressure = True
     
-    if cfg.slurm_array_id in {4,8}:
-        cfg.name = cfg.name + "wind_pressure"
-        cfg.gan_config.include_z_channel = True
-        cfg.gan_config.interpolate_z = True
-        cfg.gan_config.include_pressure = True
+    # if cfg.slurm_array_id in {4,8}:
+    #     cfg.name = cfg.name + "wind_pressure"
+    #     cfg.gan_config.include_z_channel = True
+    #     cfg.gan_config.interpolate_z = True
+    #     cfg.gan_config.include_pressure = True
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -109,7 +109,7 @@ def main():
     if cfg.is_param_search:
         cfg.is_train = True
         status_logger.info("run.py: starting parameter search")
-        param_search(num_samples=10, number_of_GPUs=cfg.slurm_array_id, cfg=cfg, dataset_train=dataset_train, dataset_validation=dataset_validation, x=x, y=y)
+        param_search(num_samples=4, number_of_GPUs=cfg.slurm_array_id, cfg=cfg, dataset_train=dataset_train, dataset_validation=dataset_validation, x=x, y=y)
         status_logger.info("run.py: finished parameter search")
         return
     
