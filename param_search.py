@@ -233,7 +233,7 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
 
 def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, dataset_train=None, dataset_validation=None, x=None, y=None):
     
-    ray.init()
+    ray.init(num_cpus=cfg.dataset_train.num_workers*number_of_GPUs+1, num_gpus=number_of_GPUs if torch.cuda.is_available() else 0)
 
     search_space = {
         "gradient_xy_loss_weight": tune.loguniform(1.0, 50.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
@@ -266,7 +266,7 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
     },
     ]
 
-    search_algorithm = OptunaSearch() #points_to_evaluate=initial_search_config
+    search_algorithm = OptunaSearch(points_to_evaluate=initial_search_config) #points_to_evaluate=initial_search_config
     search_algorithm = ConcurrencyLimiter(search_algorithm, max_concurrent=number_of_GPUs)
 
     
