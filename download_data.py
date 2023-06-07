@@ -370,7 +370,7 @@ def slice_only_dim_dicts(
             value_list.append(
                 val[
                     x_dict["start"] : x_dict["max"] : x_dict["step"],
-                    y_dict["start"] : y_dict["max"] : x_dict["step"],
+                    y_dict["start"] : y_dict["max"] : y_dict["step"],
                     z_dict["start"] : z_dict["max"] : z_dict["step"],
                 ]
             )

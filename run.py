@@ -109,7 +109,7 @@ def main():
     if cfg.is_param_search:
         cfg.is_train = True
         status_logger.info("run.py: starting parameter search")
-        param_search(num_samples=4, number_of_GPUs=cfg.slurm_array_id, cfg=cfg, dataset_train=dataset_train, dataset_validation=dataset_validation, x=x, y=y)
+        param_search(num_samples=500, number_of_GPUs=cfg.slurm_array_id, cfg=cfg, dataset_train=dataset_train, dataset_validation=dataset_validation, x=x, y=y)
         status_logger.info("run.py: finished parameter search")
         return
     

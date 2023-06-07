@@ -11,7 +11,6 @@ from GAN_models.wind_field_GAN_3D import wind_field_GAN_3D
 from functools import partial
 from ray.tune.search.optuna import OptunaSearch
 from ray.tune.search import ConcurrencyLimiter
-import iocomponents.displaybar as displaybar
 import copy
 import os
 import ray
@@ -27,11 +26,11 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
     cfg.dataset_val=cfg_dataval
 
     # print(cfg, dataset_train, dataset_validation, x, y, search_cfg)
-    cfg.training.gradient_xy_loss_weight = search_cfg["gradient_xy_loss_weight"]
-    cfg.training.gradient_z_loss_weight = search_cfg["gradient_z_loss_weight"]
-    cfg.training.xy_divergence_loss_weight = search_cfg["xy_divergence_loss_weight"]
-    cfg.training.divergence_loss_weight = search_cfg["divergence_loss_weight"]
-    cfg.training.pixel_loss_weight = search_cfg["pixel_loss_weight"]
+    cfg.training.gradient_xy_loss_weight = search_cfg["gradient_xy"]
+    cfg.training.gradient_z_loss_weight = search_cfg["gradient_z"]
+    cfg.training.xy_divergence_loss_weight = search_cfg["xy_divergence"]
+    cfg.training.divergence_loss_weight = search_cfg["divergence"]
+    cfg.training.pixel_loss_weight = search_cfg["pixel"]
     cfg.name =  cfg.name+str(search_cfg.values())
 
     if torch.cuda.is_available():
@@ -208,10 +207,6 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
                 # }
                 # checkpoint = Checkpoint.from_dict(checkpoint_data)
 
-                session.report(
-                    {"it":it, "PSNR": metrics_vals["val_PSNR"], "pix": metrics_vals["pix_loss_unscaled"]}
-                )
-
                 if cfg.use_tensorboard_logger:
                     tb_writer.add_scalars("G_loss/validation", G_loss_vals, it)
                     tb_writer.add_scalars("D_loss/", D_loss_vals, it)
@@ -222,6 +217,9 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
                     tb_writer.add_scalars("metrics/PSNR", PSNR_metrics, it)
                     tb_writer.add_scalars("metrics/pix", pix_metrics, it)
 
+                session.report(
+                    {"it":it, "PSNR": metrics_vals["val_PSNR"], "pix": metrics_vals["pix_loss_unscaled"]}
+                )
                 stat_log_str = f"it: {it} "
                 for k, v in G_loss_vals.items():
                     stat_log_str += f"{k}: {v} "
@@ -233,42 +231,50 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
 
 def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, dataset_train=None, dataset_validation=None, x=None, y=None):
     
-    ray.init(num_cpus=cfg.dataset_train.num_workers*number_of_GPUs+1, num_gpus=number_of_GPUs if torch.cuda.is_available() else 0)
+    ray.init(num_cpus=cfg.dataset_train.num_workers*(number_of_GPUs+1), num_gpus=number_of_GPUs if torch.cuda.is_available() else 0)
 
     search_space = {
-        "gradient_xy_loss_weight": tune.loguniform(1.0, 50.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z_loss_weight": tune.loguniform(1.0, 50.0, 2), #0.2
-        "xy_divergence_loss_weight": tune.loguniform(0.4, 20.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence_loss_weight": tune.loguniform(0.7, 40.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
-        "pixel_loss_weight": tune.uniform(0.0, 1.0), #0.5
+        "gradient_xy": tune.loguniform(1.0, 50.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+        "gradient_z": tune.loguniform(0.6, 50.0, 2), #0.2
+        "xy_divergence": tune.loguniform(0.4, 20.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+        "divergence": tune.loguniform(0.6, 40.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+        "pixel": tune.uniform(0.0, 1.0), #0.5
     }
+    
     scheduler = ASHAScheduler(
         time_attr="it",
         max_t=cfg.training.niter,
-        grace_period=2,
-        reduction_factor=2,
+        grace_period=600,
+        reduction_factor=3,
     )
 
     initial_search_config = [
     {
-        "gradient_xy_loss_weight": 5.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z_loss_weight": 5.0, #0.2
-        "xy_divergence_loss_weight": 2.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence_loss_weight": 4.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
-        "pixel_loss_weight": 0.2, #0.5
+        "gradient_xy": 5.0,  
+        "gradient_z": 0.6,
+        "xy_divergence": 1.25, 
+        "divergence": 0.6, 
+        "pixel": 0.15,
     },
     {
-        "gradient_xy_loss_weight": 10.0,  
-        "gradient_z_loss_weight": 2.0,
-        "xy_divergence_loss_weight": 5.0, 
-        "divergence_loss_weight": 2.0, 
-        "pixel_loss_weight": 0.2,
+        "gradient_xy": 5.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+        "gradient_z": 5.0, #0.2
+        "xy_divergence": 2.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+        "divergence": 4.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+        "pixel": 0.2, #0.5
+    },
+    {
+        "gradient_xy": 10.0,  
+        "gradient_z": 2.0,
+        "xy_divergence": 5.0, 
+        "divergence": 2.0, 
+        "pixel": 0.2,
     },
     ]
 
     search_algorithm = OptunaSearch(points_to_evaluate=initial_search_config) #points_to_evaluate=initial_search_config
     search_algorithm = ConcurrencyLimiter(search_algorithm, max_concurrent=number_of_GPUs)
-
+    reporter = tune.CLIReporter(max_report_frequency=200, max_column_length=5) 
     
 
     # train_param_search(initial_search_config, cfg, dataset_train, dataset_validation, x, y)
@@ -278,6 +284,7 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
         partial(train_param_search, cfg, cfg.env, cfg.gan_config, cfg.generator, cfg.discriminator, cfg.training, cfg.dataset_train, cfg.dataset_val, copy.deepcopy(dataset_train), copy.deepcopy(dataset_validation), x, y),
         resources_per_trial={"cpu": cfg.dataset_train.num_workers, "gpu": 1 if torch.cuda.is_available() else 0},
         config=search_space,
+        progress_reporter=reporter,
         num_samples=num_samples,
         metric="PSNR",
         mode="max",
@@ -288,6 +295,7 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
         sync_config=tune.SyncConfig(
             syncer=None
         ),
+        fail_fast=True,
     )
 
     best_trial = result.get_best_trial("PSNR", "max", "last")
