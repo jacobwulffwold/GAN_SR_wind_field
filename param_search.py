@@ -234,48 +234,96 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
     ray.init(num_cpus=cfg.dataset_train.num_workers*(number_of_GPUs+1), num_gpus=number_of_GPUs if torch.cuda.is_available() else 0)
 
     search_space = {
-        "gradient_xy": tune.loguniform(1.0, 50.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z": tune.loguniform(0.6, 50.0, 2), #0.2
-        "xy_divergence": tune.loguniform(0.4, 20.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence": tune.loguniform(0.6, 40.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+        "gradient_xy": tune.loguniform(0.5, 32.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+        "gradient_z": tune.loguniform(0.25, 16.0, 2), #0.2
+        "xy_divergence": tune.loguniform(0.25, 16.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+        "divergence": tune.loguniform(0.25, 16.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
         "pixel": tune.uniform(0.0, 1.0), #0.5
     }
     
     scheduler = ASHAScheduler(
         time_attr="it",
         max_t=cfg.training.niter,
-        grace_period=600,
+        grace_period=1200,
         reduction_factor=3,
     )
 
     initial_search_config = [
     {
         "gradient_xy": 5.0,  
-        "gradient_z": 0.6,
+        "gradient_z": 0.25,
         "xy_divergence": 1.25, 
-        "divergence": 0.6, 
+        "divergence": 0.25, 
         "pixel": 0.15,
     },
     {
-        "gradient_xy": 5.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z": 5.0, #0.2
-        "xy_divergence": 2.0, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence": 4.0, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
-        "pixel": 0.2, #0.5
+        "gradient_xy": 1.0,  
+        "gradient_z": 0.25,
+        "xy_divergence": 1.25, 
+        "divergence": 1.25, 
+        "pixel": 0.15,
     },
     {
         "gradient_xy": 10.0,  
-        "gradient_z": 2.0,
-        "xy_divergence": 5.0, 
-        "divergence": 2.0, 
+        "gradient_z": 0.25,
+        "xy_divergence": 2.5, 
+        "divergence": 0.25, 
+        "pixel": 0.25,
+    },
+    {
+        "gradient_xy": 1.0,  
+        "gradient_z": 0.25,
+        "xy_divergence": 2.5, 
+        "divergence": 2.5, 
+        "pixel": 0.25,
+    },
+    {
+        "gradient_xy": 5.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+        "gradient_z": 0.25, #0.2
+        "xy_divergence": 1.25, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+        "divergence": 2.5, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+        "pixel": 0.2, #0.5
+    },
+    {
+        "gradient_xy": 2.5,  
+        "gradient_z": 1.0,
+        "xy_divergence": 0.5, 
+        "divergence": 1.0, 
+        "pixel": 0.15,
+    },
+    {
+        "gradient_xy": 10.0,  
+        "gradient_z": 1.0,
+        "xy_divergence": 0.5, 
+        "divergence": 1.0, 
+        "pixel": 0.2,
+    },
+    {
+        "gradient_xy": 2.5,  
+        "gradient_z": 5.0,
+        "xy_divergence": 0.5, 
+        "divergence": 1.0, 
+        "pixel": 0.2,
+    },
+    {
+        "gradient_xy": 2.5,  
+        "gradient_z": 1.0,
+        "xy_divergence": 2.5, 
+        "divergence": 1.0, 
+        "pixel": 0.2,
+    },
+    {
+        "gradient_xy": 2.5,  
+        "gradient_z": 1.0,
+        "xy_divergence": 0.5, 
+        "divergence": 5.0, 
         "pixel": 0.2,
     },
     ]
 
     search_algorithm = OptunaSearch(points_to_evaluate=initial_search_config) #points_to_evaluate=initial_search_config
     search_algorithm = ConcurrencyLimiter(search_algorithm, max_concurrent=number_of_GPUs)
-    reporter = tune.CLIReporter(max_report_frequency=200, max_column_length=5) 
-    
+    reporter = tune.CLIReporter(max_report_frequency=200, max_column_length=5, print_intermediate_tables=True)
 
     # train_param_search(initial_search_config, cfg, dataset_train, dataset_validation, x, y)
 

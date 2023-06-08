@@ -7,8 +7,8 @@
 #SBATCH --ntasks-per-node=6
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=35G
-#SBATCH --job-name="GAN_cost_param_search"
-#SBATCH --output=GAN_cost_param_search.out
+#SBATCH --job-name="35kGAN_cost_param_search"
+#SBATCH --output=35kGAN_cost_param_search.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
