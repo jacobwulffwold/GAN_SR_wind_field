@@ -450,15 +450,18 @@ class wind_field_GAN_3D(BaseGAN):
         loss_G_divergence *= self.cfg.training.divergence_loss_weight
         loss_G_xy_divergence *= self.cfg.training.xy_divergence_loss_weight
 
-        loss_G = (
-            loss_G_adversarial
-            + loss_G_pix
-            + loss_G_xy_gradient
-            + loss_G_z_gradient
-            + loss_G_divergence
-            + loss_G_xy_divergence
-            + loss_G_feature_D
-        )
+        if loss_G_divergence.isnan() or loss_G_xy_divergence.isnan() or loss_G_z_gradient.isnan() or loss_G_xy_gradient.isnan() or loss_G_divergence.isinf() or loss_G_xy_divergence.isinf() or loss_G_z_gradient.isinf() or loss_G_xy_gradient.isinf():
+            loss_G = loss_G_adversarial + loss_G_pix + loss_G_feature_D
+        else:
+            loss_G = (
+                loss_G_adversarial
+                + loss_G_pix
+                + loss_G_xy_gradient
+                + loss_G_z_gradient
+                + loss_G_divergence
+                + loss_G_xy_divergence
+                + loss_G_feature_D
+            )
         if training_iteration:
             if torch.cuda.is_available() and not self.runtime_dict.get("G_backward"):
                 start_GB = torch.cuda.Event(enable_timing=True)
@@ -472,7 +475,6 @@ class wind_field_GAN_3D(BaseGAN):
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
                 
-                # self.G.scaler.unscale_(self.optimizer_G)
                 torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                 
                 start_Gs = torch.cuda.Event(enable_timing=True)
@@ -480,8 +482,6 @@ class wind_field_GAN_3D(BaseGAN):
                 start_Gs.record()
                 if not(loss_G.isnan() or loss_G.isinf()):
                     self.optimizer_G.step()
-                # self.G.scaler.step(self.optimizer_G)
-                # self.G.scaler.update()
                 end_Gs.record()
                 self.runtime_dict["G_step"] = (start_Gs, end_Gs)
                 self.memory_dict["after_G_step"] = (
@@ -489,13 +489,9 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             else:
                 loss_G.backward()
-                    # self.G.scaler.scale(loss_G).backward()
-                    # self.G.scaler.unscale_(self.optimizer_G)
                 if not(loss_G.isnan() or loss_G.isinf()):
                     torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                     self.optimizer_G.step()
-                    # self.G.scaler.step(self.optimizer_G)
-                    # self.G.scaler.update()
 
         self.log_G_losses(
             fake_HR,

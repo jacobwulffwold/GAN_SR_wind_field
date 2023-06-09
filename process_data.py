@@ -38,6 +38,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
         data_aug_flip=True,
         enable_slicing=False,
         slice_size=64,
+        for_plotting=False,
     ):
         try:
             invalid_filenames = set(
@@ -68,6 +69,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.terrain = terrain
         self.enable_slicing = enable_slicing
         self.slice_size = slice_size
+        self.for_plotting = for_plotting
 
         if not os.path.exists("./data/full_dataset_files/" + self.subfolder_name+"/max/"):
             os.makedirs("./data/full_dataset_files/" + self.subfolder_name+"/max/")
@@ -97,8 +99,8 @@ class CustomizedDataset(torch.utils.data.Dataset):
             )
 
         if self.enable_slicing:
-            x_start = np.random.randint(0, self.x.size - self.slice_size)
-            y_start = np.random.randint(0, self.y.size - self.slice_size)
+            x_start = round(np.random.beta(0.35, 0.35) * (self.x.size - self.slice_size))
+            y_start = round(np.random.beta(0.35, 0.35) * (self.y.size - self.slice_size))
             z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
                 z,
                 z_above_ground,
@@ -128,6 +130,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
             include_pressure=self.include_pressure,
             include_z_channel=self.include_z_channel,
             include_above_ground_channel=self.include_above_ground_channel,
+            for_plotting=self.for_plotting,
         )
 
         if self.data_aug_rot:
@@ -215,7 +218,7 @@ def download_all_files_and_prepare(
         invalid_urls = set()
 
     if not os.path.exists(folder + subfolder):
-        os.makedirs(folder + subfolder)
+        os.makedirs(folder + subfolder+"/max/")
 
     invalid_samples = set()
 
@@ -305,6 +308,7 @@ def reformat_to_torch(
     include_pressure=False,
     include_z_channel=False,
     include_above_ground_channel=False,
+    for_plotting=False,
 ):
     HR_arr = np.concatenate(
         (u[np.newaxis, :, :, :], v[np.newaxis, :, :, :], w[np.newaxis, :, :, :]), axis=0
@@ -315,6 +319,10 @@ def reformat_to_torch(
         arr_norm_LR = np.concatenate(
             (HR_arr, (p[np.newaxis, :, :, :]-P_MIN)/(P_MAX-P_MIN)), axis=0
         )[:, ::coarseness_factor, ::coarseness_factor, :]
+        if for_plotting:
+            HR_arr = np.concatenate(
+                (HR_arr, (p[np.newaxis, :, :, :]-P_MIN)/(P_MAX-P_MIN)), axis=0
+            )
     else:
         arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
         
@@ -366,6 +374,7 @@ def preprosess(
     train_aug_flip=False,
     val_aug_flip=False,
     test_aug_flip=False,
+    for_plotting=False,
 ):
     try:
         with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
@@ -422,6 +431,7 @@ def preprosess(
         data_aug_flip=train_aug_flip,
         enable_slicing=enable_slicing,
         slice_size=slice_size,
+        for_plotting=for_plotting,
     )
 
     dataset_test = CustomizedDataset(
