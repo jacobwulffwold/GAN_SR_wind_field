@@ -32,8 +32,6 @@ def main():
     # cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
-    cfg.is_test = True
-    cfg.slurm_array_id = 1
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
