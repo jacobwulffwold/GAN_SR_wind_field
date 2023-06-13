@@ -69,6 +69,11 @@ def main():
         cfg.env.generator_load_path = cfg.env.discriminator_load_path.replace("90000", "20000")
         cfg.env.generator_load_path = cfg.env.state_load_path.replace("90000", "20000")
         cfg.is_train = True
+    elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
+        cfg.load_model_from_save = False
+        cfg.is_train = True
+        cfg.gan_config.include_pressure = False
+        cfg.gan_config.include_z_channel = False
     else:
         cfg.env.generator_load_path = cfg.env.generator_load_path.replace("90000", "80000").replace("85000", "80000").replace("100000", "80000")
         cfg.is_train = False
@@ -138,8 +143,9 @@ def main():
 
     if cfg.is_test:
         status_logger.info("run.py: starting testing")
-        if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
-            cfg.env.generator_load_path = cfg.env.generator_load_path.replace("20000", "80000")
+        if run_names[this_run_index] in {"Z_handling90_seed_wind_rawZ_pressure", "Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
+            cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_80000.pth"
+            cfg.load_model_from_save = True
         test.test(cfg, dataset_test)
         status_logger.info("run.py: finished testing")
 
