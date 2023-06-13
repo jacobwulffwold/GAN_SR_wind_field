@@ -119,7 +119,7 @@ def test(cfg: config.Config, dataset_test):
                         avg_pix += pix/niter
                         avg_pix_trilinear += trilinear_pix/niter
                         
-                        if len(dataloader_test)*(epoch)+j % cfg.training.log_period == 0:
+                        if (len(dataloader_test)*(epoch)+j) % cfg.training.log_period == 0:
                             write_fields(
                                 LR_i[:,:3], HR_i[:,:3], SR_i, interpolated_LR, Z, cfg.env.this_runs_folder, filenames[i]
                             )
