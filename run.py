@@ -56,10 +56,10 @@ def main():
         "Z90_interp_seedwind_interpZ",
         "Z90_interp_seedwind_interpZ_pressure",
         "Z90_interp_seedwind_pressure",
-        # "Z_handling90_seed_wind_rawZ_pressure",
         "Z_handling90_seedonly_wind",
         "Z_handling90_seedwind_pressure",
         "Z_handling90_seedwind_rawZ",
+        "Z_handling90_seed_wind_rawZ_pressure",
     ]
     this_run_index = cfg.slurm_array_id-1
 
@@ -140,6 +140,8 @@ def main():
 
     if cfg.is_test:
         status_logger.info("run.py: starting testing")
+        if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
+            cfg.env.generator_load_path = cfg.env.generator_load_path.replace("20000", "80000")
         test.test(cfg, dataset_test)
         status_logger.info("run.py: finished testing")
 
@@ -201,7 +203,6 @@ def argv_to_cfg() -> Config:
         default=1,
         help="ID for slurm job",
     )
-
 
     args = parser.parse_args()
     is_test = args.test
