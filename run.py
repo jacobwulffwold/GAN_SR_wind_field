@@ -65,9 +65,7 @@ def main():
     cfg = Config(cfg_path)
     cfg.load_model_from_save = True
     if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
-        cfg.env.generator_load_path = cfg.env.generator_load_path.replace("90000", "20000")
-        cfg.env.generator_load_path = cfg.env.discriminator_load_path.replace("90000", "20000")
-        cfg.env.generator_load_path = cfg.env.state_load_path.replace("90000", "20000")
+        cfg.load_model_from_save = False
         cfg.is_train = True
     elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
         cfg.load_model_from_save = False

@@ -1,11 +1,11 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=1-08:00:00
+#SBATCH --time=1-15:00:00
 #SBATCH --gres=gpu:A100m40:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=6
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=8G
 #SBATCH --job-name="last_Z_train"
 #SBATCH --output=last_Z_train.out
