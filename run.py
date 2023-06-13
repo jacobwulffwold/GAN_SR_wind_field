@@ -77,7 +77,7 @@ def main():
     cfg.is_use = False
     cfg.is_download = False
     cfg.is_param_search = False
-    cfg.training.log_period = 1
+    cfg.training.log_period = 500
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
