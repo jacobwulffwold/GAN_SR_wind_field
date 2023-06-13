@@ -18,6 +18,7 @@ import config.config as config
 from GAN_models.wind_field_GAN_3D import wind_field_GAN_3D, calculate_PSNR
 import iocomponents.displaybar as displaybar
 
+
 def test(cfg: config.Config, dataset_test):
     status_logger = logging.getLogger("status")
     wind_comp_dict = {0: "u", 1: "v", 2: "w"}
@@ -90,13 +91,15 @@ def test(cfg: config.Config, dataset_test):
             write_file.write("field,PSNR,pix,PSNR_trilinear, pix_trilinear\n")
             
             for epoch in range(num_epochs):
+                dataloader_test.dataset.slice_index = epoch
+
                 for j, (LR, HR, Z, filenames) in enumerate(dataloader_test):
-                    status_logger.info(f"batch {j}")
+                    # status_logger.info(f"batch {j}")
                     # names = data["hr_name"]
                     bar.update(j, epoch, len(dataloader_test)*(epoch)+j)
 
                     for i in range(LR.shape[0]):
-                        status_logger.info(f"field {i}")
+                        # status_logger.info(f"field {i}")
                         indx = torch.as_tensor([i])
                         LR_i = torch.index_select(LR, 0, indx, out=None)
                         HR_i = torch.index_select(HR, 0, indx, out=None)

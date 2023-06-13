@@ -163,9 +163,6 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 Z = torch.flip(Z, [2])
         
         if self.is_test:
-            if index == len(self.filenames)-1:
-                self.slice_index+=1
-                return LR, HR, Z, self.filenames[index][:-4]+str(self.slice_index-1)
             return LR, HR, Z, self.filenames[index][:-4]+"_"+str(self.slice_index)
 
         return LR, HR, Z
