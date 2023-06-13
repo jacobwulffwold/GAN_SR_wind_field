@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=8G
-#SBATCH --array=2,11
+#SBATCH --array=2,11,20
 #SBATCH --job-name=Z_test_models
 #SBATCH --output=%a_Z_test_models.out
 #SBATCH --mail-user=jawold@stud.ntnu.no

@@ -64,6 +64,7 @@ def main():
     cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
     cfg = Config(cfg_path)
     cfg.load_model_from_save = True
+    cfg.dataset_train.num_workers = 8
     if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
         cfg.load_model_from_save = False
         cfg.is_train = True
