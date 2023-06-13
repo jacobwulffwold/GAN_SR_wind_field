@@ -1,15 +1,15 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=1-15:00:00
-#SBATCH --gres=gpu:A100m40:1
+#SBATCH --time=0-00:21:00
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=10G
-#SBATCH --array=1-8
-#SBATCH --job-name=Z90_interp
-#SBATCH --output=%a_Z90_interp.out
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=5G
+#SBATCH --array=1-19
+#SBATCH --job-name=Z_test_models
+#SBATCH --output=%a_Z_test_models.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
