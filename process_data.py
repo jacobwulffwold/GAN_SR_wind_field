@@ -39,6 +39,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
         enable_slicing=False,
         slice_size=64,
         for_plotting=False,
+        is_test=False,
     ):
         try:
             invalid_filenames = set(
@@ -70,6 +71,8 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.enable_slicing = enable_slicing
         self.slice_size = slice_size
         self.for_plotting = for_plotting
+        self.is_test = is_test
+        self.slice_index = 0
 
         if not os.path.exists("./data/full_dataset_files/" + self.subfolder_name+"/max/"):
             os.makedirs("./data/full_dataset_files/" + self.subfolder_name+"/max/")
@@ -99,19 +102,29 @@ class CustomizedDataset(torch.utils.data.Dataset):
             )
 
         if self.enable_slicing:
-            x_start = round(np.random.beta(0.35, 0.35) * (self.x.size - self.slice_size))
-            y_start = round(np.random.beta(0.35, 0.35) * (self.y.size - self.slice_size))
-            z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
-                z,
-                z_above_ground,
-                u,
-                v,
-                w,
-                pressure,
-                x_dict={"start": x_start, "max": x_start + self.slice_size, "step": 1},
-                y_dict={"start": y_start, "max": y_start + self.slice_size, "step": 1},
-                z_dict={"start": 0, "max": z.shape[-1], "step": 1},
-            )
+            if self.is_test:
+                if self.slice_index < 2:
+                    x_start = 0
+                else:
+                    x_start = self.x.size - self.slice_size
+                if self.slice_index % 2 == 0:
+                    y_start = 0
+                else:
+                    y_start = self.y.size - self.slice_size
+            else:       
+                x_start = round(np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size))
+                y_start = round(np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size))
+                z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
+                    z,
+                    z_above_ground,
+                    u,
+                    v,
+                    w,
+                    pressure,
+                    x_dict={"start": x_start, "max": x_start + self.slice_size, "step": 1},
+                    y_dict={"start": y_start, "max": y_start + self.slice_size, "step": 1},
+                    z_dict={"start": 0, "max": z.shape[-1], "step": 1},
+                )
 
         LR, HR, Z = reformat_to_torch(
             u,
@@ -148,9 +161,14 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 LR = torch.flip(LR, [2])
                 HR = torch.flip(HR, [2])
                 Z = torch.flip(Z, [2])
+        
+        if self.is_test:
+            if index == len(self.filenames)-1:
+                self.slice_index+=1
+                return LR, HR, Z, self.filenames[index][:-4]+str(self.slice_index-1)
+            return LR, HR, Z, self.filenames[index][:-4]+"_"+str(self.slice_index)
 
         return LR, HR, Z
-
 
 def calculate_div_z(HR_data: torch.Tensor, Z: torch.Tensor):
     dZ = torch.tile(
@@ -457,6 +475,7 @@ def preprosess(
         data_aug_flip=test_aug_flip,
         enable_slicing=enable_slicing,
         slice_size=slice_size,
+        is_test=True,
     )
 
     dataset_validation = CustomizedDataset(

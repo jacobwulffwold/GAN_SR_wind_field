@@ -19,7 +19,6 @@ import config.config as config
 import matplotlib.pyplot as plt
 
 
-# import data.imageset as imageset
 from GAN_models.wind_field_GAN_3D import wind_field_GAN_3D
 import iocomponents.displaybar as displaybar
 
@@ -62,7 +61,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             "no validation dataset supplied! consider adjusting the config"
         )
 
-    # gan: nn.Module = None
     if cfg.model.lower() == "wind_field_gan_3d":
         gan = wind_field_GAN_3D(cfg)
         status_logger.info(f"Making model wind_field_GAN_3D from config {cfg.name}")
@@ -80,7 +78,6 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
     count_train_epochs = 1 + cfg_t.niter // it_per_epoch
     loaded_it = 0
     wind_comp_dict = {0: "u", 1: "v", 2: "w"}
-    invalid_filenames = {}
 
     if cfg.load_model_from_save:
         status_logger.info(
@@ -488,55 +485,18 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         + str(start_time.elapsed_time(end_time))
                     )
                 status_logger.info("devices D_forward: " + gan.device_check)
-    with open("./data/invalid_files.txt", "a") as f:
-        for item in invalid_filenames:
-            f.write("%s\n" % item)
     return
 
-
-def save_validation_images(
-    title,
+def create_error_figure(
     wind_height_index,
-    wind_comp_LR,
     wind_comp_HR,
     wind_comp_SR,
     wind_comp_trilinear,
-    tb_writer,
-    it,
 ):
-    fig, axes = plt.subplots(2, 2, figsize=(8, 7))
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
     vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
         wind_comp_HR[:, :, wind_height_index]
     )
-    axes[0, 0].pcolor(
-        wind_comp_LR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
-    )
-    axes[0, 0].set_title("LR")
-    axes[0, 1].pcolor(
-        wind_comp_HR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
-    )
-    axes[0, 1].set_title("HR")
-    axes[1, 0].pcolor(
-        wind_comp_SR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
-    )
-    axes[1, 0].set_title("SR")
-    axes[1, 1].pcolor(
-        wind_comp_trilinear[:, :, wind_height_index],
-        vmin=vmin,
-        vmax=vmax,
-        cmap="viridis",
-    )
-    axes[1, 1].set_title("Trilinear")
-    fig.subplots_adjust(hspace=0.3)
-
-    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
-    sm.set_clim(vmin=vmin, vmax=vmax)
-    fig.colorbar(sm, ax=axes)
-
-    tb_writer.add_figure(
-        "im/"+str(it)+"/wind_fields/" + title + str(wind_height_index), fig, it
-    )
-
     vmin_wind_field, vmax_wind_field = np.min(np.concatenate((wind_comp_trilinear[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index]), axis=(0))), np.max(np.concatenate((wind_comp_trilinear[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index]), axis=(0)))
     vmin_error, vmax_error = np.min(np.concatenate((wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index]), axis=(0))), np.max(np.concatenate((wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index]), axis=(0)))
     vmin_abs_error, vmax_abs_error = 0.0, max(abs(vmax_error), abs(vmin_error))
@@ -602,6 +562,68 @@ def save_validation_images(
         ax=axes2[1,2],
     )
     fig2.subplots_adjust(hspace=0.2)
+
+def create_comparison_figure(
+    wind_height_index,
+    wind_comp_LR,
+    wind_comp_HR,
+    wind_comp_SR,
+    wind_comp_trilinear,
+):    
+    fig, axes = plt.subplots(2, 2, figsize=(8, 7))
+    vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
+        wind_comp_HR[:, :, wind_height_index]
+    )
+    axes[0, 0].pcolor(
+        wind_comp_LR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
+    )
+    axes[0, 0].set_title("LR")
+    axes[0, 1].pcolor(
+        wind_comp_HR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
+    )
+    axes[0, 1].set_title("HR")
+    axes[1, 0].pcolor(
+        wind_comp_SR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis"
+    )
+    axes[1, 0].set_title("SR")
+    axes[1, 1].pcolor(
+        wind_comp_trilinear[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+    )
+    axes[1, 1].set_title("Trilinear")
+    fig.subplots_adjust(hspace=0.3)
+
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
+    sm.set_clim(vmin=vmin, vmax=vmax)
+    fig.colorbar(sm, ax=axes)
+    return fig
+
+def save_validation_images(
+    title,
+    wind_height_index,
+    wind_comp_LR,
+    wind_comp_HR,
+    wind_comp_SR,
+    wind_comp_trilinear,
+    tb_writer,
+    it,
+):
+    fig1 = create_comparison_figure(
+        wind_height_index,
+        wind_comp_LR,
+        wind_comp_HR,
+        wind_comp_SR,
+        wind_comp_trilinear,
+    )
+    
+    tb_writer.add_figure(
+        "im/"+str(it)+"/wind_fields/" + title + str(wind_height_index), fig1, it
+    )
+    
+    fig2 = create_error_figure(wind_height_index, wind_comp_HR, wind_comp_SR, wind_comp_trilinear)
+    
     tb_writer.add_figure(
         "im/"+str(it)+"/Error/" + title + str(wind_height_index), fig2, it
     )

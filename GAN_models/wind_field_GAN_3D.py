@@ -701,7 +701,7 @@ class wind_field_GAN_3D(BaseGAN):
             (
                 self.metrics_dict["val_PSNR"],
                 self.metrics_dict["Trilinear_PSNR"],
-            ) = compute_psnr_for_SR_and_trilinear(
+            ) = compute_PSNR_for_SR_and_trilinear(
                 LR,
                 HR,
                 fake_HR,
@@ -741,7 +741,7 @@ class wind_field_GAN_3D(BaseGAN):
             and self.cfg.training.flip_labels
         ):
             real_label = torch.tensor(1.0, device=self.device)
-            fake_label = torch.tensor(0.1, device=self.device)  - 0.1*it/self.niter
+            fake_label = torch.tensor(0.1, device=self.device) - 0.1*it/self.niter
         elif self.cfg.training.use_one_sided_label_smoothing:
             real_label = torch.tensor(0.9, device=self.device) + 0.1*it/self.niter
             fake_label = torch.tensor(0.0, device=self.device)
@@ -831,7 +831,21 @@ class wind_field_GAN_3D(BaseGAN):
             + "\n"
         )
 
-def compute_psnr_for_SR_and_trilinear(
+def calculate_PSNR(
+    HR: torch.Tensor,
+    fake_HR: torch.Tensor,
+    max_diff_squared = torch.tensor(4.0),
+    epsilon_PSNR=torch.tensor(1e-8),
+    device=torch.device("cpu"),
+):
+    w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
+    SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * HR.shape[0])
+
+    return torch.tensor(10, device=device) * math.log10(
+        max_diff_squared / (SR_batch_average_MSE + epsilon_PSNR)
+    )
+
+def compute_PSNR_for_SR_and_trilinear(
     LR,
     HR: torch.Tensor,
     fake_HR: torch.Tensor,
@@ -840,12 +854,8 @@ def compute_psnr_for_SR_and_trilinear(
     interpolate: bool = False,
     device=torch.device("cpu"),
 ):
-    w, h, l = HR.shape[2], HR.shape[3], HR.shape[4]
-    SR_batch_average_MSE = torch.sum((HR - fake_HR) ** 2) / (w * h * l * HR.shape[0])
 
-    val_PSNR = torch.tensor(10, device=device) * math.log10(
-        max_diff_squared / (SR_batch_average_MSE + epsilon_PSNR)
-    )
+    val_PSNR = calculate_PSNR(HR, fake_HR, max_diff_squared, epsilon_PSNR, device=device)
     if interpolate:
         interpolated_LR = nn.functional.interpolate(
             LR[:, :3, :, :, :],
@@ -853,12 +863,7 @@ def compute_psnr_for_SR_and_trilinear(
             mode="trilinear",
             align_corners=True,
         )
-        interp_batch_average_MSE = torch.sum((HR - interpolated_LR) ** 2) / (
-            w * h * l * HR.shape[0]
-        )
-        val_trilinear_PSNR = torch.tensor(10, device=device) * math.log10(
-            max_diff_squared / (interp_batch_average_MSE + epsilon_PSNR)
-        )
+        val_trilinear_PSNR = calculate_PSNR(HR, interpolated_LR, max_diff_squared, epsilon_PSNR, device=device)
         return val_PSNR, val_trilinear_PSNR
     else:
         return val_PSNR
@@ -895,4 +900,4 @@ def get_norm_factors_of_gradients(HR_wind_gradient:torch.Tensor, SR_wind_gradien
         torch.abs((SR_wind_gradient[:, 0, :, :, :] + SR_wind_gradient[:, 4, :, :, :]))
     )
 
-    return [HR_max if SR_max<100*HR_max else SR_max/100 for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]
+    return [max(HR_max,SR_max/100) for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]

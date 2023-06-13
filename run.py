@@ -31,38 +31,55 @@ def main():
     cfg: Config = argv_to_cfg()
     # cfg.is_train = True
     # cfg.is_download = True
-    cfg.is_param_search = True
+    # cfg.is_param_search = True
+    cfg.is_test = True
+    cfg.slurm_array_id = 1
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    # if cfg.slurm_array_id > 4:
-    #     cfg.name = cfg.name + "_seed"
-    #     cfg.env.fixed_seed = 2021
-
-    # if cfg.slurm_array_id in {1,5}:
-    #     cfg.name = cfg.name + "wind_interpZ"
-    #     cfg.gan_config.include_z_channel = True
-    #     cfg.gan_config.interpolate_z = True
-
-    # if cfg.slurm_array_id in {2,6}:
-    #     cfg.name = cfg.name + "wind_interpZ_pressure"
-    #     cfg.gan_config.include_z_channel = True
-    #     cfg.gan_config.interpolate_z = True
-    #     cfg.gan_config.include_pressure = True
     
-    # if cfg.slurm_array_id in {3,7}:
-    #     cfg.name = cfg.name + "only_wind"
-    #     cfg.gan_config.include_z_channel = True
-    #     cfg.gan_config.interpolate_z = True
-    #     cfg.gan_config.include_pressure = True
+    run_names = ["SCH100_schedule2_larger_grad",
+        "Z90_interponly_wind",
+        "Z90_interpwind_interpZ",
+        "Z90_interpwind_interpZ_pressure",
+        "Z90_interpwind_pressure",
+        "Z_handling90only_wind",
+        "Z_handling90wind_Zground",
+        "Z_handling90wind_Zground_pressure",
+        "Z_handling90wind_pressure",
+        "Z_handling90wind_rawZ",
+        "Z100_seed_wind_Zground",
+        "Z100_seed_wind_Zground_pressure",
+        "Z90_interp_seedonly_wind",
+        "Z90_interp_seedwind_interpZ",
+        "Z90_interp_seedwind_interpZ_pressure",
+        "Z90_interp_seedwind_pressure",
+        # "Z_handling90_seed_wind_rawZ_pressure",
+        "Z_handling90_seedonly_wind",
+        "Z_handling90_seedwind_pressure",
+        "Z_handling90_seedwind_rawZ",
+    ]
+    this_run_index = cfg.slurm_array_id-1
+
+    cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
+    cfg = Config(cfg_path)
+    cfg.load_model_from_save = True
+    if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
+        cfg.env.generator_load_path = cfg.env.generator_load_path.replace("90000", "20000")
+        cfg.env.generator_load_path = cfg.env.discriminator_load_path.replace("90000", "20000")
+        cfg.env.generator_load_path = cfg.env.state_load_path.replace("90000", "20000")
+        cfg.is_train = True
+    else:
+        cfg.env.generator_load_path = cfg.env.generator_load_path.replace("90000", "80000")
+        cfg.is_train = False
     
-    # if cfg.slurm_array_id in {4,8}:
-    #     cfg.name = cfg.name + "wind_pressure"
-    #     cfg.gan_config.include_z_channel = True
-    #     cfg.gan_config.interpolate_z = True
-    #     cfg.gan_config.include_pressure = True
+    cfg.is_test = True
+    cfg.is_use = False
+    cfg.is_download = False
+    cfg.is_param_search = False
+    cfg.training.log_period = 100
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -139,7 +156,7 @@ def argv_to_cfg() -> Config:
         "--cfg",
         type=str,
         # default="config/wind_field_GAN_3D_config_cluster_short.ini",
-        default="config/wind_field_GAN_3D_config_local.ini",
+        default="config/wind_field_GAN_3D_config_local_test.ini",
         help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
     parser.add_argument(

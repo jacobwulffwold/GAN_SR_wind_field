@@ -117,6 +117,24 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 layer_type=layer_type,
                 lrelu=False,
             )
+            # terrain_convs = [create_conv_lrelu_layer(
+            #     1,
+            #     terrain_number_of_features,
+            #     3,
+            #     padding=1,
+            #     layer_type=layer_type,
+            #     lrelu=True,
+            # ),
+            # create_conv_lrelu_layer(
+            #     terrain_number_of_features,
+            #     terrain_number_of_features,
+            #     3,
+            #     padding=1,
+            #     layer_type=layer_type,
+            #     lrelu=False,
+            # ),
+            # ]
+
 
         elif conv_mode == "horizontal_3D":
             feature_conv = Horizontal_Conv_3D(
