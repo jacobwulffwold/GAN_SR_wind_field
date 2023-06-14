@@ -90,7 +90,7 @@ def main():
     #     cfg.gan_config.include_pressure = False
     #     cfg.gan_config.include_z_channel = False
     # else:
-    cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pt"
+    cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
     cfg.is_train = False
     
     cfg.is_test = True
