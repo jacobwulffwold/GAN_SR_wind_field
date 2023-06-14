@@ -562,6 +562,7 @@ def create_error_figure(
         ax=axes2[1,2],
     )
     fig2.subplots_adjust(hspace=0.2)
+    return fig2
 
 def create_comparison_figure(
     wind_height_index,
