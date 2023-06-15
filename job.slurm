@@ -4,11 +4,11 @@
 #SBATCH --time=1-15:00:00
 #SBATCH --gres=gpu:A100m40:1
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=6
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=8G
-#SBATCH --job-name="last_Z_train"
-#SBATCH --output=last_Z_train.out
+#SBATCH --mem=10G
+#SBATCH --job-name="2_last_Z_train"
+#SBATCH --output=2_last_Z_train.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -16,4 +16,4 @@ module purge
 module load Anaconda3/2022.05
 source /cluster/apps/eb/software/Anaconda3/2022.05/etc/profile.d/conda.sh conda activate myenv
 conda activate myenv
-python run.py --train --cfg config/wind_field_GAN_3D_config_cluster.ini --slurm_array_id 20
+python run.py --train --cfg config/wind_field_GAN_3D_config_cluster.ini --slurm_array_id 2
