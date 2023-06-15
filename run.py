@@ -32,12 +32,41 @@ def main():
     # cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
+    cfg.is_test = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
     
+    if cfg.slurm_array_id == 1:
+        cfg.name = cfg.name + "_STD"
+    if cfg.slurm_array_id == 2:
+        cfg.name = cfg.name + "_2lr"
+        cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
+        cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/2
+        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight
+        cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+    if cfg.slurm_array_id == 3:
+        cfg.name = cfg.name + "_halved"
+        cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
+        cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/2
+        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight
+        cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
+    if cfg.slurm_array_id == 4:
+        cfg.name = cfg.name + "_4lr"
+        cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/4
+        cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/4
+        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/4
+        cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/4
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/4
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
+
     # run_names = [
     #     "C100_div",
     #     "C100_div_large",
@@ -55,51 +84,51 @@ def main():
     #     "C100_seed_xy_large",
     # ]
 
-    run_names = ["SCH100_schedule2_larger_grad",
-        "Z90_interponly_wind",
-        "Z90_interpwind_interpZ",
-        "Z90_interpwind_interpZ_pressure",
-        "Z90_interpwind_pressure",
-        "Z_handling90only_wind",
-        "Z_handling90wind_pressure",
-        "Z_handling90wind_rawZ",
-        "Z100_seed_wind_Zground",
-        "Z100_seed_wind_Zground_pressure",
-        "Z90_interp_seedonly_wind",
-        "Z90_interp_seedwind_interpZ",
-        "Z90_interp_seedwind_interpZ_pressure",
-        "Z90_interp_seedwind_pressure",
-        "Z_handling90_seedonly_wind",
-        "Z_handling90_seedwind_pressure",
-        "Z_handling90_seedwind_rawZ",
-        "Z_handling90wind_Zground",
-        "Z_handling90wind_Zground_pressure",
-        "Z_handling90_seed_wind_rawZ_pressure",
-    ]
-    this_run_index = cfg.slurm_array_id-1
+    # run_names = ["SCH100_schedule2_larger_grad",
+    #     "Z90_interponly_wind",
+    #     "Z90_interpwind_interpZ",
+    #     "Z90_interpwind_interpZ_pressure",
+    #     "Z90_interpwind_pressure",
+    #     "Z_handling90only_wind",
+    #     "Z_handling90wind_pressure",
+    #     "Z_handling90wind_rawZ",
+    #     "Z100_seed_wind_Zground",
+    #     "Z100_seed_wind_Zground_pressure",
+    #     "Z90_interp_seedonly_wind",
+    #     "Z90_interp_seedwind_interpZ",
+    #     "Z90_interp_seedwind_interpZ_pressure",
+    #     "Z90_interp_seedwind_pressure",
+    #     "Z_handling90_seedonly_wind",
+    #     "Z_handling90_seedwind_pressure",
+    #     "Z_handling90_seedwind_rawZ",
+    #     "Z_handling90wind_Zground",
+    #     "Z_handling90wind_Zground_pressure",
+    #     "Z_handling90_seed_wind_rawZ_pressure",
+    # ]
+    # this_run_index = cfg.slurm_array_id-1
 
-    cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
-    cfg = Config(cfg_path)
-    cfg.load_model_from_save = True
-    if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
-        cfg.load_model_from_save = False
-        cfg.is_train = True
-    elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
-        cfg.load_model_from_save = False
-        cfg.is_train = True
-        cfg.gan_config.include_pressure = False
-        cfg.gan_config.include_z_channel = False
-    else:
-        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
-        cfg.is_train = False
+    # cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
+    # cfg = Config(cfg_path)
+    # cfg.load_model_from_save = True
+    # if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
+    #     cfg.load_model_from_save = False
+    #     cfg.is_train = True
+    # elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
+    #     cfg.load_model_from_save = False
+    #     cfg.is_train = True
+    #     cfg.gan_config.include_pressure = False
+    #     cfg.gan_config.include_z_channel = False
+    # else:
+    #     cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
+    #     cfg.is_train = False
     
-    cfg.is_test = True
-    cfg.is_use = False
-    cfg.is_download = False
-    cfg.is_param_search = False
-    cfg.training.log_period = 500
-    cfg.dataset_train.num_workers = 8
-    cfg.dataset_val.num_workers = 8
+    # cfg.is_test = True
+    # cfg.is_use = False
+    # cfg.is_download = False
+    # cfg.is_param_search = False
+    # cfg.training.log_period = 500
+    # cfg.dataset_train.num_workers = 8
+    # cfg.dataset_val.num_workers = 8
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -160,9 +189,6 @@ def main():
 
     if cfg.is_test:
         status_logger.info("run.py: starting testing")
-        if run_names[this_run_index] in {"Z_handling90_seed_wind_rawZ_pressure", "Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
-            cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_80000.pth"
-            cfg.load_model_from_save = True
         test.test(cfg, dataset_test)
         status_logger.info("run.py: finished testing")
 

@@ -112,10 +112,10 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 else:
                     y_start = self.y.size - self.slice_size
             else:
-                x_start = np.random.randint(0, self.x.size - self.slice_size)
-                y_start = np.random.randint(0, self.y.size - self.slice_size)           
-                # x_start = round(np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size))
-                # y_start = round(np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size))
+                # x_start = np.random.randint(0, self.x.size - self.slice_size)
+                # y_start = np.random.randint(0, self.y.size - self.slice_size)           
+                x_start = round(np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size))
+                y_start = round(np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size))
                 z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
                     z,
                     z_above_ground,
