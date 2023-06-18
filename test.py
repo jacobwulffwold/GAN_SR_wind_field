@@ -55,6 +55,8 @@ def test(cfg: config.Config, dataset_test):
         state_load_path=None,
     )
 
+    gan.G.eval()
+
     status_logger.info(f"beginning test")
 
     if not os.path.exists(cfg.env.this_runs_folder + "/fields/"):
@@ -93,7 +95,7 @@ def test(cfg: config.Config, dataset_test):
             for epoch in range(num_epochs):
                 dataloader_test.dataset.slice_index = epoch
 
-                for j, (LR, HR, Z, filenames) in enumerate(dataloader_test):
+                for j, (LR, HR, Z, filenames, terrain, x, y) in enumerate(dataloader_test):
                     # status_logger.info(f"batch {j}")
                     # names = data["hr_name"]
                     bar.update(j, epoch, len(dataloader_test)*(epoch)+j)
@@ -103,6 +105,7 @@ def test(cfg: config.Config, dataset_test):
                         indx = torch.as_tensor([i])
                         LR_i = torch.index_select(LR, 0, indx, out=None)
                         HR_i = torch.index_select(HR, 0, indx, out=None)
+                        
                         with torch.no_grad():
                             SR_i = gan.G(LR_i.to(cfg.device, non_blocking=True), Z.to(cfg.device, non_blocking=True)).cpu()
                         
@@ -121,7 +124,7 @@ def test(cfg: config.Config, dataset_test):
                         
                         if (len(dataloader_test)*(epoch)+j) % cfg.training.log_period == 0:
                             write_fields(
-                                LR_i[:,:3], HR_i[:,:3], SR_i, interpolated_LR, Z, cfg.env.this_runs_folder, filenames[i]
+                                LR_i, HR_i, SR_i, interpolated_LR, Z, cfg.env.this_runs_folder, filenames[i], terrain, x, y,
                             )
 
         print(f"Average PSNR: {avg_PSNR}")
@@ -137,6 +140,9 @@ def write_fields(
     Z: torch.Tensor,
     folder_path: str,
     field_name: int,
+    terrain,
+    x,
+    y,
 ) -> dict:
     
     fields = dict()
@@ -145,6 +151,9 @@ def write_fields(
     fields["TL"] = interpolated_LR.squeeze().numpy()
     fields["LR"] = LR.squeeze().numpy()
     fields["Z"] = Z.squeeze().numpy()
+    fields["terrain"] = terrain
+    fields["x"] = x.numpy()
+    fields["y"] = y.numpy()
 
     with open(folder_path + "/fields/test_fields_" + str(field_name) + ".pkl", "wb") as f:
         pkl.dump(fields, f)

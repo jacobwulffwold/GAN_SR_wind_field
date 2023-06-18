@@ -54,7 +54,7 @@ def main():
         cfg.name = cfg.name + "_halved"
         cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
         cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/2
-        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight
+        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/2
         cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
     if cfg.slurm_array_id == 4:
@@ -66,7 +66,13 @@ def main():
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/4
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
-
+    if cfg.slurm_array_id == 5:
+        cfg.name = cfg.name + "_cost2"
+        cfg.training.gradient_xy_loss_weight = 26.45
+        cfg.training.xy_divergence_loss_weight = 1.1846
+        cfg.training.divergence_loss_weight = 0.62
+        cfg.training.pixel_loss_weight = 0.44
+        
     # run_names = [
     #     "C100_div",
     #     "C100_div_large",
