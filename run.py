@@ -32,7 +32,7 @@ def main():
     # cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
-    cfg.is_test = True
+    # cfg.is_test = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
@@ -129,6 +129,13 @@ def main():
     # cfg.training.log_period = 500
     # cfg.dataset_train.num_workers = 8
     # cfg.dataset_val.num_workers = 8
+
+    # cfg = Config("./runs/C100_xy_large/config.ini")
+    # cfg.is_train = False
+    # cfg.is_download = False
+    # cfg.is_param_search = False
+    # cfg.is_test = True
+    # cfg.is_use = False
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:

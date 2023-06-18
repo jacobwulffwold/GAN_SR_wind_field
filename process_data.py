@@ -79,7 +79,18 @@ class CustomizedDataset(torch.utils.data.Dataset):
         if not os.path.exists("./data/interpolated_z_data/" + self.subfolder_name):
             os.makedirs("./data/interpolated_z_data/" + self.subfolder_name)
 
-
+        if not os.path.isfile("./data/full_dataset_files/" + self.subfolder_name+"/"+"norm_factors.pkl"):
+            pickle.dump(
+                [
+                    Z_MIN,
+                    Z_MAX,
+                    Z_ABOVE_GROUND_MAX,
+                    UVW_MAX,
+                    P_MIN,
+                    P_MAX,
+                ],
+                open("./data/full_dataset_files/" + self.subfolder_name+"/"+"norm_factors.pkl", "wb"),
+            )
     def __len__(self):
         "Denotes the total number of samples"
         return len(self.filenames)
@@ -111,6 +122,20 @@ class CustomizedDataset(torch.utils.data.Dataset):
                     y_start = 0
                 else:
                     y_start = self.y.size - self.slice_size
+                z, z_above_ground, u, v, w, pressure, terrain, x, y = slice_only_dim_dicts(
+                    z,
+                    z_above_ground,
+                    u,
+                    v,
+                    w,
+                    pressure,
+                    self.terrain,
+                    self.x,
+                    self.y,
+                    x_dict={"start": x_start, "max": x_start + self.slice_size, "step": 1},
+                    y_dict={"start": y_start, "max": y_start + self.slice_size, "step": 1},
+                    z_dict={"start": 0, "max": z.shape[-1], "step": 1},
+                )
             else:
                 # x_start = np.random.randint(0, self.x.size - self.slice_size)
                 # y_start = np.random.randint(0, self.y.size - self.slice_size)           
@@ -165,7 +190,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 Z = torch.flip(Z, [2])
         
         if self.is_test:
-            return LR, HR, Z, self.filenames[index][:-4]+"_"+str(self.slice_index)
+            return LR, HR, Z, self.filenames[index][:-4]+"_"+str(self.slice_index), terrain, x, y
 
         return LR, HR, Z
 
