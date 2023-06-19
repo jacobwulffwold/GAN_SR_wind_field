@@ -72,6 +72,13 @@ def main():
         cfg.training.xy_divergence_loss_weight = 1.1846
         cfg.training.divergence_loss_weight = 0.62
         cfg.training.pixel_loss_weight = 0.44
+    if cfg.slurm_array_id == 6:
+        cfg.name = cfg.name + "_cost3"
+        cfg.training.gradient_xy_loss_weight = 22.63
+        cfg.training.gradient_z_loss_weight = 3.05
+        cfg.training.xy_divergence_loss_weight = 11.238
+        cfg.training.divergence_loss_weight = 4.45
+        cfg.training.pixel_loss_weight = 0.76
         
     # run_names = [
     #     "C100_div",

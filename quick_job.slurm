@@ -16,4 +16,4 @@ module purge
 module load Anaconda3/2022.05
 source /cluster/apps/eb/software/Anaconda3/2022.05/etc/profile.d/conda.sh conda activate myenv
 conda activate myenv
-python run.py --train --cfg config/wind_field_GAN_3D_config_cluster_std.ini --slurm_array_id 1
+python run.py --train --cfg config/wind_field_GAN_3D_config_short.ini --slurm_array_id 0
