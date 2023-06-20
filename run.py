@@ -125,6 +125,7 @@ def main():
         cfg.is_train = True
     elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
         cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
         cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+run_names[this_run_index]+"/D_60000.pth"
         cfg.env.state_load_path = "./runs/"+run_names[this_run_index]+"/state_60000.pth"
