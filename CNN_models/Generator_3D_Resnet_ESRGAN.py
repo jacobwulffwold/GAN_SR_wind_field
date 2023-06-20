@@ -219,7 +219,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
 
         self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
         self.hr_convs = nn.Sequential(*hr_convs_w_dropout)
-        self.terrain_convs = terrain_convs
+        self.terrain_convs = nn.Sequential(*terrain_conv)
         self.status_logs.append(f"Generator: finished init")
 
     def forward(self, x, Z):

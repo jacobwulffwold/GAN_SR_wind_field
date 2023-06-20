@@ -44,7 +44,6 @@ def main():
     if cfg.slurm_array_id == 2:
         cfg.name = cfg.name + "_2lr"
         cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
-        cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/2
         cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight
         cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
@@ -53,14 +52,12 @@ def main():
     if cfg.slurm_array_id == 3:
         cfg.name = cfg.name + "_halved"
         cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
-        cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/2
         cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/2
         cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
     if cfg.slurm_array_id == 4:
         cfg.name = cfg.name + "_4lr"
         cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/4
-        cfg.training.gradient_z_loss_weight = cfg.training.gradient_z_loss_weight/4
         cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/4
         cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/4
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/4
