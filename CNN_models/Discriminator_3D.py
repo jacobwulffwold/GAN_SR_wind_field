@@ -135,7 +135,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 )
             )
         else:
-            # 8x8x10 -> 4x4x10
+            # 8x8x10 -> 4x4x5
             features.append(
                 create_discriminator_block(
                     base_number_of_features * 4,
@@ -144,15 +144,16 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                     lrelu_negative_slope=slope,
                     normalization_type=normalization_type,
                     drop_first_norm=False,
-                    halve_z_dim=False,
+                    halve_z_dim=True,
                     number_of_z_layers=remainder_z_layers[3],
                     mode=conv_mode,
                 )
             )
-            # 8x8x10 -> 4x4x5
-            features.append(create_conv_lrelu_layer(base_number_of_features * 8, base_number_of_features * 8, feat_kern_size, normalization_type="batch"))
-            features.append(create_conv_lrelu_layer(base_number_of_features * 8, base_number_of_features * 8, feat_kern_size, stride=(1,1,2), normalization_type="batch"))
-        
+            features.append(create_conv_lrelu_layer(base_number_of_features * 8, base_number_of_features * 8, feat_kern_size))
+
+        # Chans: base_nf*8
+        # Dims: 4x4 pixels
+        # -> 100 nodes
         classifier = []
         classifier.append(
             nn.Linear(base_number_of_features * 8 * 4 * 4 * remainder_z_layers[5], 100)

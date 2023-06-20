@@ -39,43 +39,43 @@ def main():
         )
         return
     
-    if cfg.slurm_array_id == 1:
-        cfg.name = cfg.name + "_STD"
-    if cfg.slurm_array_id == 2:
-        cfg.name = cfg.name + "_2lr"
-        cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
-        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight
-        cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-    if cfg.slurm_array_id == 3:
-        cfg.name = cfg.name + "_halved"
-        cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
-        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/2
-        cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
-    if cfg.slurm_array_id == 4:
-        cfg.name = cfg.name + "_4lr"
-        cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/4
-        cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/4
-        cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/4
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/4
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
-    if cfg.slurm_array_id == 5:
-        cfg.name = cfg.name + "_cost2"
-        cfg.training.gradient_xy_loss_weight = 26.45
-        cfg.training.xy_divergence_loss_weight = 1.1846
-        cfg.training.divergence_loss_weight = 0.62
-        cfg.training.pixel_loss_weight = 0.44
-    if cfg.slurm_array_id == 6:
-        cfg.name = cfg.name + "_cost3"
-        cfg.training.gradient_xy_loss_weight = 22.63
-        cfg.training.gradient_z_loss_weight = 3.05
-        cfg.training.xy_divergence_loss_weight = 11.238
-        cfg.training.divergence_loss_weight = 4.45
-        cfg.training.pixel_loss_weight = 0.76
+    # if cfg.slurm_array_id == 1:
+    #     cfg.name = cfg.name + "_STD"
+    # if cfg.slurm_array_id == 2:
+    #     cfg.name = cfg.name + "_2lr"
+    #     cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
+    #     cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight
+    #     cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
+    #     cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
+    #     cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
+    #     cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+    # if cfg.slurm_array_id == 3:
+    #     cfg.name = cfg.name + "_halved"
+    #     cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/2
+    #     cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/2
+    #     cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/2
+    #     cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/2
+    # if cfg.slurm_array_id == 4:
+    #     cfg.name = cfg.name + "_4lr"
+    #     cfg.training.gradient_xy_loss_weight = cfg.training.gradient_xy_loss_weight/4
+    #     cfg.training.xy_divergence_loss_weight = cfg.training.xy_divergence_loss_weight/4
+    #     cfg.training.divergence_loss_weight = cfg.training.divergence_loss_weight/4
+    #     cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight/4
+    #     cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
+    #     cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
+    # if cfg.slurm_array_id == 5:
+    #     cfg.name = cfg.name + "_cost2"
+    #     cfg.training.gradient_xy_loss_weight = 26.45
+    #     cfg.training.xy_divergence_loss_weight = 1.1846
+    #     cfg.training.divergence_loss_weight = 0.62
+    #     cfg.training.pixel_loss_weight = 0.44
+    # if cfg.slurm_array_id == 6:
+    #     cfg.name = cfg.name + "_cost3"
+    #     cfg.training.gradient_xy_loss_weight = 22.63
+    #     cfg.training.gradient_z_loss_weight = 3.05
+    #     cfg.training.xy_divergence_loss_weight = 11.238
+    #     cfg.training.divergence_loss_weight = 4.45
+    #     cfg.training.pixel_loss_weight = 0.76
         
     # run_names = [
     #     "C100_div",
@@ -94,48 +94,51 @@ def main():
     #     "C100_seed_xy_large",
     # ]
 
-    # run_names = ["SCH100_schedule2_larger_grad",
-    #     "Z90_interponly_wind",
-    #     "Z90_interpwind_interpZ",
-    #     "Z90_interpwind_interpZ_pressure",
-    #     "Z90_interpwind_pressure",
-    #     "Z_handling90only_wind",
-    #     "Z_handling90wind_pressure",
-    #     "Z_handling90wind_rawZ",
-    #     "Z100_seed_wind_Zground",
-    #     "Z100_seed_wind_Zground_pressure",
-    #     "Z90_interp_seedonly_wind",
-    #     "Z90_interp_seedwind_interpZ",
-    #     "Z90_interp_seedwind_interpZ_pressure",
-    #     "Z90_interp_seedwind_pressure",
-    #     "Z_handling90_seedonly_wind",
-    #     "Z_handling90_seedwind_pressure",
-    #     "Z_handling90_seedwind_rawZ",
-    #     "Z_handling90wind_Zground",
-    #     "Z_handling90wind_Zground_pressure",
-    #     "Z_handling90_seed_wind_rawZ_pressure",
-    # ]
-    # this_run_index = cfg.slurm_array_id-1
+    run_names = ["SCH100_schedule2_larger_grad",
+        "Z90_interponly_wind",
+        "Z90_interpwind_interpZ",
+        "Z90_interpwind_interpZ_pressure",
+        "Z90_interpwind_pressure",
+        "Z_handling90only_wind",
+        "Z_handling90wind_pressure",
+        "Z_handling90wind_rawZ",
+        "Z100_seed_wind_Zground",
+        "Z100_seed_wind_Zground_pressure",
+        "Z90_interp_seedonly_wind",
+        "Z90_interp_seedwind_interpZ",
+        "Z90_interp_seedwind_interpZ_pressure",
+        "Z90_interp_seedwind_pressure",
+        "Z_handling90_seedonly_wind",
+        "Z_handling90_seedwind_pressure",
+        "Z_handling90_seedwind_rawZ",
+        "Z_handling90wind_Zground",
+        "Z_handling90wind_Zground_pressure",
+        "Z_handling90_seed_wind_rawZ_pressure",
+    ]
+    this_run_index = cfg.slurm_array_id-1
 
-    # cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
-    # cfg = Config(cfg_path)
-    # cfg.load_model_from_save = True
-    # if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
-    #     cfg.load_model_from_save = False
-    #     cfg.is_train = True
-    # elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
-    #     cfg.load_model_from_save = False
-    #     cfg.is_train = True
-    #     cfg.gan_config.include_pressure = False
-    #     cfg.gan_config.include_z_channel = False
-    # else:
-    #     cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
-    #     cfg.is_train = False
+    cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
+    cfg = Config(cfg_path)
+    cfg.load_model_from_save = True
+    if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
+        cfg.load_model_from_save = False
+        cfg.is_train = True
+    elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_60000.pth"
+        cfg.env.discriminator_load_path = "./runs/"+run_names[this_run_index]+"/D_60000.pth"
+        cfg.env.state_load_path = "./runs/"+run_names[this_run_index]+"/state_60000.pth"
+        cfg.is_train = True
+        cfg.gan_config.include_pressure = False
+        cfg.gan_config.include_z_channel = False
+    else:
+        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
+        cfg.is_train = False
     
-    # cfg.is_test = True
-    # cfg.is_use = False
-    # cfg.is_download = False
-    # cfg.is_param_search = False
+    cfg.is_test = False
+    cfg.is_use = False
+    cfg.is_download = False
+    cfg.is_param_search = False
     # cfg.training.log_period = 500
     # cfg.dataset_train.num_workers = 8
     # cfg.dataset_val.num_workers = 8
