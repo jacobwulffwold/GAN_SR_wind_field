@@ -3,7 +3,6 @@
 #SBATCH --account=nv-fys
 #SBATCH --time=0-00:15:00
 #SBATCH --gres=gpu:a100:1
-#SBATCH --constraint=="gpu40g"
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
