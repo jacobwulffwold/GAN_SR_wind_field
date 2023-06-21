@@ -32,7 +32,7 @@ def main():
     # cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
-    # cfg.is_test = True
+    cfg.is_test = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
@@ -77,24 +77,22 @@ def main():
     #     cfg.training.divergence_loss_weight = 4.45
     #     cfg.training.pixel_loss_weight = 0.76
         
-    # run_names = [
-    #     "C100_div",
-    #     "C100_div_large",
-    #     "C100_grad",
-    #     "C100_grad_large",
-    #     "C100_only_pix",
-    #     "C100_xy",
-    #     "C100_xy_large",
-    #     "C100_seed_div",
-    #     "C100_seed_div_large",
-    #     "C100_seed_grad",
-    #     "C100_seed_grad_large",
-    #     "C100_seed_only_pix",
-    #     "C100_seed_xy",
-    #     "C100_seed_xy_large",
-    # ]
-
-    run_names = ["SCH100_schedule2_larger_grad",
+    run_names = [
+        "C100_div",
+        "C100_div_large",
+        "C100_grad",
+        "C100_grad_large",
+        "C100_only_pix",
+        "C100_xy",
+        "C100_xy_large",
+        "C100_seed_div",
+        "C100_seed_div_large",
+        "C100_seed_grad",
+        "C100_seed_grad_large",
+        "C100_seed_only_pix",
+        "C100_seed_xy",
+        "C100_seed_xy_large",
+        "SCH100_schedule2_larger_grad",
         "Z90_interponly_wind",
         "Z90_interpwind_interpZ",
         "Z90_interpwind_interpZ_pressure",
@@ -119,30 +117,19 @@ def main():
 
     cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
     cfg = Config(cfg_path)
-    cfg.load_model_from_save = True
-    if run_names[this_run_index] == "Z_handling90_seed_wind_rawZ_pressure":
-        cfg.load_model_from_save = False
-        cfg.is_train = True
-    elif run_names[this_run_index] in {"Z90_interp_seedonly_wind", "Z90_interponly_wind"}:
-        cfg.load_model_from_save = True
-        cfg.training.resume_training_from_save = True
-        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+run_names[this_run_index]+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+run_names[this_run_index]+"/state_60000.pth"
-        cfg.is_train = True
-        cfg.gan_config.include_pressure = False
-        cfg.gan_config.include_z_channel = False
+    if run_names[this_run_index].__contains__("Z") or run_names[this_run_index].__contains__("SCH"):
+        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_80000.pth"
     else:
         cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
-        cfg.is_train = False
-    
-    cfg.is_test = False
+
+    # cfg.load_model_from_save = True
+
+    cfg.is_train = False
+    cfg.is_test = True
     cfg.is_use = False
     cfg.is_download = False
     cfg.is_param_search = False
-    # cfg.training.log_period = 500
-    # cfg.dataset_train.num_workers = 8
-    # cfg.dataset_val.num_workers = 8
+    cfg.training.log_period = 100
 
     # cfg = Config("./runs/C100_xy_large/config.ini")
     # cfg.is_train = False

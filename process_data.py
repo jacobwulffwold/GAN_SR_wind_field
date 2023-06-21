@@ -113,45 +113,21 @@ class CustomizedDataset(torch.utils.data.Dataset):
             )
 
         if self.enable_slicing:
-            if self.is_test:
-                if self.slice_index < 2:
-                    x_start = 0
-                else:
-                    x_start = self.x.size - self.slice_size
-                if self.slice_index % 2 == 0:
-                    y_start = 0
-                else:
-                    y_start = self.y.size - self.slice_size
-                z, z_above_ground, u, v, w, pressure, terrain, x, y = slice_only_dim_dicts(
-                    z,
-                    z_above_ground,
-                    u,
-                    v,
-                    w,
-                    pressure,
-                    self.terrain,
-                    self.x,
-                    self.y,
-                    x_dict={"start": x_start, "max": x_start + self.slice_size, "step": 1},
-                    y_dict={"start": y_start, "max": y_start + self.slice_size, "step": 1},
-                    z_dict={"start": 0, "max": z.shape[-1], "step": 1},
-                )
-            else:
                 # x_start = np.random.randint(0, self.x.size - self.slice_size)
                 # y_start = np.random.randint(0, self.y.size - self.slice_size)           
-                x_start = round(np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size))
-                y_start = round(np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size))
-                z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
-                    z,
-                    z_above_ground,
-                    u,
-                    v,
-                    w,
-                    pressure,
-                    x_dict={"start": x_start, "max": x_start + self.slice_size, "step": 1},
-                    y_dict={"start": y_start, "max": y_start + self.slice_size, "step": 1},
-                    z_dict={"start": 0, "max": z.shape[-1], "step": 1},
-                )
+            x_start = round(np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size))
+            y_start = round(np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size))
+            z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
+                z,
+                z_above_ground,
+                u,
+                v,
+                w,
+                pressure,
+                x_dict={"start": x_start, "max": x_start + self.slice_size, "step": 1},
+                y_dict={"start": y_start, "max": y_start + self.slice_size, "step": 1},
+                z_dict={"start": 0, "max": z.shape[-1], "step": 1},
+            )
 
         LR, HR, Z = reformat_to_torch(
             u,
@@ -190,7 +166,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 Z = torch.flip(Z, [2])
         
         if self.is_test:
-            return LR, HR, Z, self.filenames[index][:-4]+"_"+str(self.slice_index), terrain, x, y
+            return LR, HR, Z, self.filenames[index][:-4]
 
         return LR, HR, Z
 
@@ -497,7 +473,7 @@ def preprosess(
         COARSENESS_FACTOR=COARSENESS_FACTOR,
         data_aug_rot=test_aug_rot,
         data_aug_flip=test_aug_flip,
-        enable_slicing=enable_slicing,
+        enable_slicing=False,
         slice_size=slice_size,
         is_test=True,
     )

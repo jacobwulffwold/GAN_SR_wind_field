@@ -10,7 +10,6 @@ Use run.py to run.
 import logging
 import os
 import pickle as pkl
-import numpy as np
 import torch
 import torch.cuda
 import torch.nn as nn
@@ -21,9 +20,7 @@ import iocomponents.displaybar as displaybar
 
 def test(cfg: config.Config, dataset_test):
     status_logger = logging.getLogger("status")
-    wind_comp_dict = {0: "u", 1: "v", 2: "w"}
-    num_epochs = 4 if cfg.gan_config.enable_slicing else 1
-    niter = len(dataset_test)*num_epochs
+    niter = len(dataset_test)
     dataloader_test = None
 
     if cfg.dataset_test is not None:
@@ -63,6 +60,9 @@ def test(cfg: config.Config, dataset_test):
         os.makedirs(cfg.env.this_runs_folder + "/fields/")
     if not os.path.exists("./test_output/"):
         os.makedirs("./test_output/")
+    if not os.path.exists("./test_output/averages.csv"):
+        with open("./test_output/averages.csv", "w") as f:
+            f.write("Name, Average PSNR, Average PSNR trilinear, Average pix, Average pix trilinear\n")
 
     metrics_file = os.path.join("./test_output/" + cfg.name + "____metrics.csv")
     avg_PSNR = 0
@@ -91,42 +91,40 @@ def test(cfg: config.Config, dataset_test):
         )
         with open(metrics_file, "w") as write_file:
             write_file.write("field,PSNR,pix,PSNR_trilinear, pix_trilinear\n")
-            
-            for epoch in range(num_epochs):
-                dataloader_test.dataset.slice_index = epoch
+            for j, (LR, HR, Z, filenames) in enumerate(dataloader_test):
+                # status_logger.info(f"batch {j}")
+                # names = data["hr_name"]
+                bar.update(j, 0, len(dataloader_test)*(0)+j)
 
-                for j, (LR, HR, Z, filenames, terrain, x, y) in enumerate(dataloader_test):
-                    # status_logger.info(f"batch {j}")
-                    # names = data["hr_name"]
-                    bar.update(j, epoch, len(dataloader_test)*(epoch)+j)
-
-                    for i in range(LR.shape[0]):
-                        # status_logger.info(f"field {i}")
-                        indx = torch.as_tensor([i])
-                        LR_i = torch.index_select(LR, 0, indx, out=None)
-                        HR_i = torch.index_select(HR, 0, indx, out=None)
-                        
-                        with torch.no_grad():
-                            SR_i = gan.G(LR_i.to(cfg.device, non_blocking=True), Z.to(cfg.device, non_blocking=True)).cpu()
-                        
-                        interpolated_LR = nn.functional.interpolate(
-                            LR[:, :3, :, :, :],
-                            scale_factor=(4, 4, 1),
-                            mode="trilinear",
-                            align_corners=True,
+                for i in range(LR.shape[0]):
+                    # status_logger.info(f"field {i}")
+                    indx = torch.as_tensor([i])
+                    LR_i = torch.index_select(LR, 0, indx, out=None)
+                    HR_i = torch.index_select(HR, 0, indx, out=None)
+                    
+                    with torch.no_grad():
+                        SR_i = gan.G(LR_i.to(cfg.device, non_blocking=True), Z.to(cfg.device, non_blocking=True)).cpu()
+                    
+                    interpolated_LR = nn.functional.interpolate(
+                        LR[:, :3, :, :, :],
+                        scale_factor=(4, 4, 1),
+                        mode="trilinear",
+                        align_corners=True,
+                    )
+                    PSNR, PSNR_trilinear, pix, trilinear_pix = write_metrics(HR_i[:,:3], SR_i, interpolated_LR, filenames[i], write_file)
+                    
+                    avg_PSNR += PSNR/niter
+                    avg_PSNR_trilinear += PSNR_trilinear/niter
+                    avg_pix += pix/niter
+                    avg_pix_trilinear += trilinear_pix/niter
+                    
+                    if j % cfg.training.log_period == 0:
+                        write_fields(
+                            LR_i, HR_i, SR_i, interpolated_LR, Z, cfg.env.this_runs_folder, filenames[i]
                         )
-                        PSNR, PSNR_trilinear, pix, trilinear_pix = write_metrics(HR_i[:,:3], SR_i, interpolated_LR, filenames[i], write_file)
-                        
-                        avg_PSNR += PSNR/niter
-                        avg_PSNR_trilinear += PSNR_trilinear/niter
-                        avg_pix += pix/niter
-                        avg_pix_trilinear += trilinear_pix/niter
-                        
-                        if (len(dataloader_test)*(epoch)+j) % cfg.training.log_period == 0:
-                            write_fields(
-                                LR_i, HR_i, SR_i, interpolated_LR, Z, cfg.env.this_runs_folder, filenames[i], terrain, x, y,
-                            )
-
+        with open("./test_output/averages.csv", "a") as f:
+            f.write(f"{cfg.name},{avg_PSNR}, {avg_PSNR_trilinear}, {avg_pix}, {avg_pix_trilinear}\n")
+        
         print(f"Average PSNR: {avg_PSNR}")
         print(f"Average PSNR trilinear: {avg_PSNR_trilinear}")
         print(f"Average pix: {avg_pix}")
@@ -140,9 +138,6 @@ def write_fields(
     Z: torch.Tensor,
     folder_path: str,
     field_name: int,
-    terrain,
-    x,
-    y,
 ) -> dict:
     
     fields = dict()
@@ -151,9 +146,6 @@ def write_fields(
     fields["TL"] = interpolated_LR.squeeze().numpy()
     fields["LR"] = LR.squeeze().numpy()
     fields["Z"] = Z.squeeze().numpy()
-    fields["terrain"] = terrain
-    fields["x"] = x.numpy()
-    fields["y"] = y.numpy()
 
     with open(folder_path + "/fields/test_fields_" + str(field_name) + ".pkl", "wb") as f:
         pkl.dump(fields, f)

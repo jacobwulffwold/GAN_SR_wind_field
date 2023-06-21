@@ -365,6 +365,7 @@ def slice_only_dim_dicts(
     z_dict={"start": 1, "max": 41, "step": 1},
 ):
     value_list = []
+    xy_count = 0
     for val in args:
         if val.ndim == 3:
             value_list.append(
@@ -391,8 +392,9 @@ def slice_only_dim_dicts(
                 ]
             )
         elif val.ndim == 1:
-            if val.size == 136:
+            if xy_count == 0:
                 value_list.append(val[x_dict["start"] : x_dict["max"] : x_dict["step"]])
+                xy_count += 1
             else:
                 value_list.append(val[y_dict["start"] : y_dict["max"] : y_dict["step"]])
 
