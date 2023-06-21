@@ -5,8 +5,8 @@
 #SBATCH --gres=gpu:a100:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=10G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=12G
 #SBATCH --array=2-34
 #SBATCH --job-name=test_all
 #SBATCH --output=%a_test_all.out
