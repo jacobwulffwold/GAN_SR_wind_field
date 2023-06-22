@@ -64,8 +64,8 @@ name_dict = {
     'C100_seed_grad_large': r'large_grad_cost',
     'C100_seed_div_large': r'large_div_cost',
     'C100_seed_xy_large': r'large_$xy$_cost',
-    "STD": "STD",
-    "STD_seed": "STD",
+    "STD": "std_cost",
+    "STD_seed": "std_cost",
 }
 
 def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1, colormap="viridis", terrainX=np.asarray([]), terrainY=np.asarray([])):
@@ -368,14 +368,17 @@ def plot_vectors_on_grid(sgrid, vectors, name="vectors", colormap="jet"):
     sgrid.point_data.vectors.name = name
     mlab.pipeline.glyph(sgrid, colormap=colormap, opacity=0.5)
 
-
+def plot_feature_map(feature_map, fig=1):
+    mlab.pipeline.volume(mlab.pipeline.scalar_field(feature_map), figure=fig)
+    mlab.show()
 
 if __name__ == "__main__":
 
     
     # plot_metrics("./tensorboard_log_cluster/Z_handling_no/seed1", "val_PSNR", "metrics/PSNR")
     # create_exp1_plot()
-    plot_metrics25("/Volumes/jawold/GAN_SR_wind_field/tensorboard_log/35kGAN_cost_param_search/", "val_PSNR", "total", "metrics/PSNR", "G_loss/validation")
+    # create_exp2_plot()
+    # plot_metrics25("/Volumes/jawold/GAN_SR_wind_field/tensorboard_log/35kGAN_cost_param_search/", "val_PSNR", "total", "metrics/PSNR", "G_loss/validation")
     # (
     #     dataset_train,
     #     dataset_test,
@@ -412,7 +415,7 @@ if __name__ == "__main__":
 
 
     folder = "./runs/C100_xy_large/fields/"
-    filename = "test_fields_2018-03-15-21_0.pkl"
+    filename = "test_fields_2018-03-15-21.pkl"
     full_filename = folder + filename
     fields = pkl.load(open(full_filename, "rb")) 
     HR = fields["HR"]
@@ -420,9 +423,8 @@ if __name__ == "__main__":
     TL = fields["TL"] 
     LR = fields["LR"]
     Z = fields["Z"]
-    terrain = fields["terrain"]
-    x = fields["x"].numpy()
-    y = fields["y"].numpy()
+    with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = pkl.load(f)
 
     cfg = Config("./runs/C100_xy_large/config.ini")
     cfg.is_train = False
@@ -457,7 +459,7 @@ if __name__ == "__main__":
     plot_scalar_on_grid(LR_grid, LR_features[2], name="LR_feature")
     plot_field(X[::4,::4,:],Y[::4,::4,:],Z[::4,::4,:],LR[0],LR[1],LR[2],colormap="viridis")
     plot_feature_map_on_grid(sum_last_features_after_activation, X, Y, Z)
-    plot_field(X, Y, Z, HR[0], HR[1], HR[2], colormap="Blues", fig=1)
+    plot_field(X, Y, Z, HR[0], HR[1], HR[2], colormap="viridis", fig=1)
     plot_field(X, Y, Z, SR[0], SR[1], SR[2], colormap="viridis", fig=2)
     
     plot_feature_map_on_grid(last_features_before_activation[1], X, Y, Z)

@@ -13,7 +13,7 @@ import pickle
 import netCDF4
 from netCDF4 import Dataset
 import numpy as np
-
+import torch
 
 def plot_images(
     filename,
@@ -468,7 +468,7 @@ def reverse_interpolate_z_axis(
                         Z_raw[x,0,i,j,:], Z_interp[x, 0, i, j, :], HR_interp[x, z, i, j, :]
                     )
 
-    return HR_no_interp    
+    return torch.from_numpy(HR_no_interp)    
 
 def interpolate_z_axis(
     x,

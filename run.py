@@ -32,7 +32,7 @@ def main():
     # cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
-    cfg.is_test = True
+    # cfg.is_train = True
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
@@ -78,40 +78,40 @@ def main():
     #     cfg.training.pixel_loss_weight = 0.76
         
     run_names = [
-        "C100_div",
-        "C100_div_large",
-        "C100_grad",
-        "C100_grad_large",
-        "C100_only_pix",
-        "C100_xy",
-        "C100_xy_large",
-        "C100_seed_div",
-        "C100_seed_div_large",
-        "C100_seed_grad",
-        "C100_seed_grad_large",
-        "C100_seed_only_pix",
-        "C100_seed_xy",
-        "C100_seed_xy_large",
-        "SCH100_schedule2_larger_grad",
+        # "C100_div",
+        # "C100_div_large",
+        # "C100_grad",
+        # "C100_grad_large",
+        # "C100_only_pix",
+        # "C100_xy",
+        # "C100_xy_large",
+        # "C100_seed_div",
+        # "C100_seed_div_large",
+        # "C100_seed_grad",
+        # "C100_seed_grad_large",
+        # "C100_seed_only_pix",
+        # "C100_seed_xy",
+        # "C100_seed_xy_large",
+        # "SCH100_schedule2_larger_grad",
         "Z90_interponly_wind",
         "Z90_interpwind_interpZ",
         "Z90_interpwind_interpZ_pressure",
         "Z90_interpwind_pressure",
-        "Z_handling90only_wind",
-        "Z_handling90wind_pressure",
-        "Z_handling90wind_rawZ",
-        "Z100_seed_wind_Zground",
-        "Z100_seed_wind_Zground_pressure",
+        # "Z_handling90only_wind",
+        # "Z_handling90wind_pressure",
+        # "Z_handling90wind_rawZ",
+        # "Z100_seed_wind_Zground",
+        # "Z100_seed_wind_Zground_pressure",
         "Z90_interp_seedonly_wind",
         "Z90_interp_seedwind_interpZ",
         "Z90_interp_seedwind_interpZ_pressure",
         "Z90_interp_seedwind_pressure",
-        "Z_handling90_seedonly_wind",
-        "Z_handling90_seedwind_pressure",
-        "Z_handling90_seedwind_rawZ",
-        "Z_handling90wind_Zground",
-        "Z_handling90wind_Zground_pressure",
-        "Z_handling90_seed_wind_rawZ_pressure",
+        # "Z_handling90_seedonly_wind",
+        # "Z_handling90_seedwind_pressure",
+        # "Z_handling90_seedwind_rawZ",
+        # "Z_handling90wind_Zground",
+        # "Z_handling90wind_Zground_pressure",
+        # "Z_handling90_seed_wind_rawZ_pressure",
     ]
     this_run_index = cfg.slurm_array_id-1
 

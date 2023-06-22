@@ -108,6 +108,27 @@ class CustomizedDataset(torch.utils.data.Dataset):
         )
 
         if self.interpolate_z:
+            if self.is_test:
+                LR_raw, HR_raw, Z_raw = reformat_to_torch(
+                    u,
+                    v,
+                    w,
+                    pressure,
+                    z,
+                    z_above_ground,
+                    self.Z_MIN,
+                    self.Z_MAX,
+                    self.Z_ABOVE_GROUND_MAX,
+                    self.UVW_MAX,
+                    self.P_MIN,
+                    self.P_MAX,
+                    coarseness_factor=self.coarseness_factor,
+                    include_pressure=self.include_pressure,
+                    include_z_channel=self.include_z_channel,
+                    include_above_ground_channel=self.include_above_ground_channel,
+                    for_plotting=self.for_plotting,
+                )
+                
             z, z_above_ground, u, v, w, pressure = get_interpolated_z_data(
                 "./data/interpolated_z_data/"+self.subfolder_name+self.filenames[index], self.x, self.y, z_above_ground, u, v, w, pressure, self.terrain
             )
@@ -166,7 +187,10 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 Z = torch.flip(Z, [2])
         
         if self.is_test:
-            return LR, HR, Z, self.filenames[index][:-4]
+            if self.interpolate_z:
+                return LR, HR, Z, self.filenames[index][:-4], HR_raw, Z_raw
+            else:
+                return LR, HR, Z, self.filenames[index][:-4], 0, 0
 
         return LR, HR, Z
 
