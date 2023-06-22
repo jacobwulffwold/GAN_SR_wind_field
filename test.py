@@ -126,12 +126,12 @@ def test(cfg: config.Config, dataset_test):
         
                     if cfg.gan_config.interpolate_z:
                         reverse_SR_i = reverse_interpolate_z_axis(SR_i, torch.index_select(Z_raw, 0, torch.as_tensor([i]), out=None), torch.index_select(Z, 0, torch.as_tensor([i]), out=None))
-                        reverse_TL_i = reverse_interpolate_z_axis(interpolated_LR_i, torch.index_select(Z_raw, 0, torch.as_tensor([i]), out=None), torch.index_select(Z, 0, torch.as_tensor([i]), out=None))
-                        reverse_PSNR, reverse_PSNR_trilinear, reverse_pix, reverse_trilinear_pix = write_metrics(torch.index_select(HR_raw, 0, torch.as_tensor([i]), out=None)[:,:3], reverse_SR_i, reverse_TL_i, filenames[i], open(reverse_interpolate_metrics_file, "a"))
+                        # reverse_TL_i = reverse_interpolate_z_axis(interpolated_LR_i, torch.index_select(Z_raw, 0, torch.as_tensor([i]), out=None), torch.index_select(Z, 0, torch.as_tensor([i]), out=None))
+                        reverse_PSNR, reverse_PSNR_trilinear, reverse_pix, reverse_trilinear_pix = write_metrics(torch.index_select(HR_raw, 0, torch.as_tensor([i]), out=None)[:,:3], reverse_SR_i, interpolated_LR_i, filenames[i], open(reverse_interpolate_metrics_file, "a"))
                         avg_PSNR_reverse_interpolate += reverse_PSNR/niter
-                        avg_PSNR_trilinear_reverse_interpolate += reverse_PSNR_trilinear/niter
+                        # avg_PSNR_trilinear_reverse_interpolate += reverse_PSNR_trilinear/niter
                         avg_pix_reverse_interpolate += reverse_pix/niter
-                        avg_pix_trilinear_reverse_interpolate += reverse_trilinear_pix/niter
+                        # avg_pix_trilinear_reverse_interpolate += reverse_trilinear_pix/niter
 
                     PSNR, PSNR_trilinear, pix, trilinear_pix = write_metrics(HR_i[:,:3], SR_i, interpolated_LR_i, filenames[i], write_file)
                     

@@ -1,8 +1,8 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=0-01:30:00
-#SBATCH --gres=gpu:a100:1
+#SBATCH --time=0-02:30:00
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
