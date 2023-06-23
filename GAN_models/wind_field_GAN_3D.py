@@ -492,6 +492,16 @@ class wind_field_GAN_3D(BaseGAN):
                 if not(loss_G.isnan() or loss_G.isinf()):
                     torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                     self.optimizer_G.step()
+        else:
+            loss_G.backward()
+            total_norm = 0
+            for p in self.G.parameters():
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            print(f"Total norm: {total_norm}")
+            with open(self.cfg.env.this_runs_folder + "/norm.csv", "a") as f:
+                f.write(f"{total_norm}\n")
 
         self.log_G_losses(
             fake_HR,
@@ -535,13 +545,19 @@ class wind_field_GAN_3D(BaseGAN):
             )
 
         else:
-            self.G.eval()
-            with torch.no_grad():
-                fake_HR = self.G(LR, Z)
-                y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
-                self.calculate_optimize_and_log_G_loss(
-                    HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
-                )             
+            # self.G.eval()
+            self.G.zero_grad(set_to_none=True)
+            fake_HR = self.G(LR, Z)
+            y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
+            self.calculate_optimize_and_log_G_loss(
+                HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
+            )
+            # with torch.no_grad():
+            #     fake_HR = self.G(LR, Z)
+            #     y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
+            #     self.calculate_optimize_and_log_G_loss(
+            #         HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
+            #     )             
         return fake_HR
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
