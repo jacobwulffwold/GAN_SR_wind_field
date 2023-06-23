@@ -490,6 +490,13 @@ class wind_field_GAN_3D(BaseGAN):
             else:
                 loss_G.backward()
                 if not(loss_G.isnan() or loss_G.isinf()):
+                    total_norm = 0
+                    for p in self.G.parameters():
+                        param_norm = p.grad.detach().data.norm(2)
+                        total_norm += param_norm.item() ** 2
+                    total_norm = total_norm ** 0.5
+                    with open(self.cfg.env.this_runs_folder + "/norm.csv", "a") as f:
+                        f.write(f"{total_norm}\n")
                     torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                     self.optimizer_G.step()
         else:
@@ -499,7 +506,6 @@ class wind_field_GAN_3D(BaseGAN):
                 param_norm = p.grad.detach().data.norm(2)
                 total_norm += param_norm.item() ** 2
             total_norm = total_norm ** 0.5
-            print(f"Total norm: {total_norm}")
             with open(self.cfg.env.this_runs_folder + "/norm.csv", "a") as f:
                 f.write(f"{total_norm}\n")
 
