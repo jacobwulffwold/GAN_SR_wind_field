@@ -307,10 +307,10 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # Store results to file:
-                                HR_img = [u_HR, v_HR, w_HR]
-                                sr_img = [u_sr, v_sr, w_sr]
-                                tl_img = [u_trilinear, v_trilinear, w_trilinear]
-                                LR_img = [u_LR, v_LR, w_LR]
+                                HR_img = dataset_train.UVW_MAX*[u_HR, v_HR, w_HR]
+                                sr_img = dataset_train.UVW_MAX*[u_sr, v_sr, w_sr]
+                                tl_img = dataset_train.UVW_MAX*[u_trilinear, v_trilinear, w_trilinear]
+                                LR_img = dataset_train.UVW_MAX*[u_LR, v_LR, w_LR]
 
                                 # tb_writer.add_image(
                                 #     "LR_" + str(it), LR_i[:, :3, :, :, 3].squeeze()
@@ -324,6 +324,14 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 rand_wind_comp = np.random.randint(0, 3)
                                 rand_z_index = np.random.randint(0, u_HR.shape[2])
 
+                                pix_criterion = nn.L1Loss()
+                                u_SR_loss = pix_criterion(torch.from_numpy(HR_img[0][:,:,3]), torch.from_numpy(sr_img[0][:,:,3])).item()
+                                u_trilinear_loss = pix_criterion(torch.from_numpy(HR_img[0][:,:,3]), torch.from_numpy(tl_img[0][:,:,3])).item()
+
+                                rand_avg_loss = pix_criterion(torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(sr_img[rand_wind_comp][:,:,rand_z_index])).item()
+                                rand_avg_loss_trilinear = (torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(tl_img[rand_wind_comp][:,:,rand_z_index])).item()
+
+
                                 save_validation_images(
                                     "u_field_z_index",
                                     3,
@@ -333,6 +341,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     u_trilinear,
                                     tb_writer,
                                     it,
+                                    round(u_SR_loss, 3),
+                                    round(u_trilinear_loss, 3),
                                 )
                                 save_validation_images(
                                     wind_comp_dict[rand_wind_comp] + "_field_z_index",
@@ -343,6 +353,8 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     tl_img[rand_wind_comp],
                                     tb_writer,
                                     it,
+                                    round(rand_avg_loss, 3),
+                                    round(rand_avg_loss_trilinear,3),
                                 )
 
                                 imgs = dict()
@@ -401,6 +413,8 @@ def create_error_figure(
     wind_comp_HR,
     wind_comp_SR,
     wind_comp_trilinear,
+    average_SR_error,
+    average_trilinear_error,
 ):
     sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
     vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
@@ -417,14 +431,14 @@ def create_error_figure(
 
     fig2, axes2 = plt.subplots(2, 3, figsize=(12, 6), sharey=True, sharex=True)
     axes2[0,1].pcolor(wind_comp_SR[:, :, wind_height_index], vmin=vmin_wind_field, vmax=vmax_wind_field, cmap="viridis")
-    axes2[0,1].set_title("SR wind field")
+    axes2[0,1].set_title(f"SR wind field, avg error: {average_SR_error} m/s")
     axes2[0,0].pcolor(
         wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         vmin=vmin_error,
         vmax=vmax_error,
         cmap="coolwarm",
     )
-    axes2[0,0].set_title("Error SR-HR")
+    axes2[0,0].set_title("Error SR-HR m/s")
     axes2[0,2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
@@ -434,7 +448,7 @@ def create_error_figure(
         vmax=vmax_abs_error,
         cmap="jet",
     )
-    axes2[0,2].set_title("Absolute error SR")
+    axes2[0,2].set_title("Absolute error SR m/s")
     fig2.colorbar(sm, ax=axes2[0,1])
     fig2.colorbar(
         sm_error,
@@ -446,7 +460,7 @@ def create_error_figure(
         ax=axes2[0,2],
     )
     axes2[1,1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
-    axes2[1,1].set_title("Trilinear wind field")
+    axes2[1,1].set_title(f"Trilinear wind field, avg error: {average_trilinear_error} m/s")
     axes2[1,0].pcolor(
         wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         cmap="coolwarm",
@@ -519,6 +533,8 @@ def save_validation_images(
     wind_comp_trilinear,
     tb_writer,
     it,
+    avg_loss,
+    average_trilinear_error,
 ):
     fig1 = create_comparison_figure(
         wind_height_index,
@@ -532,7 +548,7 @@ def save_validation_images(
         "im/"+str(it)+"/wind_fields/" + title + str(wind_height_index), fig1, it
     )
     
-    fig2 = create_error_figure(wind_height_index, wind_comp_HR, wind_comp_SR, wind_comp_trilinear)
+    fig2 = create_error_figure(wind_height_index, wind_comp_HR, wind_comp_SR, wind_comp_trilinear, avg_loss, average_trilinear_error)
     
     tb_writer.add_figure(
         "im/"+str(it)+"/Error/" + title + str(wind_height_index), fig2, it

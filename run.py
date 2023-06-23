@@ -77,59 +77,74 @@ def main():
     #     cfg.training.divergence_loss_weight = 4.45
     #     cfg.training.pixel_loss_weight = 0.76
         
-    run_names = [
-        "C100_div",
-        "C100_div_large",
-        "C100_grad",
-        "C100_grad_large",
-        "C100_only_pix",
-        "C100_xy",
-        "C100_xy_large",
-        "C100_seed_div",
-        "C100_seed_div_large",
-        "C100_seed_grad",
-        "C100_seed_grad_large",
-        "C100_seed_only_pix",
-        "C100_seed_xy",
-        "C100_seed_xy_large",
-        "SCH100_schedule2_larger_grad",
-        # "Z90_interponly_wind",
-        # "Z90_interpwind_interpZ",
-        # "Z90_interpwind_interpZ_pressure",
-        # "Z90_interpwind_pressure",
-        "Z_handling90only_wind",
-        "Z_handling90wind_pressure",
-        "Z_handling90wind_rawZ",
-        "Z100_seed_wind_Zground",
-        "Z100_seed_wind_Zground_pressure",
-        # "Z90_interp_seedonly_wind",
-        # "Z90_interp_seedwind_interpZ",
-        # "Z90_interp_seedwind_interpZ_pressure",
-        # "Z90_interp_seedwind_pressure",
-        "Z_handling90_seedonly_wind",
-        "Z_handling90_seedwind_pressure",
-        "Z_handling90_seedwind_rawZ",
-        "Z_handling90wind_Zground",
-        "Z_handling90wind_Zground_pressure",
-        "Z_handling90_seed_wind_rawZ_pressure",
-    ]
+    # run_names = [
+    #     "C100_div",
+    #     "C100_div_large",
+    #     "C100_grad",
+    #     "C100_grad_large",
+    #     "C100_only_pix",
+    #     "C100_xy",
+    #     "C100_xy_large",
+    #     "C100_seed_div",
+    #     "C100_seed_div_large",
+    #     "C100_seed_grad",
+    #     "C100_seed_grad_large",
+    #     "C100_seed_only_pix",
+    #     "C100_seed_xy",
+    #     "C100_seed_xy_large",
+    #     "SCH100_schedule2_larger_grad",
+    #     # "Z90_interponly_wind",
+    #     # "Z90_interpwind_interpZ",
+    #     # "Z90_interpwind_interpZ_pressure",
+    #     # "Z90_interpwind_pressure",
+    #     "Z_handling90only_wind",
+    #     "Z_handling90wind_pressure",
+    #     "Z_handling90wind_rawZ",
+    #     "Z100_seed_wind_Zground",
+    #     "Z100_seed_wind_Zground_pressure",
+    #     # "Z90_interp_seedonly_wind",
+    #     # "Z90_interp_seedwind_interpZ",
+    #     # "Z90_interp_seedwind_interpZ_pressure",
+    #     # "Z90_interp_seedwind_pressure",
+    #     "Z_handling90_seedonly_wind",
+    #     "Z_handling90_seedwind_pressure",
+    #     "Z_handling90_seedwind_rawZ",
+    #     "Z_handling90wind_Zground",
+    #     "Z_handling90wind_Zground_pressure",
+    #     "Z_handling90_seed_wind_rawZ_pressure",
+    # ]
     this_run_index = cfg.slurm_array_id-1
 
-    cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
-    cfg = Config(cfg_path)
-    if run_names[this_run_index].__contains__("Z") or run_names[this_run_index].__contains__("SCH"):
-        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_80000.pth"
-    else:
-        cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
+    # cfg_path = "./runs/"+run_names[this_run_index]+"/config.ini"
+    # cfg = Config(cfg_path)
+    # if run_names[this_run_index].__contains__("Z") or run_names[this_run_index].__contains__("SCH"):
+    #     cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_80000.pth"
+    # else:
+    #     cfg.env.generator_load_path = "./runs/"+run_names[this_run_index]+"/G_90000.pth"
 
     # cfg.load_model_from_save = True
+    if cfg.slurm_array_id == 0:
+        cfg.name = cfg.name + "_check_norm"
+        cfg.training.val_period = 1000
+        cfg.training.niter = 1001
+        cfg.load_model_from_save = False
+    else:
+        generators = ["G_20000.pth", "G_40000.pth", "G_60000.pth", "G_80000.pth", "G_100000.pth", "G_120000.pth", "G_140000.pth", "G_160000.pth"]
+        niters = [20002, 40002, 60002, 80002, 100002, 120002, 140002, 160002]
+        cfg.name = cfg.name + "_check_norm_"+generators[this_run_index][:-4]
+        cfg.training.val_period = 2
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+        cfg.env.generator_load_path = "./runs/lr200k_STD/"+generators[this_run_index]
+        cfg.env.discriminator_load_path = "./runs/lr200k_STD/"+generators[this_run_index].replace("G", "D")
+        cfg.env.state_load_path = "./runs/lr200k_STD/"+generators[this_run_index].replace("G", "state")
+        cfg.training.niter = niters[this_run_index]
 
-    cfg.is_train = False
-    cfg.is_test = True
+    cfg.is_train = True
+    cfg.is_test = False
     cfg.is_use = False
     cfg.is_download = False
     cfg.is_param_search = False
-    cfg.training.log_period = 100
 
     # cfg = Config("./runs/lr200k_STD/config.ini") 
     # cfg.env.generator_load_path = "./pretrained_models/lr200k_STD/G_100000.pth"

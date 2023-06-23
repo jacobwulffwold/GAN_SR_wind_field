@@ -109,31 +109,31 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                     padding=hr_pad,
                 ),
             ]
-            terrain_conv = create_conv_lrelu_layer(
-                1,
-                terrain_number_of_features,
-                3,
-                padding=1,
-                layer_type=layer_type,
-                lrelu=False,
-            )
-            # terrain_convs = [create_conv_lrelu_layer(
+            # terrain_conv = create_conv_lrelu_layer(
             #     1,
             #     terrain_number_of_features,
             #     3,
             #     padding=1,
             #     layer_type=layer_type,
-            #     lrelu=True,
-            # ),
-            # create_conv_lrelu_layer(
-            #     terrain_number_of_features,
-            #     terrain_number_of_features,
-            #     3,
-            #     padding=1,
-            #     layer_type=layer_type,
             #     lrelu=False,
-            # ),
-            # ]
+            # )
+            terrain_convs = [create_conv_lrelu_layer(
+                1,
+                terrain_number_of_features,
+                3,
+                padding=1,
+                layer_type=layer_type,
+                lrelu=True,
+            ),
+            create_conv_lrelu_layer(
+                terrain_number_of_features,
+                terrain_number_of_features,
+                3,
+                padding=1,
+                layer_type=layer_type,
+                lrelu=False,
+            ),
+            ]
 
 
         elif conv_mode == "horizontal_3D":
@@ -219,11 +219,11 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
 
         self.model = nn.Sequential(feature_conv, RRDB_conv_shortcut, *upsampler)
         self.hr_convs = nn.Sequential(*hr_convs_w_dropout)
-        self.terrain_conv = terrain_conv
+        self.terrain_convs = nn.Sequential(*terrain_convs)
         self.status_logs.append(f"Generator: finished init")
 
     def forward(self, x, Z):
         x = self.model(x)
-        Z = self.terrain_conv(Z)
+        Z = self.terrain_convs(Z)
         x = torch.cat((x, Z), dim=1)
         return self.hr_convs(x)
