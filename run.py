@@ -67,6 +67,17 @@ def main():
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
         cfg.generator.max_norm = 10**10
+    if cfg.slurm_array_id == 8:
+        cfg.name = cfg.name + "_16lr_clipInf"
+        cfg.generator.max_norm = 10**10
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+    if cfg.slurm_array_id == 9:
+        cfg.name = cfg.name + "_16lr_clipInf_10adv"
+        cfg.generator.max_norm = 10**10
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
 
         
   
