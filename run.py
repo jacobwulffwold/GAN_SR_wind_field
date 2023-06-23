@@ -78,40 +78,40 @@ def main():
     #     cfg.training.pixel_loss_weight = 0.76
         
     run_names = [
-        # "C100_div",
-        # "C100_div_large",
-        # "C100_grad",
-        # "C100_grad_large",
-        # "C100_only_pix",
-        # "C100_xy",
-        # "C100_xy_large",
-        # "C100_seed_div",
-        # "C100_seed_div_large",
-        # "C100_seed_grad",
-        # "C100_seed_grad_large",
-        # "C100_seed_only_pix",
-        # "C100_seed_xy",
-        # "C100_seed_xy_large",
-        # "SCH100_schedule2_larger_grad",
-        "Z90_interponly_wind",
-        "Z90_interpwind_interpZ",
-        "Z90_interpwind_interpZ_pressure",
-        "Z90_interpwind_pressure",
-        # "Z_handling90only_wind",
-        # "Z_handling90wind_pressure",
-        # "Z_handling90wind_rawZ",
-        # "Z100_seed_wind_Zground",
-        # "Z100_seed_wind_Zground_pressure",
-        "Z90_interp_seedonly_wind",
-        "Z90_interp_seedwind_interpZ",
-        "Z90_interp_seedwind_interpZ_pressure",
-        "Z90_interp_seedwind_pressure",
-        # "Z_handling90_seedonly_wind",
-        # "Z_handling90_seedwind_pressure",
-        # "Z_handling90_seedwind_rawZ",
-        # "Z_handling90wind_Zground",
-        # "Z_handling90wind_Zground_pressure",
-        # "Z_handling90_seed_wind_rawZ_pressure",
+        "C100_div",
+        "C100_div_large",
+        "C100_grad",
+        "C100_grad_large",
+        "C100_only_pix",
+        "C100_xy",
+        "C100_xy_large",
+        "C100_seed_div",
+        "C100_seed_div_large",
+        "C100_seed_grad",
+        "C100_seed_grad_large",
+        "C100_seed_only_pix",
+        "C100_seed_xy",
+        "C100_seed_xy_large",
+        "SCH100_schedule2_larger_grad",
+        # "Z90_interponly_wind",
+        # "Z90_interpwind_interpZ",
+        # "Z90_interpwind_interpZ_pressure",
+        # "Z90_interpwind_pressure",
+        "Z_handling90only_wind",
+        "Z_handling90wind_pressure",
+        "Z_handling90wind_rawZ",
+        "Z100_seed_wind_Zground",
+        "Z100_seed_wind_Zground_pressure",
+        # "Z90_interp_seedonly_wind",
+        # "Z90_interp_seedwind_interpZ",
+        # "Z90_interp_seedwind_interpZ_pressure",
+        # "Z90_interp_seedwind_pressure",
+        "Z_handling90_seedonly_wind",
+        "Z_handling90_seedwind_pressure",
+        "Z_handling90_seedwind_rawZ",
+        "Z_handling90wind_Zground",
+        "Z_handling90wind_Zground_pressure",
+        "Z_handling90_seed_wind_rawZ_pressure",
     ]
     this_run_index = cfg.slurm_array_id-1
 
@@ -131,7 +131,8 @@ def main():
     cfg.is_param_search = False
     cfg.training.log_period = 100
 
-    # cfg = Config("./runs/C100_xy_large/config.ini")
+    # cfg = Config("./runs/lr200k_STD/config.ini") 
+    # cfg.env.generator_load_path = "./pretrained_models/lr200k_STD/G_100000.pth"
     # cfg.is_train = False
     # cfg.is_download = False
     # cfg.is_param_search = False
