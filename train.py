@@ -329,7 +329,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 u_trilinear_loss = pix_criterion(torch.from_numpy(HR_img[0][:,:,3]), torch.from_numpy(tl_img[0][:,:,3])).item()
 
                                 rand_avg_loss = pix_criterion(torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(sr_img[rand_wind_comp][:,:,rand_z_index])).item()
-                                rand_avg_loss_trilinear = (torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(tl_img[rand_wind_comp][:,:,rand_z_index])).item()
+                                rand_avg_loss_trilinear = pix_criterion(torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(tl_img[rand_wind_comp][:,:,rand_z_index])).item()
 
 
                                 save_validation_images(
