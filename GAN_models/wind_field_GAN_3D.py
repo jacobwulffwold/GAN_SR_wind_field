@@ -499,15 +499,6 @@ class wind_field_GAN_3D(BaseGAN):
                         f.write(f"{total_norm}\n")
                     torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
                     self.optimizer_G.step()
-        else:
-            loss_G.backward()
-            total_norm = 0
-            for p in self.G.parameters():
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            with open(self.cfg.env.this_runs_folder + "/norm.csv", "a") as f:
-                f.write(f"{total_norm}\n")
 
         self.log_G_losses(
             fake_HR,
@@ -551,19 +542,13 @@ class wind_field_GAN_3D(BaseGAN):
             )
 
         else:
-            # self.G.eval()
-            self.G.zero_grad(set_to_none=True)
-            fake_HR = self.G(LR, Z)
-            y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
-            self.calculate_optimize_and_log_G_loss(
-                HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
-            )
-            # with torch.no_grad():
-            #     fake_HR = self.G(LR, Z)
-            #     y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
-            #     self.calculate_optimize_and_log_G_loss(
-            #         HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
-            #     )             
+            self.G.eval()
+            with torch.no_grad():
+                fake_HR = self.G(LR, Z)
+                y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
+                self.calculate_optimize_and_log_G_loss(
+                    HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
+                )             
         return fake_HR
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
@@ -679,8 +664,8 @@ class wind_field_GAN_3D(BaseGAN):
         it = torch.tensor(it, device=self.device)
         self.make_new_labels(it)
 
-        # if it > 0.6 * self.niter and self.d_g_train_ratio ==1:
-        #     self.d_g_train_ratio = 3
+        if it > 0.5 * self.niter and self.d_g_train_ratio ==1:
+            self.d_g_train_ratio = 2
 
         if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
             self.feature_extractor = copy.deepcopy(self.D.features)
@@ -712,6 +697,7 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             else:
                 with torch.no_grad():
+                    self.G.eval()
                     fake_HR = self.G(LR, Z)
 
         ###################

@@ -242,9 +242,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                                 # Low Resolution
                                 LR_ori = LR_i.squeeze().detach().cpu().numpy()
-                                u_LR = LR_ori[0, :, :, :]
-                                v_LR = LR_ori[1, :, :, :]
-                                w_LR = LR_ori[2, :, :, :]
+                                u_LR = dataset_train.UVW_MAX*LR_ori[0, :, :, :]
+                                v_LR = dataset_train.UVW_MAX*LR_ori[1, :, :, :]
+                                w_LR = dataset_train.UVW_MAX*LR_ori[2, :, :, :]
                                 imgs_trilinear = (
                                     nn.functional.interpolate(
                                         LR_i,
@@ -257,13 +257,13 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     .cpu()
                                     .numpy()
                                 )
-                                u_trilinear = imgs_trilinear[
+                                u_trilinear = dataset_train.UVW_MAX*imgs_trilinear[
                                     0, :, :, :
                                 ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_trilinear = imgs_trilinear[
+                                v_trilinear = dataset_train.UVW_MAX*imgs_trilinear[
                                     1, :, :, :
                                 ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_trilinear = imgs_trilinear[
+                                w_trilinear = dataset_train.UVW_MAX*imgs_trilinear[
                                     2, :, :, :
                                 ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
@@ -285,32 +285,32 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     .cpu()
                                     .numpy()
                                 )
-                                u_sr = gen_HR[
+                                u_sr = dataset_train.UVW_MAX*gen_HR[
                                     0, :, :, :
                                 ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_sr = gen_HR[
+                                v_sr = dataset_train.UVW_MAX*gen_HR[
                                     1, :, :, :
                                 ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_sr = gen_HR[
+                                w_sr = dataset_train.UVW_MAX*gen_HR[
                                     2, :, :, :
                                 ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # HR
-                                u_HR = HR_i[
+                                u_HR = dataset_train.UVW_MAX*HR_i[
                                     0, :, :, :
                                 ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_HR = HR_i[
+                                v_HR = dataset_train.UVW_MAX*HR_i[
                                     1, :, :, :
                                 ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_HR = HR_i[
+                                w_HR = dataset_train.UVW_MAX*HR_i[
                                     2, :, :, :
                                 ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # Store results to file:
-                                HR_img = dataset_train.UVW_MAX*[u_HR, v_HR, w_HR]
-                                sr_img = dataset_train.UVW_MAX*[u_sr, v_sr, w_sr]
-                                tl_img = dataset_train.UVW_MAX*[u_trilinear, v_trilinear, w_trilinear]
-                                LR_img = dataset_train.UVW_MAX*[u_LR, v_LR, w_LR]
+                                HR_img = [u_HR, v_HR, w_HR]
+                                sr_img = [u_sr, v_sr, w_sr]
+                                tl_img = [u_trilinear, v_trilinear, w_trilinear]
+                                LR_img = [u_LR, v_LR, w_LR]
 
                                 # tb_writer.add_image(
                                 #     "LR_" + str(it), LR_i[:, :3, :, :, 3].squeeze()
