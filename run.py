@@ -67,27 +67,37 @@ def main():
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
         cfg.generator.max_norm = 10**10
-    if cfg.slurm_array_id == 8:
+    if cfg.slurm_array_id == 8: #stop now
         cfg.name = cfg.name + "_16lr_clipInf"
         cfg.generator.max_norm = 10**10
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-    if cfg.slurm_array_id == 9:
+    if cfg.slurm_array_id == 9: #stopped
         cfg.name = cfg.name + "_16lr_clipInf_10adv"
         cfg.generator.max_norm = 10**10
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-    if cfg.slurm_array_id == 10:
+    if cfg.slurm_array_id == 10: 
         cfg.name = cfg.name + "_16lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-    if cfg.slurm_array_id == 11:
+    if cfg.slurm_array_id == 11: #stop now
         cfg.name = cfg.name + "_4lr_clipInf_10adv"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
         cfg.generator.max_norm = 10**10
+    if cfg.slurm_array_id == 12:
+        cfg.name = cfg.name + "_4lr_clip1_10adv"
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+    if cfg.slurm_array_id == 13:
+        cfg.name = cfg.name + "_4lr_clip1_4adv_D2"
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*4
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
+
 
 
         
