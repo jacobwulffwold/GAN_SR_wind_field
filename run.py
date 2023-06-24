@@ -78,6 +78,10 @@ def main():
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+    if cfg.slurm_array_id == 10:
+        cfg.name = cfg.name + "_16lr_clip1"
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
 
         
   
