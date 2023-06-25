@@ -59,9 +59,9 @@ def main():
         cfg.name = cfg.name + "_4lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_40000.pth"
+        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_40000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_40000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
