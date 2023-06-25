@@ -299,7 +299,7 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
     cfg.env.log_folder = cfg.env.root_path + cfg.env.log_subpath
     cfg.env.tensorboard_log_folder = cfg.env.root_path + cfg.env.tensorboard_subpath
     cfg.env.status_log_file = cfg.env.log_folder + "/" + cfg.name + ".log"
-    cfg.env.this_runs_folder = cfg.env.root_path + cfg.env./runs_subpath + "/" + cfg.name
+    cfg.env.this_runs_folder = cfg.env.root_path + cfg.env.runs_subpath + "/" + cfg.name
     cfg.env.this_runs_tensorboard_log_folder = (
         cfg.env.tensorboard_log_folder + "/" + cfg.name
     )
