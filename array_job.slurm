@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=1-4,6,7,10
+#SBATCH --array=1,2,3,4,6,7,10
 #SBATCH --job-name=clip_lr200k
 #SBATCH --output=%a_clip_lr200k.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
