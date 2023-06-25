@@ -41,33 +41,70 @@ def main():
     
     if cfg.slurm_array_id == 1:
         cfg.name = cfg.name + "_2lr_clip1"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+
     if cfg.slurm_array_id == 2:
         cfg.name = cfg.name + "_2lr_clipInf"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
         cfg.generator.max_norm = 10**10
+
     if cfg.slurm_array_id == 3:
         cfg.name = cfg.name + "_4lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+
     if cfg.slurm_array_id == 4:
         cfg.name = cfg.name + "_4lr_clipInf"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
         cfg.generator.max_norm = 10**10
-    if cfg.slurm_array_id == 5:
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+
+    if cfg.slurm_array_id == 5: #stpped
         cfg.name = cfg.name + "_4lr_clip2_adv"
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*4
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+
     if cfg.slurm_array_id == 6:
         cfg.name = cfg.name + "_8lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+
     if cfg.slurm_array_id == 7:
         cfg.name = cfg.name + "_8lr_clipInf"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
         cfg.generator.max_norm = 10**10
-    if cfg.slurm_array_id == 8: #stop now
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+
+    if cfg.slurm_array_id == 8: #stopped
         cfg.name = cfg.name + "_16lr_clipInf"
         cfg.generator.max_norm = 10**10
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
@@ -78,11 +115,18 @@ def main():
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+
     if cfg.slurm_array_id == 10: 
         cfg.name = cfg.name + "_16lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-    if cfg.slurm_array_id == 11: #stop now
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/D_60000.pth"
+        cfg.env.discriminator_load_path = ".runs/"+cfg.name+"/state_60000.pth"
+        cfg.load_model_from_save = True
+        cfg.training.resume_training_from_save = True
+
+    if cfg.slurm_array_id == 11: #stopped
         cfg.name = cfg.name + "_4lr_clipInf_10adv"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
