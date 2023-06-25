@@ -438,7 +438,7 @@ def create_error_figure(
         vmax=vmax_error,
         cmap="coolwarm",
     )
-    axes2[0,0].set_title("Error SR-HR m/s")
+    axes2[0,0].set_title("Error SR-HR (m/s)")
     axes2[0,2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
@@ -448,7 +448,7 @@ def create_error_figure(
         vmax=vmax_abs_error,
         cmap="jet",
     )
-    axes2[0,2].set_title("Absolute error SR m/s")
+    axes2[0,2].set_title("Absolute error SR (m/s)")
     fig2.colorbar(sm, ax=axes2[0,1])
     fig2.colorbar(
         sm_error,
@@ -465,7 +465,7 @@ def create_error_figure(
         wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         cmap="coolwarm",
     )
-    axes2[1,0].set_title("Error Trilinear-HR")
+    axes2[1,0].set_title("Error Trilinear-HR (m/s)")
     axes2[1,2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
@@ -473,7 +473,7 @@ def create_error_figure(
         ),
         cmap="jet",
     )
-    axes2[1,2].set_title("Absolute error Trilinear")
+    axes2[1,2].set_title("Absolute error Trilinear (m/s)")
     fig2.colorbar(sm, ax=axes2[1,1])
     fig2.colorbar(
         sm_error,

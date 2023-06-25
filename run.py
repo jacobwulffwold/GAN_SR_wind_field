@@ -32,7 +32,8 @@ def main():
     # cfg.is_train = True
     # cfg.is_download = True
     # cfg.is_param_search = True
-    # cfg.is_train = True
+    cfg.is_train = True
+    cfg.slurm_array_id = 6
     if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
@@ -41,17 +42,17 @@ def main():
     
     if cfg.slurm_array_id == 1:
         cfg.name = cfg.name + "_2lr_clip1"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
     if cfg.slurm_array_id == 2:
         cfg.name = cfg.name + "_2lr_clipInf"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
         cfg.generator.max_norm = 10**10
@@ -60,9 +61,9 @@ def main():
         cfg.name = cfg.name + "_4lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
@@ -71,9 +72,9 @@ def main():
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
         cfg.generator.max_norm = 10**10
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
@@ -87,9 +88,9 @@ def main():
         cfg.name = cfg.name + "_8lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
@@ -98,9 +99,9 @@ def main():
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
         cfg.generator.max_norm = 10**10
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
         cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
@@ -120,9 +121,9 @@ def main():
         cfg.name = cfg.name + "_16lr_clip1"
         cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
         cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_20000.pth"
+        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_20000.pth"
+        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_20000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
