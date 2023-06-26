@@ -168,7 +168,11 @@ def main():
     if cfg.slurm_array_id == 19:
         cfg.name = cfg.name + "_4adv"
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*4
-  
+    
+    if cfg.slurm_array_id == 20:
+        cfg.name = cfg.name + "_pix4"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*4
+        
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
