@@ -159,14 +159,14 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_xy_niter(
-                        x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio,
+                        x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio, cfg_t.d_g_train_period
                     )
 
                 gan.optimize_parameters(LR, HR, Z, it)
 
                 profiler.step()
 
-                gan.update_learning_rate() if i > 0 else None
+                gan.update_learning_rate() if 2*cfg_t.d_g_train_period > 0 else None
 
                 l = gan.get_new_status_logs()
 

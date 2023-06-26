@@ -224,11 +224,13 @@ class wind_field_GAN_3D(BaseGAN):
         y: torch.Tensor,
         niter: torch.Tensor,
         d_g_train_ratio:int,
+        d_g_train_period:int,
     ):
         self.x = x
         self.y = y
         self.niter = niter
         self.d_g_train_ratio = d_g_train_ratio
+        self.d_g_train_period = d_g_train_period
 
     def D_forward(
         self,
@@ -262,7 +264,7 @@ class wind_field_GAN_3D(BaseGAN):
                 y_pred = self.D(
                     HR
                     + trainingtricks.instance_noise(
-                        torch.tensor(2.0, device=self.device),
+                        torch.tensor(1.0, device=self.device),
                         HR.size(),
                         it,
                         self.niter,
@@ -664,48 +666,24 @@ class wind_field_GAN_3D(BaseGAN):
         it = torch.tensor(it, device=self.device)
         self.make_new_labels(it)
 
-        if it > 0.5 * self.niter and self.d_g_train_ratio ==1:
-            self.d_g_train_ratio = 2
-
         if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
             self.feature_extractor = copy.deepcopy(self.D.features)
             for param in self.feature_extractor.parameters():
                 param.requires_grad = False
 
 
-        ###################
-        # Update G
-        ###################
-        if it % self.d_g_train_ratio == 0:
-            fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
-        else:
-            if torch.cuda.is_available() and not self.runtime_dict.get(
-                "G_forward_no_grad"
-            ):
-                start_G_no_grad = torch.cuda.Event(enable_timing=True)
-                end_G_no_grad = torch.cuda.Event(enable_timing=True)
-                start_G_no_grad.record()
-                with torch.no_grad():
-                    fake_HR = self.G(LR, Z)
-                end_G_no_grad.record()
-                self.runtime_dict["G_forward_no_grad"] = (
-                    start_G_no_grad,
-                    end_G_no_grad,
-                )
-                self.memory_dict["after_G_forward_no_grad"] = (
-                    torch.cuda.memory_allocated(self.device) / 1024**2
-                )
+        train_period = it // self.d_g_train_period
+        if training_iteration:
+            if train_period % (self.d_g_train_ratio+1) == 0 or train_period==0:
+                fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
             else:
                 with torch.no_grad():
                     self.G.eval()
                     fake_HR = self.G(LR, Z)
-
-        ###################
-        # Update D
-        ###################
-        self.update_D(HR, fake_HR, it, training_iteration)
-
-        if not training_iteration:
+                self.update_D(HR, fake_HR, it, training_iteration)
+        else:
+            fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
+            self.update_D(HR, fake_HR, it, training_iteration)
             (
                 self.metrics_dict["val_PSNR"],
                 self.metrics_dict["Trilinear_PSNR"],

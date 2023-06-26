@@ -217,6 +217,7 @@ class TrainingConfig(IniConfig):
     adversarial_loss_weight: float = 5e-3
 
     d_g_train_ratio: int = 1
+    d_g_train_period: int = 50
 
     pixel_criterion: str = "l1"
     pixel_loss_weight: float = 1e-1
@@ -256,6 +257,7 @@ class TrainingConfig(IniConfig):
         self.gan_type = train_config.get("gan_type")
         self.adversarial_loss_weight = train_config.getfloat("adversarial_loss_weight")
         self.d_g_train_ratio = train_config.getint("d_g_train_ratio")
+        self.d_g_train_period = train_config.getint("d_g_train_period")
         self.pixel_criterion = train_config.get("pixel_criterion")
         self.pixel_loss_weight = train_config.getfloat("pixel_loss_weight")
         self.gradient_xy_loss_weight = train_config.getfloat("gradient_xy_loss_weight")

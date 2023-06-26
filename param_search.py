@@ -138,7 +138,7 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
                 x = x.to(cfg.device, non_blocking=True)
                 y = y.to(cfg.device, non_blocking=True)
                 gan.feed_xy_niter(
-                    x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio,
+                    x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio, cfg_t.d_g_train_period
                 )
 
             gan.optimize_parameters(LR, HR, Z, it)
