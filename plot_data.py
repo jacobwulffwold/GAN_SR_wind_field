@@ -4,7 +4,7 @@ from tvtk.api import tvtk
 import numpy as np
 import torch.nn as nn
 import pickle as pkl
-from process_data import preprosess
+from process_data import preprosess, get_static_data
 from datetime import date
 from download_data import slice_only_dim_dicts, reverse_interpolate_z_axis
 from GAN_models.wind_field_GAN_3D import compute_PSNR_for_SR_and_trilinear
@@ -84,20 +84,22 @@ def plot_field(X, Y, Z, u, v, w, terrain=np.asarray([]), z_plot_scale=1, fig=1, 
         try:
             if terrainX.any():
                 mlab.surf(
-                    terrainX[:, :, 0].T,
-                    terrainY[:, :, 0].T,
-                    z_plot_scale * terrain.T,
+                    terrainX,
+                    terrainY,
+                    z_plot_scale * terrain,
                     colormap="black-white",
+                    opacity=0.8,
                 )
             else:
                 mlab.surf(
-                    X[:, :, 0].T,
-                    Y[:, :, 0].T,
-                    z_plot_scale * terrain.T,
+                    X[:, :, 0],
+                    Y[:, :, 0],
+                    z_plot_scale * terrain,
                     colormap="black-white",
+                    opacity=0.8,
                 )
         except:
-            mlab.surf(X.T, Y.T, z_plot_scale * terrain.T, colormap="black-white")
+            mlab.surf(X, Y, z_plot_scale * terrain, colormap="black-white", opacity=0.8)
     mlab.show()
 
 def plot_metrics1(tb_folder, metric, metric_folder, ax:plt.Axes, df = pd.DataFrame([]), title=None, ylabel=None, xlabel=None):
@@ -307,7 +309,7 @@ def generate_plots(X, Y, Z, u, v, w, terrain, colormap="viridis"):
 
     X1, Y1, Z1, u1, v1, w1, terrain1 = slice_only_dim_dicts(X, Y, Z, u, v, w, terrain, x_dict={"start": 0, "max": 128, "step": 1}, y_dict={"start": 0, "max": 128, "step": 1},z_dict={"start": 0, "max": 41, "step": 5},)
     plot_field(X1,Y1,Z1,u1,v1,w1, terrain1, z_plot_scale=5, fig=1, colormap=colormap)
-    X1, Y1, Z1, u1, v1, w1, terrain1  = slice_only_dim_dicts(X, Y, Z, u, v, w, terrain, x_dict={"start": 5, "max": 37, "step": 1}, y_dict={"start": 10, "max": 42, "step": 1},z_dict={"start": 0, "max": 11, "step": 1},)
+    X1, Y1, Z1, u1, v1, w1, terrain1  = slice_only_dim_dicts(X, Y, Z, u, v, w, terrain, x_dict={"start": 5, "max": 37, "step": 1}, y_dict={"start": 10, "max": 42, "step": 1},z_dict={"start": 0, "max": 20, "step": 1},)
     plot_field(X1,Y1,Z1,u1,v1,w1, terrain1, z_plot_scale=1, fig=2, colormap=colormap)
     plot_field(X1[::4,::4,:],Y1[::4,::4,:],Z1[::4,::4,:],u1[::4,::4,:],v1[::4,::4,:],w1[::4,::4,:], terrain1, z_plot_scale=1, fig=3, colormap=colormap, terrainX=X1, terrainY=Y1)
 
@@ -379,75 +381,82 @@ if __name__ == "__main__":
     # create_exp1_plot()
     # create_exp2_plot()
     # plot_metrics25("/Volumes/jawold/GAN_SR_wind_field/tensorboard_log/35kGAN_cost_param_search/", "val_PSNR", "total", "metrics/PSNR", "G_loss/validation")
-    # (
-    #     dataset_train,
-    #     dataset_test,
-    #     dataset_validation,
-    #     x,
-    #     y,
-    # ) = preprosess(
-    #     train_eval_test_ratio=0.8,
-    #     X_DICT={"start": 0, "max": 128, "step": 1},
-    #     Y_DICT={"start": 0, "max": 128, "step": 1},
-    #     Z_DICT={"start": 0, "max": 10, "step": 1},
-    #     start_date=date(2018, 10, 1),
-    #     end_date=date(2018, 10, 2),
-    #     include_pressure=True,
-    #     include_z_channel=False,
-    #     interpolate_z=False,
-    #     enable_slicing=True,
-    #     slice_size=64,
-    #     include_above_ground_channel=False,
-    #     COARSENESS_FACTOR=4,
-    #     train_aug_rot=False,
-    #     val_aug_rot=False,
-    #     test_aug_rot=False,
-    #     train_aug_flip=False,
-    #     val_aug_flip=False,
-    #     test_aug_flip=False,
-    #     for_plotting=True,
-    # )
+    (
+        dataset_train,
+        dataset_test,
+        dataset_validation,
+        x,
+        y,
+    ) = preprosess(
+        train_eval_test_ratio=0.8,
+        X_DICT={"start": 0, "max": 128, "step": 1},
+        Y_DICT={"start": 0, "max": 128, "step": 1},
+        Z_DICT={"start": 0, "max": 41, "step": 1},
+        start_date=date(2018, 3, 1),
+        end_date=date(2018, 3, 2),
+        include_pressure=True,
+        include_z_channel=False,
+        interpolate_z=False,
+        enable_slicing=True,
+        slice_size=64,
+        include_above_ground_channel=False,
+        COARSENESS_FACTOR=4,
+        train_aug_rot=False,
+        val_aug_rot=False,
+        test_aug_rot=False,
+        train_aug_flip=False,
+        val_aug_flip=False,
+        test_aug_flip=False,
+        for_plotting=True,
+    )
 
     # dataloader_normal = torch.utils.data.DataLoader(dataset_train, batch_size=32, shuffle=False)
 
-    # LR, HR, Z, filename, terrain, x, y = dataset_test[0]
-    # LR, HR, Z = LR.squeeze().numpy(), HR.squeeze().numpy(), Z.squeeze().numpy()
+    LR, HR, Z, filename, _, _ = dataset_test[0]
+    LR, HR, Z = LR.squeeze().numpy(), HR.squeeze().numpy(), Z.squeeze().numpy()
 
 
-    folder = "./runs/C100_xy_large/fields/"
-    filename = "test_fields_2018-03-15-21.pkl"
-    full_filename = folder + filename
-    fields = pkl.load(open(full_filename, "rb")) 
-    HR = fields["HR"]
-    SR = fields["SR"] 
-    TL = fields["TL"] 
-    LR = fields["LR"]
-    Z = fields["Z"]
-    with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
-            terrain, x, y = pkl.load(f)
+    # folder = "./runs/C100_xy_large/fields/"
+    # filename = "test_fields_2018-03-15-21.pkl"
+    # full_filename = folder + filename
+    # fields = pkl.load(open(full_filename, "rb")) 
+    # HR = fields["HR"]
+    # SR = fields["SR"] 
+    # TL = fields["TL"] 
+    # LR = fields["LR"]
+    # Z = fields["Z"]
 
-    cfg = Config("./runs/C100_xy_large/config.ini")
-    cfg.is_train = False
-    cfg.is_download = False
-    cfg.is_param_search = False
-    cfg.is_test = True
-    cfg.device = torch.device("cpu")
+    # cfg = Config("./runs/C100_xy_large/config.ini")
+    # cfg.is_train = False
+    # cfg.is_download = False
+    # cfg.is_param_search = False
+    # cfg.is_test = True
+    # cfg.device = torch.device("cpu")
 
-    gan = wind_field_GAN_3D(cfg)
-    _, _ = gan.load_model(
-        generator_load_path=cfg.env.generator_load_path,
-        discriminator_load_path=None,
-        state_load_path=None,
-    )
-    LR_features, LR_upscaled_features, HR_terrain_features, last_features_activation, last_features_before_activation, sum_last_features_after_activation, sum_last_features_before_activation, sum_LR_features = get_feature_maps(gan.G, torch.from_numpy(LR)[None, :,:,:,:], torch.from_numpy(Z)[None, None, :,:,:])
+    # gan = wind_field_GAN_3D(cfg)
+    # _, _ = gan.load_model(
+    #     generator_load_path=cfg.env.generator_load_path,
+    #     discriminator_load_path=None,
+    #     state_load_path=None,
+    # )
+    # LR_features, LR_upscaled_features, HR_terrain_features, last_features_activation, last_features_before_activation, sum_last_features_after_activation, sum_last_features_before_activation, sum_LR_features = get_feature_maps(gan.G, torch.from_numpy(LR)[None, :,:,:,:], torch.from_numpy(Z)[None, None, :,:,:])
     
     X_DICT={"start": 0, "max": 128, "step": 1}
     Y_DICT={"start": 0, "max": 128, "step": 1}
 
+    try:
+        with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = pkl.load(f)
+    except:
+        get_static_data()
+        with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = pkl.load(f)
+
     
-    # u_norm, v_norm, w_norm, pressure_norm = HR[0], HR[1], HR[2], HR[3]
-    # u, v, w, pressure = u_norm*dataset_train.UVW_MAX, v_norm*dataset_train.UVW_MAX, w_norm*dataset_train.UVW_MAX, HR[3]*(dataset_train.P_MAX-dataset_train.P_MIN)+dataset_train.P_MIN
-    # X,Y, _ = np.meshgrid(x,y, Z[0,0,:])
+    u_norm, v_norm, w_norm, pressure_norm = HR[0], HR[1], HR[2], HR[3]
+
+    u, v, w, pressure = u_norm*dataset_train.UVW_MAX, v_norm*dataset_train.UVW_MAX, w_norm*dataset_train.UVW_MAX, HR[3]*(dataset_train.P_MAX-dataset_train.P_MIN)+dataset_train.P_MIN
+
     X,Y, _ = np.mgrid[np.min(x):np.max(x):x.size*1j, np.min(y):np.max(y):y.size*1j, np.min(Z[0,0]):np.max(Z[0,0]):Z[0,0].size*1j]
     
     full_grid = create_structured_grid(X,Y,Z) 
@@ -456,15 +465,15 @@ if __name__ == "__main__":
     # plot_vectors_on_grid(full_grid, HR, name="HR", colormap="Blues")
 
     
-    plot_scalar_on_grid(LR_grid, LR_features[2], name="LR_feature")
-    plot_field(X[::4,::4,:],Y[::4,::4,:],Z[::4,::4,:],LR[0],LR[1],LR[2],colormap="viridis")
-    plot_feature_map_on_grid(sum_last_features_after_activation, X, Y, Z)
-    plot_field(X, Y, Z, HR[0], HR[1], HR[2], colormap="viridis", fig=1)
-    plot_field(X, Y, Z, SR[0], SR[1], SR[2], colormap="viridis", fig=2)
+    # plot_scalar_on_grid(LR_grid, LR_features[2], name="LR_feature")
+    # plot_field(X[::4,::4,:],Y[::4,::4,:],Z[::4,::4,:],LR[0],LR[1],LR[2],colormap="viridis")
+    # plot_feature_map_on_grid(sum_last_features_after_activation, X, Y, Z)
+    # plot_field(X, Y, Z, HR[0], HR[1], HR[2], colormap="viridis", fig=1)
+    # plot_field(X, Y, Z, SR[0], SR[1], SR[2], colormap="viridis", fig=2)
     
-    plot_feature_map_on_grid(last_features_before_activation[1], X, Y, Z)
-    plot_field(X, Y, Z, HR[0]-SR[0], HR[1]-SR[1], HR[2]-SR[2], colormap="coolwarm", fig=3)
-    plot_field(X, Y, Z, HR[0]-TL[0], HR[1]-TL[1], HR[2]-SR[2], colormap="coolwarm", fig=4)
+    # plot_feature_map_on_grid(last_features_before_activation[1], X, Y, Z)
+    # plot_field(X, Y, Z, HR[0]-SR[0], HR[1]-SR[1], HR[2]-SR[2], colormap="coolwarm", fig=3)
+    # plot_field(X, Y, Z, HR[0]-TL[0], HR[1]-TL[1], HR[2]-SR[2], colormap="coolwarm", fig=4)
 
 
 

@@ -172,7 +172,11 @@ def main():
     if cfg.slurm_array_id == 20:
         cfg.name = cfg.name + "_pix4"
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*4
-        
+
+    if cfg.slurm_array_id == 21:
+        cfg.name = cfg.name + "_pix2"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*2    
+
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:

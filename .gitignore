@@ -9,3 +9,5 @@ OLD/
 CNN_models/OLD
 GAN_models/OLD
 .DS_Store
+figures/
+test_output/

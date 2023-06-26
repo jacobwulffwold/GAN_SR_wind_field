@@ -1,15 +1,15 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=2-15:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --gres=gpu:a100:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=16-19
-#SBATCH --job-name=ALN
-#SBATCH --output=%a_ALN.out
+#SBATCH --array=20,21
+#SBATCH --job-name=8lr_clip1
+#SBATCH --output=%a_8lr_clip1.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

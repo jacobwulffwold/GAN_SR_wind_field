@@ -63,7 +63,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                     remainder_z_layers[i] // 2 + remainder_z_layers[i] % 2
                 )
 
-        # 128x128x10 -> 64x64x10
+        # 64x64x10 -> 32x32x10
         features.append(
             create_discriminator_block(
                 in_channels,
@@ -77,7 +77,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 mode=conv_mode,
             )
         )
-        # 64x64x10 -> 32x32x10
+        # 32x32x10 -> 16x16x10
         features.append(
             create_discriminator_block(
                 base_number_of_features,
@@ -91,7 +91,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 mode=conv_mode,
             )
         )
-        # 32x32x10 -> 16x16x10
+        # 16x16x10 -> 8x8x10
         features.append(
             create_discriminator_block(
                 base_number_of_features * 2,
@@ -106,7 +106,7 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
             )
         )
         if not enable_slicing:
-            # 16x16x5 -> 8x8x5
+            # 16x16x10 -> 8x8x10
             features.append(
                 create_discriminator_block(
                     base_number_of_features * 4,
