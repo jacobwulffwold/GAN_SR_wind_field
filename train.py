@@ -166,7 +166,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                 profiler.step()
 
-                gan.update_learning_rate() if 2*cfg_t.d_g_train_period > 0 else None
+                gan.update_learning_rate() if it > 2*cfg_t.d_g_train_period else None
 
                 l = gan.get_new_status_logs()
 
