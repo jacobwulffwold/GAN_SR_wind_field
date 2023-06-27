@@ -85,7 +85,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
         )
         _, __ = gan.load_model(
             generator_load_path=cfg.env.generator_load_path,
-            discriminator_load_path=cfg.env.discriminator_load_path,
+            discriminator_load_path=cfg.env.discriminator_load_path if cfg.env.discriminator_load_path else None,
             state_load_path=None,
         )
 

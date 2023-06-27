@@ -175,8 +175,17 @@ def main():
 
     if cfg.slurm_array_id == 21:
         cfg.name = cfg.name + "_pix2"
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*2    
-
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*2
+    
+    if cfg.slurm_array_id == 22:
+        cfg.name = cfg.name + "_pretrained_G"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale/2
+        cfg.training.use_one_sided_label_smoothing = False
+        cfg.training.use_instance_noise = False
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*4
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
+        cfg.env.discriminator_load_path = ""
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
