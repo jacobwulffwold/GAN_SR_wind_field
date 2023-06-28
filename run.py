@@ -249,15 +249,38 @@ def main():
         cfg.load_model_from_save = True
         cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_100000.pth"
         cfg.env.discriminator_load_path = ""
+    
+    if cfg.slurm_array_id == 28:
+        cfg.name = cfg.name + "_pretrained_G_4pix_2adv_label_static"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = True
+        cfg.training.use_instance_noise = False
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
+        cfg.env.discriminator_load_path = ""
+
+    if cfg.slurm_array_id == 29:
+        cfg.name = cfg.name + "_pretrained_G_4pix_2adv_both_static"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = True
+        cfg.training.use_instance_noise = True
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
+        cfg.env.discriminator_load_path = ""
 
     if cfg.slurm_array_id == 40:
         cfg = Config("./runs/8lr_best_model_search_no_adv_seed1/config.ini")
-        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_100000.pth"
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_120000.pth"
         cfg.is_train = False
         cfg.is_download = False
         cfg.is_param_search = False
         cfg.is_test = True
         cfg.is_use = False
+        cfg.log_period = 200
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:

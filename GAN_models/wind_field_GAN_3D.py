@@ -746,9 +746,9 @@ class wind_field_GAN_3D(BaseGAN):
             and self.cfg.training.flip_labels
         ):
             real_label = torch.tensor(1.0, device=self.device)
-            fake_label = torch.tensor(0.1, device=self.device) - 0.1 * it / self.niter
+            fake_label = torch.tensor(0.1, device=self.device)
         elif self.cfg.training.use_one_sided_label_smoothing:
-            real_label = torch.tensor(0.9, device=self.device) + 0.1 * it / self.niter
+            real_label = torch.tensor(0.9, device=self.device) 
             fake_label = torch.tensor(0.0, device=self.device)
 
         if self.cfg.training.use_noisy_labels:
