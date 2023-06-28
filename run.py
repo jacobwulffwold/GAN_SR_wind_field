@@ -271,6 +271,28 @@ def main():
         cfg.load_model_from_save = True
         cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
         cfg.env.discriminator_load_path = ""
+    
+    if cfg.slurm_array_id == 30:
+        cfg.name = cfg.name + "_pretrained_G_4pix_5adv_label_static"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = True
+        cfg.training.use_instance_noise = False
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 5
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
+        cfg.env.discriminator_load_path = ""
+    
+    if cfg.slurm_array_id == 31:
+        cfg.name = cfg.name + "_pretrained_G_4pix_10adv_label_static"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = True
+        cfg.training.use_instance_noise = False
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 10
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
+        cfg.env.discriminator_load_path = ""
 
     if cfg.slurm_array_id == 40:
         cfg = Config("./runs/8lr_best_model_search_no_adv_seed1/config.ini")
