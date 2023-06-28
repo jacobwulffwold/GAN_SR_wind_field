@@ -258,7 +258,7 @@ def main():
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
         cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
         cfg.load_model_from_save = True
-        cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
         cfg.env.discriminator_load_path = ""
 
     if cfg.slurm_array_id == 29:
