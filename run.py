@@ -257,6 +257,7 @@ def main():
         cfg.is_download = False
         cfg.is_param_search = False
         cfg.is_test = True
+        cfg.is_use = False
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
