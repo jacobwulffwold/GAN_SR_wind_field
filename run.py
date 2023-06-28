@@ -250,6 +250,14 @@ def main():
         cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_100000.pth"
         cfg.env.discriminator_load_path = ""
 
+    if cfg.slurm_array_id == 40:
+        cfg = Config("./runs/8lr_best_model_search_no_adv_seed1/config.ini")
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_100000.pth"
+        cfg.is_train = False
+        cfg.is_download = False
+        cfg.is_param_search = False
+        cfg.is_test = True
+
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
         print("Aborting")
