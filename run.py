@@ -231,6 +231,24 @@ def main():
         cfg.name = cfg.name + "_pix4_clipInf"
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
         cfg.generator.max_norm = 10**10
+    
+    if cfg.slurm_array_id == 26:
+        cfg.name = cfg.name + "_pix4_pretrained_no_adv"
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_100000.pth"
+        cfg.env.discriminator_load_path = ""
+
+    if cfg.slurm_array_id == 27:
+        cfg.name = cfg.name + "_pix10_pretrained_no_adv"
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 10
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed1/G_100000.pth"
+        cfg.env.discriminator_load_path = ""
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
