@@ -103,7 +103,7 @@ class GeneratorConfig(IniConfig):
     use_mixed_precision: bool = True
     terrain_number_of_features: int = 16
     dropout_probability: float = 0.0
-    max_norm:float = 1.0
+    max_norm: float = 1.0
 
     def setGeneratorConfig(self, gen_config):
         self.norm_type = gen_config.get("norm_type")
@@ -139,7 +139,7 @@ class DiscriminatorConfig(IniConfig):
     weight_init_scale: float = 1.0
     conv_mode: str = "3D"
     use_mixed_precision: bool = True
-    dropout_probability:float = 0.2
+    dropout_probability: float = 0.2
 
     def setDiscriminatorConfig(self, disc_config):
         self.norm_type = disc_config.get("norm_type")
@@ -306,7 +306,7 @@ class Config(IniConfig):
     is_test: bool
     is_param_search: bool
     is_download: bool
-    slurm_array_id:int = 1
+    slurm_array_id: int = 1
 
     def __init__(self, ini_path):
         config = ConfigParser(allow_no_value=True)

@@ -7,9 +7,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=20,21
-#SBATCH --job-name=8lr_clip1
-#SBATCH --output=%a_8lr_clip1.out
+#SBATCH --array=22-25
+#SBATCH --job-name=ALN
+#SBATCH --output=%a_ALN.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

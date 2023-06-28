@@ -85,7 +85,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
         )
         _, __ = gan.load_model(
             generator_load_path=cfg.env.generator_load_path,
-            discriminator_load_path=cfg.env.discriminator_load_path if cfg.env.discriminator_load_path else None,
+            discriminator_load_path=cfg.env.discriminator_load_path
+            if cfg.env.discriminator_load_path
+            else None,
             state_load_path=None,
         )
 
@@ -143,30 +145,32 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
             # dataloader -> (LR, HR, HR_img_name)
 
             for i, (LR, HR, Z) in enumerate(dataloader_train):
-                
                 if it > cfg_t.niter:
                     break
-                
+
                 it += 1
                 bar.update(i, epoch, it)
 
                 LR = LR.to(cfg.device, non_blocking=True)
                 HR = HR.to(cfg.device, non_blocking=True)
                 Z = Z.to(cfg.device, non_blocking=True)
-                
 
                 if it == loaded_it + 1:
                     x = x.to(cfg.device, non_blocking=True)
                     y = y.to(cfg.device, non_blocking=True)
                     gan.feed_xy_niter(
-                        x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio, cfg_t.d_g_train_period
+                        x,
+                        y,
+                        torch.tensor(cfg_t.niter, device=cfg.device),
+                        cfg_t.d_g_train_ratio,
+                        cfg_t.d_g_train_period,
                     )
 
                 gan.optimize_parameters(LR, HR, Z, it)
 
                 profiler.step()
 
-                gan.update_learning_rate() if it > 2*cfg_t.d_g_train_period else None
+                gan.update_learning_rate() if it > 2 * cfg_t.d_g_train_period else None
 
                 l = gan.get_new_status_logs()
 
@@ -191,15 +195,13 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 if dataloader_val is None:
                     continue
                 if it % cfg_t.val_period == 0:
-                   
                     status_logger.debug(f"validation epoch (it {it})")
                     G_loss_vals = dict(
                         (val_name, 0)
                         for (val_name) in gan.get_G_val_loss_dict_ref().keys()
                     )
                     D_loss_vals = dict(
-                        (val_name, 0)
-                        for (val_name) in gan.get_D_loss_dict_ref().keys()
+                        (val_name, 0) for (val_name) in gan.get_D_loss_dict_ref().keys()
                     )
 
                     metrics_vals = dict(
@@ -242,9 +244,9 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
 
                                 # Low Resolution
                                 LR_ori = LR_i.squeeze().detach().cpu().numpy()
-                                u_LR = dataset_train.UVW_MAX*LR_ori[0, :, :, :]
-                                v_LR = dataset_train.UVW_MAX*LR_ori[1, :, :, :]
-                                w_LR = dataset_train.UVW_MAX*LR_ori[2, :, :, :]
+                                u_LR = dataset_train.UVW_MAX * LR_ori[0, :, :, :]
+                                v_LR = dataset_train.UVW_MAX * LR_ori[1, :, :, :]
+                                w_LR = dataset_train.UVW_MAX * LR_ori[2, :, :, :]
                                 imgs_trilinear = (
                                     nn.functional.interpolate(
                                         LR_i,
@@ -257,15 +259,15 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     .cpu()
                                     .numpy()
                                 )
-                                u_trilinear = dataset_train.UVW_MAX*imgs_trilinear[
-                                    0, :, :, :
-                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_trilinear = dataset_train.UVW_MAX*imgs_trilinear[
-                                    1, :, :, :
-                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_trilinear = dataset_train.UVW_MAX*imgs_trilinear[
-                                    2, :, :, :
-                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                u_trilinear = (
+                                    dataset_train.UVW_MAX * imgs_trilinear[0, :, :, :]
+                                )  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_trilinear = (
+                                    dataset_train.UVW_MAX * imgs_trilinear[1, :, :, :]
+                                )  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_trilinear = (
+                                    dataset_train.UVW_MAX * imgs_trilinear[2, :, :, :]
+                                )  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # loss_trilinear = torch.sum(((HR_i - imgs_trilinear_tensor)**2)/(128*128)).item()
                                 # rounded_loss_trilinear = round(loss_trilinear, 3)
@@ -285,26 +287,26 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     .cpu()
                                     .numpy()
                                 )
-                                u_sr = dataset_train.UVW_MAX*gen_HR[
-                                    0, :, :, :
-                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_sr = dataset_train.UVW_MAX*gen_HR[
-                                    1, :, :, :
-                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_sr = dataset_train.UVW_MAX*gen_HR[
-                                    2, :, :, :
-                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                u_sr = (
+                                    dataset_train.UVW_MAX * gen_HR[0, :, :, :]
+                                )  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_sr = (
+                                    dataset_train.UVW_MAX * gen_HR[1, :, :, :]
+                                )  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_sr = (
+                                    dataset_train.UVW_MAX * gen_HR[2, :, :, :]
+                                )  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # HR
-                                u_HR = dataset_train.UVW_MAX*HR_i[
-                                    0, :, :, :
-                                ]  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
-                                v_HR = dataset_train.UVW_MAX*HR_i[
-                                    1, :, :, :
-                                ]  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
-                                w_HR = dataset_train.UVW_MAX*HR_i[
-                                    2, :, :, :
-                                ]  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
+                                u_HR = (
+                                    dataset_train.UVW_MAX * HR_i[0, :, :, :]
+                                )  # *(np.max(u_nomask)-np.min(u_nomask))+np.min(u_nomask)
+                                v_HR = (
+                                    dataset_train.UVW_MAX * HR_i[1, :, :, :]
+                                )  # *(np.max(v_nomask)-np.min(v_nomask))+np.min(v_nomask)
+                                w_HR = (
+                                    dataset_train.UVW_MAX * HR_i[2, :, :, :]
+                                )  # *(np.max(w_nomask)-np.min(w_nomask))+np.min(w_nomask)
 
                                 # Store results to file:
                                 HR_img = [u_HR, v_HR, w_HR]
@@ -312,25 +314,35 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                 tl_img = [u_trilinear, v_trilinear, w_trilinear]
                                 LR_img = [u_LR, v_LR, w_LR]
 
-                                # tb_writer.add_image(
-                                #     "LR_" + str(it), LR_i[:, :3, :, :, 3].squeeze()
-                                # )
-                                # tb_writer.add_image(
-                                #     "HR_" + str(it), HR_i[:, :3, :, :, 3].squeeze()
-                                # )
-                                # tb_writer.add_image(
-                                #     "SR_" + str(it), gen_HR[:, :3, :, :, 3].squeeze()
-                                # )
                                 rand_wind_comp = np.random.randint(0, 3)
                                 rand_z_index = np.random.randint(0, u_HR.shape[2])
 
                                 pix_criterion = nn.L1Loss()
-                                u_SR_loss = pix_criterion(torch.from_numpy(HR_img[0][:,:,3]), torch.from_numpy(sr_img[0][:,:,3])).item()
-                                u_trilinear_loss = pix_criterion(torch.from_numpy(HR_img[0][:,:,3]), torch.from_numpy(tl_img[0][:,:,3])).item()
+                                u_SR_loss = pix_criterion(
+                                    torch.from_numpy(HR_img[0][:, :, 3]),
+                                    torch.from_numpy(sr_img[0][:, :, 3]),
+                                ).item()
+                                u_trilinear_loss = pix_criterion(
+                                    torch.from_numpy(HR_img[0][:, :, 3]),
+                                    torch.from_numpy(tl_img[0][:, :, 3]),
+                                ).item()
 
-                                rand_avg_loss = pix_criterion(torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(sr_img[rand_wind_comp][:,:,rand_z_index])).item()
-                                rand_avg_loss_trilinear = pix_criterion(torch.from_numpy(HR_img[rand_wind_comp][:,:,rand_z_index]), torch.from_numpy(tl_img[rand_wind_comp][:,:,rand_z_index])).item()
-
+                                rand_avg_loss = pix_criterion(
+                                    torch.from_numpy(
+                                        HR_img[rand_wind_comp][:, :, rand_z_index]
+                                    ),
+                                    torch.from_numpy(
+                                        sr_img[rand_wind_comp][:, :, rand_z_index]
+                                    ),
+                                ).item()
+                                rand_avg_loss_trilinear = pix_criterion(
+                                    torch.from_numpy(
+                                        HR_img[rand_wind_comp][:, :, rand_z_index]
+                                    ),
+                                    torch.from_numpy(
+                                        tl_img[rand_wind_comp][:, :, rand_z_index]
+                                    ),
+                                ).item()
 
                                 save_validation_images(
                                     "u_field_z_index",
@@ -354,7 +366,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                                     tb_writer,
                                     it,
                                     round(rand_avg_loss, 3),
-                                    round(rand_avg_loss_trilinear,3),
+                                    round(rand_avg_loss_trilinear, 3),
                                 )
 
                                 imgs = dict()
@@ -377,8 +389,16 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         tb_writer.add_scalars("D_loss/", D_loss_vals, it)
                         # for hist_name, val in hist_vals.items():
                         #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
-                        PSNR_metrics = dict((key, value) for key, value in metrics_vals.items() if "PSNR" in key)
-                        pix_metrics = dict((key, value) for key, value in metrics_vals.items() if "pix" in key)
+                        PSNR_metrics = dict(
+                            (key, value)
+                            for key, value in metrics_vals.items()
+                            if "PSNR" in key
+                        )
+                        pix_metrics = dict(
+                            (key, value)
+                            for key, value in metrics_vals.items()
+                            if "pix" in key
+                        )
                         tb_writer.add_scalars("metrics/PSNR", PSNR_metrics, it)
                         tb_writer.add_scalars("metrics/pix", pix_metrics, it)
 
@@ -408,6 +428,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                 status_logger.info("devices D_forward: " + gan.device_check)
     return
 
+
 def create_error_figure(
     wind_height_index,
     wind_comp_HR,
@@ -416,30 +437,71 @@ def create_error_figure(
     average_SR_error,
     average_trilinear_error,
 ):
-    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("viridis"))
     vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
         wind_comp_HR[:, :, wind_height_index]
     )
-    vmin_wind_field, vmax_wind_field = np.min(np.concatenate((wind_comp_trilinear[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index]), axis=(0))), np.max(np.concatenate((wind_comp_trilinear[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index]), axis=(0)))
-    vmin_error, vmax_error = np.min(np.concatenate((wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index]), axis=(0))), np.max(np.concatenate((wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index], wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index]), axis=(0)))
+    vmin_wind_field, vmax_wind_field = np.min(
+        np.concatenate(
+            (
+                wind_comp_trilinear[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    ), np.max(
+        np.concatenate(
+            (
+                wind_comp_trilinear[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    )
+    vmin_error, vmax_error = np.min(
+        np.concatenate(
+            (
+                wind_comp_trilinear[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    ), np.max(
+        np.concatenate(
+            (
+                wind_comp_trilinear[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    )
     vmin_abs_error, vmax_abs_error = 0.0, max(abs(vmax_error), abs(vmin_error))
     sm.set_clim(vmin=vmin, vmax=vmax)
-    sm_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('coolwarm'))
+    sm_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("coolwarm"))
     sm_error.set_clim(vmin=vmin_error, vmax=vmax_error)
-    sm_abs_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('jet'))
+    sm_abs_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("jet"))
     sm_abs_error.set_clim(vmin=vmin_abs_error, vmax=vmax_abs_error)
 
     fig2, axes2 = plt.subplots(2, 3, figsize=(12, 6), sharey=True, sharex=True)
-    axes2[0,1].pcolor(wind_comp_SR[:, :, wind_height_index], vmin=vmin_wind_field, vmax=vmax_wind_field, cmap="viridis")
-    axes2[0,1].set_title(f"SR wind field, avg error: {average_SR_error} m/s")
-    axes2[0,0].pcolor(
+    axes2[0, 1].pcolor(
+        wind_comp_SR[:, :, wind_height_index],
+        vmin=vmin_wind_field,
+        vmax=vmax_wind_field,
+        cmap="viridis",
+    )
+    axes2[0, 1].set_title(f"SR wind field, avg error: {average_SR_error} m/s")
+    axes2[0, 0].pcolor(
         wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         vmin=vmin_error,
         vmax=vmax_error,
         cmap="coolwarm",
     )
-    axes2[0,0].set_title("Error SR-HR (m/s)")
-    axes2[0,2].pcolor(
+    axes2[0, 0].set_title("Error SR-HR (m/s)")
+    axes2[0, 2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_SR[:, :, wind_height_index]
@@ -448,44 +510,48 @@ def create_error_figure(
         vmax=vmax_abs_error,
         cmap="jet",
     )
-    axes2[0,2].set_title("Absolute error SR (m/s)")
-    fig2.colorbar(sm, ax=axes2[0,1])
+    axes2[0, 2].set_title("Absolute error SR (m/s)")
+    fig2.colorbar(sm, ax=axes2[0, 1])
     fig2.colorbar(
         sm_error,
-        ax=axes2[0,0],
+        ax=axes2[0, 0],
     )
 
     fig2.colorbar(
         sm_abs_error,
-        ax=axes2[0,2],
+        ax=axes2[0, 2],
     )
-    axes2[1,1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
-    axes2[1,1].set_title(f"Trilinear wind field, avg error: {average_trilinear_error} m/s")
-    axes2[1,0].pcolor(
-        wind_comp_trilinear[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
+    axes2[1, 1].pcolor(wind_comp_trilinear[:, :, wind_height_index])
+    axes2[1, 1].set_title(
+        f"Trilinear wind field, avg error: {average_trilinear_error} m/s"
+    )
+    axes2[1, 0].pcolor(
+        wind_comp_trilinear[:, :, wind_height_index]
+        - wind_comp_HR[:, :, wind_height_index],
         cmap="coolwarm",
     )
-    axes2[1,0].set_title("Error Trilinear-HR (m/s)")
-    axes2[1,2].pcolor(
+    axes2[1, 0].set_title("Error Trilinear-HR (m/s)")
+    axes2[1, 2].pcolor(
         abs(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_trilinear[:, :, wind_height_index]
         ),
         cmap="jet",
     )
-    axes2[1,2].set_title("Absolute error Trilinear (m/s)")
-    fig2.colorbar(sm, ax=axes2[1,1])
+    axes2[1, 2].set_title("Absolute error Trilinear (m/s)")
+    fig2.colorbar(sm, ax=axes2[1, 1])
     fig2.colorbar(
         sm_error,
-        ax=axes2[1,0],
+        ax=axes2[1, 0],
     )
 
     fig2.colorbar(
         sm_abs_error,
-        ax=axes2[1,2],
+        ax=axes2[1, 2],
     )
     fig2.subplots_adjust(hspace=0.2)
     return fig2
+
 
 def create_comparison_figure(
     wind_height_index,
@@ -493,7 +559,7 @@ def create_comparison_figure(
     wind_comp_HR,
     wind_comp_SR,
     wind_comp_trilinear,
-):    
+):
     fig, axes = plt.subplots(2, 2, figsize=(8, 7))
     vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
         wind_comp_HR[:, :, wind_height_index]
@@ -519,10 +585,11 @@ def create_comparison_figure(
     axes[1, 1].set_title("Trilinear")
     fig.subplots_adjust(hspace=0.3)
 
-    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap('viridis') )
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("viridis"))
     sm.set_clim(vmin=vmin, vmax=vmax)
     fig.colorbar(sm, ax=axes)
     return fig
+
 
 def save_validation_images(
     title,
@@ -543,15 +610,22 @@ def save_validation_images(
         wind_comp_SR,
         wind_comp_trilinear,
     )
-    
+
     tb_writer.add_figure(
-        "im/"+str(it)+"/wind_fields/" + title + str(wind_height_index), fig1, it
+        "im/" + str(it) + "/wind_fields/" + title + str(wind_height_index), fig1, it
     )
-    
-    fig2 = create_error_figure(wind_height_index, wind_comp_HR, wind_comp_SR, wind_comp_trilinear, avg_loss, average_trilinear_error)
-    
+
+    fig2 = create_error_figure(
+        wind_height_index,
+        wind_comp_HR,
+        wind_comp_SR,
+        wind_comp_trilinear,
+        avg_loss,
+        average_trilinear_error,
+    )
+
     tb_writer.add_figure(
-        "im/"+str(it)+"/Error/" + title + str(wind_height_index), fig2, it
+        "im/" + str(it) + "/Error/" + title + str(wind_height_index), fig2, it
     )
 
 

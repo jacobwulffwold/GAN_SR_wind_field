@@ -42,7 +42,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         device="cpu",
         terrain_number_of_features: int = 16,
         dropout_probability: float = 0.0,
-        max_norm:float = 1.0
+        max_norm: float = 1.0,
     ):
         super(Generator_3D, self).__init__()
 
@@ -56,7 +56,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
                 f"Generator: warning: activation type {act_type} has not been implemented - defaulting to leaky ReLU (0.2)"
             )
             slope = 0.2
-        
+
         self.max_norm = max_norm
 
         layer_type = nn.Conv2d if conv_mode == "2D" else nn.Conv3d
@@ -64,7 +64,7 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
         hr_pad = (hr_kern_size - 1) // 2
         # self.scaler = torch.cuda.amp.GradScaler(enabled=use_mixed_precision)
 
-        if dropout_probability==None:
+        if dropout_probability == None:
             dropout_probability = 0.0
 
         dropout = (
@@ -117,24 +117,24 @@ class Generator_3D(nn.Module, lc.GlobalLoggingClass):
             #     layer_type=layer_type,
             #     lrelu=False,
             # )
-            terrain_convs = [create_conv_lrelu_layer(
-                1,
-                terrain_number_of_features,
-                3,
-                padding=1,
-                layer_type=layer_type,
-                lrelu=True,
-            ),
-            create_conv_lrelu_layer(
-                terrain_number_of_features,
-                terrain_number_of_features,
-                3,
-                padding=1,
-                layer_type=layer_type,
-                lrelu=False,
-            ),
+            terrain_convs = [
+                create_conv_lrelu_layer(
+                    1,
+                    terrain_number_of_features,
+                    3,
+                    padding=1,
+                    layer_type=layer_type,
+                    lrelu=True,
+                ),
+                create_conv_lrelu_layer(
+                    terrain_number_of_features,
+                    terrain_number_of_features,
+                    3,
+                    padding=1,
+                    layer_type=layer_type,
+                    lrelu=False,
+                ),
             ]
-
 
         elif conv_mode == "horizontal_3D":
             feature_conv = Horizontal_Conv_3D(

@@ -150,9 +150,24 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
                 )
             )
             # 8x8x10 -> 4x4x5
-            features.append(create_conv_lrelu_layer(base_number_of_features * 8, base_number_of_features * 8, feat_kern_size, normalization_type="batch"))
-            features.append(create_conv_lrelu_layer(base_number_of_features * 8, base_number_of_features * 8, feat_kern_size, stride=(1,1,2), normalization_type="batch"))
-        
+            features.append(
+                create_conv_lrelu_layer(
+                    base_number_of_features * 8,
+                    base_number_of_features * 8,
+                    feat_kern_size,
+                    normalization_type="batch",
+                )
+            )
+            features.append(
+                create_conv_lrelu_layer(
+                    base_number_of_features * 8,
+                    base_number_of_features * 8,
+                    feat_kern_size,
+                    stride=(1, 1, 2),
+                    normalization_type="batch",
+                )
+            )
+
         classifier = []
         classifier.append(
             nn.Linear(base_number_of_features * 8 * 4 * 4 * remainder_z_layers[5], 100)
@@ -160,7 +175,11 @@ class Discriminator_3D(nn.Module, lc.GlobalLoggingClass):
         classifier.append(nn.LeakyReLU(negative_slope=slope))
         classifier.append(nn.Linear(100, 1))
 
-        self.dropout = nn.Dropout2d(p=dropout_probability) if conv_mode == "2D" else nn.Dropout3d(p=dropout_probability) 
+        self.dropout = (
+            nn.Dropout2d(p=dropout_probability)
+            if conv_mode == "2D"
+            else nn.Dropout3d(p=dropout_probability)
+        )
 
         self.features = nn.Sequential(*features)
         self.classifier = nn.Sequential(*classifier)

@@ -223,8 +223,8 @@ class wind_field_GAN_3D(BaseGAN):
         x: torch.Tensor,
         y: torch.Tensor,
         niter: torch.Tensor,
-        d_g_train_ratio:int,
-        d_g_train_period:int,
+        d_g_train_ratio: int,
+        d_g_train_period: int,
     ):
         self.x = x
         self.y = y
@@ -348,7 +348,9 @@ class wind_field_GAN_3D(BaseGAN):
             self.validation_G_loss_dict["xy_divergence"] = loss_G_xy_divergence
             self.validation_G_loss_dict["feature_D"] = loss_G_feature_D
             self.validation_G_loss_dict["pix"] = loss_G_pix
-            self.metrics_dict["pix_loss_unscaled"] = loss_G_pix/self.cfg.training.pixel_loss_weight
+            self.metrics_dict["pix_loss_unscaled"] = (
+                loss_G_pix / self.cfg.training.pixel_loss_weight
+            )
             self.hist_dict["SR_pix_distribution"] = fake_HR.detach().cpu().numpy()
             # if self.conv_mode == "horizontal_3D":
             #     grad_start = self.G.model[0].convs[0][0].weight.grad.cpu().detach()
@@ -394,7 +396,7 @@ class wind_field_GAN_3D(BaseGAN):
             )
 
         loss_G_feature_D = torch.zeros(1, device=self.device)
-        
+
         if self.feature_extractor is not None:
             features = self.feature_extractor(HR).detach()
             fake_features = self.feature_extractor(fake_HR)
@@ -411,7 +413,12 @@ class wind_field_GAN_3D(BaseGAN):
             fake_HR[:, :3], self.x, self.y, Z
         )
 
-        max_xy_gradient, max_z_gradient, max_divergence, max_xy_divergence = get_norm_factors_of_gradients(HR_wind_gradient, SR_wind_gradient)
+        (
+            max_xy_gradient,
+            max_z_gradient,
+            max_divergence,
+            max_xy_divergence,
+        ) = get_norm_factors_of_gradients(HR_wind_gradient, SR_wind_gradient)
 
         loss_G_xy_gradient = self.gradient_xy_criterion(
             SR_wind_gradient[:, :6] / max_xy_gradient,
@@ -452,7 +459,16 @@ class wind_field_GAN_3D(BaseGAN):
         loss_G_divergence *= self.cfg.training.divergence_loss_weight
         loss_G_xy_divergence *= self.cfg.training.xy_divergence_loss_weight
 
-        if loss_G_divergence.isnan() or loss_G_xy_divergence.isnan() or loss_G_z_gradient.isnan() or loss_G_xy_gradient.isnan() or loss_G_divergence.isinf() or loss_G_xy_divergence.isinf() or loss_G_z_gradient.isinf() or loss_G_xy_gradient.isinf():
+        if (
+            loss_G_divergence.isnan()
+            or loss_G_xy_divergence.isnan()
+            or loss_G_z_gradient.isnan()
+            or loss_G_xy_gradient.isnan()
+            or loss_G_divergence.isinf()
+            or loss_G_xy_divergence.isinf()
+            or loss_G_z_gradient.isinf()
+            or loss_G_xy_gradient.isinf()
+        ):
             loss_G = loss_G_adversarial + loss_G_pix + loss_G_feature_D
         else:
             loss_G = (
@@ -476,13 +492,13 @@ class wind_field_GAN_3D(BaseGAN):
                 self.memory_dict["after_G_backward"] = (
                     torch.cuda.memory_allocated(self.device) / 1024**2
                 )
-                
+
                 torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
-                
+
                 start_Gs = torch.cuda.Event(enable_timing=True)
                 end_Gs = torch.cuda.Event(enable_timing=True)
                 start_Gs.record()
-                if not(loss_G.isnan() or loss_G.isinf()):
+                if not (loss_G.isnan() or loss_G.isinf()):
                     self.optimizer_G.step()
                 end_Gs.record()
                 self.runtime_dict["G_step"] = (start_Gs, end_Gs)
@@ -491,12 +507,12 @@ class wind_field_GAN_3D(BaseGAN):
                 )
             else:
                 loss_G.backward()
-                if not(loss_G.isnan() or loss_G.isinf()):
+                if not (loss_G.isnan() or loss_G.isinf()):
                     total_norm = 0
                     for p in self.G.parameters():
                         param_norm = p.grad.detach().data.norm(2)
                         total_norm += param_norm.item() ** 2
-                    total_norm = total_norm ** 0.5
+                    total_norm = total_norm**0.5
                     with open(self.cfg.env.this_runs_folder + "/norm.csv", "a") as f:
                         f.write(f"{total_norm}\n")
                     torch.nn.utils.clip_grad_norm_(self.G.parameters(), self.G.max_norm)
@@ -550,7 +566,7 @@ class wind_field_GAN_3D(BaseGAN):
                 y_pred, fake_y_pred = self.D_forward(HR, fake_HR, it, train_D=False)
                 self.calculate_optimize_and_log_G_loss(
                     HR, fake_HR, Z, y_pred, fake_y_pred, training_iteration
-                )             
+                )
         return fake_HR
 
     def log_D_losses(self, loss_D, y_pred, fake_y_pred, training_epoch):
@@ -666,15 +682,17 @@ class wind_field_GAN_3D(BaseGAN):
         it = torch.tensor(it, device=self.device)
         self.make_new_labels(it)
 
-        if it % self.cfg.training.feature_D_update_period == 0 and self.use_D_feature_extractor_cost:
+        if (
+            it % self.cfg.training.feature_D_update_period == 0
+            and self.use_D_feature_extractor_cost
+        ):
             self.feature_extractor = copy.deepcopy(self.D.features)
             for param in self.feature_extractor.parameters():
                 param.requires_grad = False
 
-
         train_period = it // self.d_g_train_period
         if training_iteration:
-            if train_period % (self.d_g_train_ratio+1) == 0:
+            if train_period % (self.d_g_train_ratio + 1) == 0 and train_period > 2:
                 fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
             else:
                 with torch.no_grad():
@@ -696,14 +714,15 @@ class wind_field_GAN_3D(BaseGAN):
                 interpolate=True,
                 device=self.device,
             )
-            self.metrics_dict["trilinear_pix_loss"] = self.pixel_criterion(HR,
+            self.metrics_dict["trilinear_pix_loss"] = self.pixel_criterion(
+                HR,
                 nn.functional.interpolate(
                     LR[:, :3, :, :, :],
                     scale_factor=(4, 4, 1),
                     mode="trilinear",
                     align_corners=True,
                 ),
-                )
+            )
         return
 
     def optimize_parameters(self, LR, HR, Z, it):
@@ -727,9 +746,9 @@ class wind_field_GAN_3D(BaseGAN):
             and self.cfg.training.flip_labels
         ):
             real_label = torch.tensor(1.0, device=self.device)
-            fake_label = torch.tensor(0.1, device=self.device) - 0.1*it/self.niter
+            fake_label = torch.tensor(0.1, device=self.device) - 0.1 * it / self.niter
         elif self.cfg.training.use_one_sided_label_smoothing:
-            real_label = torch.tensor(0.9, device=self.device) + 0.1*it/self.niter
+            real_label = torch.tensor(0.9, device=self.device) + 0.1 * it / self.niter
             fake_label = torch.tensor(0.0, device=self.device)
 
         if self.cfg.training.use_noisy_labels:
@@ -773,7 +792,7 @@ class wind_field_GAN_3D(BaseGAN):
 
     def get_G_val_loss_dict_ref(self):
         return self.validation_G_loss_dict
-    
+
     def get_D_loss_dict_ref(self):
         return self.D_loss_dict
 
@@ -817,10 +836,11 @@ class wind_field_GAN_3D(BaseGAN):
             + "\n"
         )
 
+
 def calculate_PSNR(
     HR: torch.Tensor,
     fake_HR: torch.Tensor,
-    max_diff_squared = torch.tensor(4.0),
+    max_diff_squared=torch.tensor(4.0),
     epsilon_PSNR=torch.tensor(1e-8),
     device=torch.device("cpu"),
 ):
@@ -831,6 +851,7 @@ def calculate_PSNR(
         max_diff_squared / (SR_batch_average_MSE + epsilon_PSNR)
     )
 
+
 def compute_PSNR_for_SR_and_trilinear(
     LR,
     HR: torch.Tensor,
@@ -840,8 +861,9 @@ def compute_PSNR_for_SR_and_trilinear(
     interpolate: bool = False,
     device=torch.device("cpu"),
 ):
-
-    val_PSNR = calculate_PSNR(HR, fake_HR, max_diff_squared, epsilon_PSNR, device=device)
+    val_PSNR = calculate_PSNR(
+        HR, fake_HR, max_diff_squared, epsilon_PSNR, device=device
+    )
     if interpolate:
         interpolated_LR = nn.functional.interpolate(
             LR[:, :3, :, :, :],
@@ -849,14 +871,18 @@ def compute_PSNR_for_SR_and_trilinear(
             mode="trilinear",
             align_corners=True,
         )
-        val_trilinear_PSNR = calculate_PSNR(HR, interpolated_LR, max_diff_squared, epsilon_PSNR, device=device)
+        val_trilinear_PSNR = calculate_PSNR(
+            HR, interpolated_LR, max_diff_squared, epsilon_PSNR, device=device
+        )
         return val_PSNR, val_trilinear_PSNR
     else:
         return val_PSNR
 
-@torch.jit.script
-def get_norm_factors_of_gradients(HR_wind_gradient:torch.Tensor, SR_wind_gradient:torch.Tensor):
 
+@torch.jit.script
+def get_norm_factors_of_gradients(
+    HR_wind_gradient: torch.Tensor, SR_wind_gradient: torch.Tensor
+):
     max_HR_xy_gradient = torch.max(torch.abs(HR_wind_gradient[:, :6]))
     max_SR_xy_gradient = torch.max(torch.abs(SR_wind_gradient[:, :6]))
 
@@ -886,4 +912,12 @@ def get_norm_factors_of_gradients(HR_wind_gradient:torch.Tensor, SR_wind_gradien
         torch.abs((SR_wind_gradient[:, 0, :, :, :] + SR_wind_gradient[:, 4, :, :, :]))
     )
 
-    return [torch.max(HR_max,SR_max/100) for (HR_max, SR_max) in [(max_HR_xy_gradient, max_SR_xy_gradient), (max_HR_z_gradient, max_SR_z_gradient), (max_HR_divergence, max_SR_divergence), (max_HR_xy_divergence, max_SR_xy_divergence)]]
+    return [
+        torch.max(HR_max, SR_max / 100)
+        for (HR_max, SR_max) in [
+            (max_HR_xy_gradient, max_SR_xy_gradient),
+            (max_HR_z_gradient, max_SR_z_gradient),
+            (max_HR_divergence, max_SR_divergence),
+            (max_HR_xy_divergence, max_SR_xy_divergence),
+        ]
+    ]

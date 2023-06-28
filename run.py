@@ -27,102 +27,109 @@ import numpy as np
 import random
 from param_search import param_search
 
+
 def main():
     cfg: Config = argv_to_cfg()
     # cfg.is_train = True
     # cfg.slurm_array_id = 0
     # cfg.is_download = True
     # cfg.is_param_search = True
-    if not cfg.is_test and not cfg.is_train and not cfg.is_use and not cfg.is_download and not cfg.is_param_search:
+    if (
+        not cfg.is_test
+        and not cfg.is_train
+        and not cfg.is_use
+        and not cfg.is_download
+        and not cfg.is_param_search
+    ):
         print(
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
         )
         return
-    
-    if cfg.slurm_array_id == 1: #stop
+
+    if cfg.slurm_array_id == 1:  # stop
         cfg.name = cfg.name + "_2lr_clip1"
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_60000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_60000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
-    if cfg.slurm_array_id == 2: #stop
+    if cfg.slurm_array_id == 2:  # stop
         cfg.name = cfg.name + "_2lr_clipInf"
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_60000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_60000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
         cfg.generator.max_norm = 10**10
 
-    if cfg.slurm_array_id == 3: #continue
+    if cfg.slurm_array_id == 3:  # continue
         cfg.name = cfg.name + "_4lr_clip1"
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_40000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_40000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_40000.pth"
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 2
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 2
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_40000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_40000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_40000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
-    if cfg.slurm_array_id == 4: #continue
+    if cfg.slurm_array_id == 4:  # continue
         cfg.name = cfg.name + "_4lr_clipInf"
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 2
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 2
         cfg.generator.max_norm = 10**10
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_60000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_60000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
-    if cfg.slurm_array_id == 5: #stopped
+    if cfg.slurm_array_id == 5:  # stopped
         cfg.name = cfg.name + "_4lr_clip2_adv"
-        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*4
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*2
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 4
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 2
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 2
 
-    if cfg.slurm_array_id == 6: #continue
+    if cfg.slurm_array_id == 6:  # continue
         cfg.name = cfg.name + "_8lr_clip1"
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 4
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 4
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_60000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_60000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
-    if cfg.slurm_array_id == 7: #continue
+    if cfg.slurm_array_id == 7:  # continue
         cfg.name = cfg.name + "_8lr_clipInf"
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*4
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*4
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 4
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 4
         cfg.generator.max_norm = 10**10
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_60000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_60000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_60000.pth"
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_60000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_60000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_60000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
-    if cfg.slurm_array_id == 8: #stopped
+    if cfg.slurm_array_id == 8:  # stopped
         cfg.name = cfg.name + "_16lr_clipInf"
         cfg.generator.max_norm = 10**10
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-    if cfg.slurm_array_id == 9: #stopped
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 8
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 2
+    if cfg.slurm_array_id == 9:  # stopped
         cfg.name = cfg.name + "_16lr_clipInf_10adv"
         cfg.generator.max_norm = 10**10
-        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*10
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 10
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 8
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 2
 
-    if cfg.slurm_array_id == 10: #continue
+    if cfg.slurm_array_id == 10:  # continue
         cfg.name = cfg.name + "_16lr_clip1"
-        cfg.training.learning_rate_g = cfg.training.learning_rate_g*8
-        cfg.training.learning_rate_d = cfg.training.learning_rate_d*2
-        cfg.env.generator_load_path = "./runs/"+cfg.name+"/G_20000.pth"
-        cfg.env.discriminator_load_path = "./runs/"+cfg.name+"/D_20000.pth"
-        cfg.env.state_load_path = "./runs/"+cfg.name+"/state_20000.pth"
+        cfg.training.learning_rate_g = cfg.training.learning_rate_g * 8
+        cfg.training.learning_rate_d = cfg.training.learning_rate_d * 2
+        cfg.env.generator_load_path = "./runs/" + cfg.name + "/G_20000.pth"
+        cfg.env.discriminator_load_path = "./runs/" + cfg.name + "/D_20000.pth"
+        cfg.env.state_load_path = "./runs/" + cfg.name + "/state_20000.pth"
         cfg.load_model_from_save = True
         cfg.training.resume_training_from_save = True
 
@@ -133,59 +140,97 @@ def main():
     if cfg.slurm_array_id == 12:
         cfg.name = cfg.name + "seed3"
         cfg.env.fixed_seed = 2041
-    
+
     if cfg.slurm_array_id == 13:
         cfg.name = cfg.name + "seed4"
         cfg.env.fixed_seed = 2077
-    
+
     if cfg.slurm_array_id == 14:
         cfg.name = cfg.name + "_no_adv_seed1"
         cfg.training.adversarial_loss_weight = 0.0
-    
+
     if cfg.slurm_array_id == 15:
         cfg.name = cfg.name + "_no_adv_seed2"
         cfg.training.adversarial_loss_weight = 0.0
         cfg.env.fixed_seed = 2021
-    
+
     if cfg.slurm_array_id == 16:
         cfg.name = cfg.name + "_STD"
 
     if cfg.slurm_array_id == 17:
         cfg.name = cfg.name + "_pretrained"
-        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale/2
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
         cfg.training.use_one_sided_label_smoothing = False
         cfg.training.use_instance_noise = False
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*2
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 2
         cfg.load_model_from_save = True
         cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_100000.pth"
         cfg.env.discriminator_load_path = "./runs/clip_lr200k_8lr_clip1/D_160000.pth"
-    
+
     if cfg.slurm_array_id == 18:
         cfg.name = cfg.name + "_4_adv_init1"
         cfg.discriminator.weight_init_scale = 1.0
-        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 4
 
     if cfg.slurm_array_id == 19:
         cfg.name = cfg.name + "_4adv"
-        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight*4
-    
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 4
+
     if cfg.slurm_array_id == 20:
         cfg.name = cfg.name + "_pix4"
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*4
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
 
     if cfg.slurm_array_id == 21:
         cfg.name = cfg.name + "_pix2"
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*2
-    
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 2
+
     if cfg.slurm_array_id == 22:
         cfg.name = cfg.name + "_pretrained_G"
-        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale/2
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
         cfg.training.use_one_sided_label_smoothing = False
         cfg.training.use_instance_noise = False
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight*4
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
         cfg.load_model_from_save = True
         cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
         cfg.env.discriminator_load_path = ""
+    
+    if cfg.slurm_array_id == 22:
+        cfg.name = cfg.name + "_pretrained_G_4pix_2adv_label"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = True
+        cfg.training.use_instance_noise = False
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
+        cfg.env.discriminator_load_path = ""
+
+    if cfg.slurm_array_id == 23:
+        cfg.name = cfg.name + "_pretrained_G_4pix_2adv_instance"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = False
+        cfg.training.use_instance_noise = True
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
+        cfg.env.discriminator_load_path = ""
+
+    if cfg.slurm_array_id == 24:
+        cfg.name = cfg.name + "_pretrained_G_4pix_2adv_both"
+        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
+        cfg.training.use_one_sided_label_smoothing = True
+        cfg.training.use_instance_noise = True
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/clip_lr200k_8lr_clip1/G_180000.pth"
+        cfg.env.discriminator_load_path = ""
+        
+    if cfg.slurm_array_id == 25:
+        cfg.name = cfg.name + "_pix4_clipInf"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.generator.max_norm = 10**10
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -228,14 +273,22 @@ def main():
     dataset_train, dataset_test, dataset_validation, x, y = prepare_data(cfg)
 
     status_logger.info(f"run.py: data prepared")
-    
+
     if cfg.is_param_search:
         cfg.is_train = True
         status_logger.info("run.py: starting parameter search")
-        param_search(num_samples=250, number_of_GPUs=cfg.slurm_array_id, cfg=cfg, dataset_train=dataset_train, dataset_validation=dataset_validation, x=x, y=y)
+        param_search(
+            num_samples=250,
+            number_of_GPUs=cfg.slurm_array_id,
+            cfg=cfg,
+            dataset_train=dataset_train,
+            dataset_validation=dataset_validation,
+            x=x,
+            y=y,
+        )
         status_logger.info("run.py: finished parameter search")
         return
-    
+
     if cfg.is_train:
         status_logger.info(
             "run.py: starting training" + ("" if not cfg.is_test else " before testing")
@@ -283,7 +336,7 @@ def argv_to_cfg() -> Config:
         action="store_true",
         help="run tests with supplied config",
     )
-    
+
     parser.add_argument(
         "--use", default=False, action="store_true", help="use on LR images"
     )
@@ -449,9 +502,11 @@ def get_yes_or_no_input() -> bool:
 def save_config(cfg: Config, folder: str):
     filename = folder + "/config.ini"
     if cfg.env.discriminator_load_path == None:
-        cfg.env.discriminator_load_path = folder + "/D_"+str(cfg.training.niter)+".pth"
-        cfg.env.generator_load_path = folder + "/G_"+str(cfg.training.niter)+".pth"
-        cfg.env.state_load_path = folder + "/state_"+str(cfg.training.niter)+".pth"
+        cfg.env.discriminator_load_path = (
+            folder + "/D_" + str(cfg.training.niter) + ".pth"
+        )
+        cfg.env.generator_load_path = folder + "/G_" + str(cfg.training.niter) + ".pth"
+        cfg.env.state_load_path = folder + "/state_" + str(cfg.training.niter) + ".pth"
     with open(filename, "w") as ini:
         ini.write(cfg.asINI())
 
