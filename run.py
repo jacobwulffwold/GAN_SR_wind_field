@@ -335,6 +335,24 @@ def main():
         cfg.training.adversarial_loss_weight = 0.0
         cfg.training.d_g_train_ratio = 0
         cfg.generator.max_norm = 10**10
+    
+    if cfg.slurm_array_id == 38:
+        cfg.name = cfg.name + "_pix4_pretrained_clipInf_no_adv"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.generator.max_norm = 10**10
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_140000.pth"
+
+    if cfg.slurm_array_id == 39:
+        cfg.name = cfg.name + "_pix10_pretrained_clipInf_no_adv"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 10
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.generator.max_norm = 10**10
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
 
 
 
