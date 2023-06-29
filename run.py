@@ -620,6 +620,7 @@ def prepare_data(cfg: Config):
         test_aug_rot=cfg.dataset_test.data_aug_rot,
         test_aug_flip=cfg.dataset_test.data_aug_flip,
         train_eval_test_ratio=cfg.training.train_eval_test_ratio,
+        COARSENESS_FACTOR=cfg.scale
     )
 
 
