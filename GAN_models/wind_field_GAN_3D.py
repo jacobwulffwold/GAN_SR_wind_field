@@ -713,12 +713,13 @@ class wind_field_GAN_3D(BaseGAN):
                 self.epsilon_PSNR,
                 interpolate=True,
                 device=self.device,
+                scale=self.cfg.scale,
             )
             self.metrics_dict["trilinear_pix_loss"] = self.pixel_criterion(
                 HR,
                 nn.functional.interpolate(
                     LR[:, :3, :, :, :],
-                    scale_factor=(4, 4, 1),
+                    scale_factor=(self.cfg.scale, self.cfg.scale, 1),
                     mode="trilinear",
                     align_corners=True,
                 ),
@@ -860,6 +861,7 @@ def compute_PSNR_for_SR_and_trilinear(
     epsilon_PSNR,
     interpolate: bool = False,
     device=torch.device("cpu"),
+    scale: int = 4,
 ):
     val_PSNR = calculate_PSNR(
         HR, fake_HR, max_diff_squared, epsilon_PSNR, device=device
@@ -867,7 +869,7 @@ def compute_PSNR_for_SR_and_trilinear(
     if interpolate:
         interpolated_LR = nn.functional.interpolate(
             LR[:, :3, :, :, :],
-            scale_factor=(4, 4, 1),
+            scale_factor=(scale, scale, 1),
             mode="trilinear",
             align_corners=True,
         )

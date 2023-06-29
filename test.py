@@ -121,7 +121,7 @@ def test(cfg: config.Config, dataset_test):
                 bar.update(j, 0, len(dataloader_test) * (0) + j)
                 interpolated_LR = nn.functional.interpolate(
                     LR[:, :3, :, :, :],
-                    scale_factor=(4, 4, 1),
+                    scale_factor=(cfg.scale, cfg.scale, 1),
                     align_corners=True,
                     mode="trilinear",
                 )
@@ -187,6 +187,9 @@ def test(cfg: config.Config, dataset_test):
                             Z[i],
                             cfg.env.this_runs_folder,
                             filenames[i],
+                            HR_raw[i] if cfg.gan_config.interpolate_z else torch.tensor([]),
+                            Z_raw[i] if cfg.gan_config.interpolate_z else torch.tensor([]),
+                            reverse_SR_i[0] if cfg.gan_config.interpolate_z else torch.tensor([]),
                         )
         with open("./test_output/averages.csv", "a") as f:
             f.write(
@@ -220,6 +223,9 @@ def write_fields(
     Z: torch.Tensor,
     folder_path: str,
     field_name: int,
+    rawHR: torch.Tensor([]),
+    Z_raw: torch.Tensor([]),
+    SR_orig: torch.Tensor([]),
 ) -> dict:
     fields = dict()
     fields["HR"] = HR.squeeze().numpy()
@@ -227,6 +233,10 @@ def write_fields(
     fields["TL"] = interpolated_LR.squeeze().numpy()
     fields["LR"] = LR.squeeze().numpy()
     fields["Z"] = Z.squeeze().numpy()
+    if rawHR.shape[0] > 0:
+        fields["HR_orig"] = rawHR.squeeze().numpy()
+        fields["Z_orig"] = Z_raw.squeeze().numpy()
+        fields["SR_orig"] = SR_orig.squeeze().numpy()
 
     with open(
         folder_path + "/fields/test_fields_" + str(field_name) + ".pkl", "wb"
