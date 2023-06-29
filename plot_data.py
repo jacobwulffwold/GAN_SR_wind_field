@@ -10,11 +10,11 @@ from download_data import slice_only_dim_dicts, reverse_interpolate_z_axis
 from GAN_models.wind_field_GAN_3D import compute_PSNR_for_SR_and_trilinear
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from tbparse import SummaryReader
+# from tbparse import SummaryReader
 import os
 from cycler import cycler
 from CNN_models.Generator_3D_Resnet_ESRGAN import Generator_3D
-import pandas as pd
+# import pandas as pd
 import pickle as pkl
 import torch
 from config.config import Config
