@@ -299,12 +299,30 @@ def main():
         cfg.training.adversarial_loss_weight = 0.0
         cfg.training.d_g_train_ratio = 0
         cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
-
+    
     if cfg.slurm_array_id == 33:
-        cfg.name = cfg.name + "_pix10_no_adv"
+        cfg.name = cfg.name + "_pix4_no_adv_no_slicing"
         cfg.training.adversarial_loss_weight = 0.0
         cfg.training.d_g_train_ratio = 0
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 10
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.gan_config.enable_slicing = False
+        cfg.dataset_train.batch_size = 8
+        cfg.dataset_val.batch_size = 8
+
+    if cfg.slurm_array_id == 34:
+        cfg.name = cfg.name + "_pix4_2adv"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+    
+    if cfg.slurm_array_id == 35:
+        cfg.name = cfg.name + "_pix4_2adv_no_slicing"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
+        cfg.gan_config.enable_slicing = False
+        cfg.dataset_train.batch_size = 8
+        cfg.dataset_val.batch_size = 8
+
+
 
     if cfg.slurm_array_id == 40:
         cfg = Config("./runs/8lr_best_model_search_no_adv_seed1/config.ini")

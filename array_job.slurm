@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
 #SBATCH --array=32-33
-#SBATCH --job-name=8best_model_search
-#SBATCH --output=%a_8best_model_search.out
+#SBATCH --job-name=upscale8
+#SBATCH --output=%a_upscale8.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
