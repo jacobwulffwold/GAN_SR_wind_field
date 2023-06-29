@@ -7,9 +7,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=32-33
-#SBATCH --job-name=upscale16
-#SBATCH --output=%a_upscale16.out
+#SBATCH --array=36-37
+#SBATCH --job-name=best_G
+#SBATCH --output=%a_best_G.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

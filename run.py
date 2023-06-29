@@ -321,6 +321,20 @@ def main():
         cfg.gan_config.enable_slicing = False
         cfg.dataset_train.batch_size = 8
         cfg.dataset_val.batch_size = 8
+    
+    if cfg.slurm_array_id == 36:
+        cfg.name = cfg.name + "_pix4_clipInf_no_adv"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.generator.max_norm = 10**10
+
+    if cfg.slurm_array_id == 37:
+        cfg.name = cfg.name + "_pix10_clipInf_no_adv"
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 10
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.generator.max_norm = 10**10
 
 
 
