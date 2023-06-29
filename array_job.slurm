@@ -7,9 +7,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
-#SBATCH --array=30-31
-#SBATCH --job-name=ALN
-#SBATCH --output=%a_ALN.out
+#SBATCH --array=32-33
+#SBATCH --job-name=8best_model_search
+#SBATCH --output=%a_8best_model_search.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

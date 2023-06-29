@@ -692,7 +692,7 @@ class wind_field_GAN_3D(BaseGAN):
 
         train_period = it // self.d_g_train_period
         if training_iteration:
-            if train_period % (self.d_g_train_ratio + 1) == 0 and train_period>2:
+            if train_period % (self.d_g_train_ratio + 1) == 0:
                 fake_HR = self.update_G(LR, HR, Z, it, training_iteration)
             else:
                 with torch.no_grad():
