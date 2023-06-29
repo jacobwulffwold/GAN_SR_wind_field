@@ -344,6 +344,7 @@ def main():
         cfg.generator.max_norm = 10**10
         cfg.load_model_from_save = True
         cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_140000.pth"
+        cfg.env.discriminator_load_path = ""
 
     if cfg.slurm_array_id == 39:
         cfg.name = cfg.name + "_pix10_pretrained_clipInf_no_adv"
@@ -352,8 +353,8 @@ def main():
         cfg.training.d_g_train_ratio = 0
         cfg.generator.max_norm = 10**10
         cfg.load_model_from_save = True
-        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
-
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_140000.pth"
+        cfg.env.discriminator_load_path = ""
 
 
     if cfg.slurm_array_id == 40:
