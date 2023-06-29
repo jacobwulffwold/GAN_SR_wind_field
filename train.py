@@ -21,7 +21,6 @@ import matplotlib.pyplot as plt
 
 from GAN_models.wind_field_GAN_3D import wind_field_GAN_3D
 import iocomponents.displaybar as displaybar
-from plot_data import create_comparison_figure, create_error_figure
 
 
 def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
@@ -533,3 +532,163 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
 
             # filename_HR_generated = os.path.join(it_folder_path, f"{img_name}_{it}.png")
             # cv2.imwrite(filename_HR_generated, sr_np)
+def create_error_figure(
+    wind_height_index,
+    wind_comp_HR,
+    wind_comp_SR,
+    wind_comp_TL,
+    average_SR_error,
+    average_TL_error,
+):
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("viridis"))
+    vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
+        wind_comp_HR[:, :, wind_height_index]
+    )
+    vmin_wind_field, vmax_wind_field = np.min(
+        np.concatenate(
+            (
+                wind_comp_TL[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    ), np.max(
+        np.concatenate(
+            (
+                wind_comp_TL[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    )
+    vmin_error, vmax_error = np.min(
+        np.concatenate(
+            (
+                wind_comp_TL[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    ), np.max(
+        np.concatenate(
+            (
+                wind_comp_TL[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+                wind_comp_SR[:, :, wind_height_index]
+                - wind_comp_HR[:, :, wind_height_index],
+            ),
+            axis=(0),
+        )
+    )
+    vmin_abs_error, vmax_abs_error = 0.0, max(abs(vmax_error), abs(vmin_error))
+    sm.set_clim(vmin=vmin, vmax=vmax)
+    sm_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("coolwarm"))
+    sm_error.set_clim(vmin=vmin_error, vmax=vmax_error)
+    sm_abs_error = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("jet"))
+    sm_abs_error.set_clim(vmin=vmin_abs_error, vmax=vmax_abs_error)
+
+    fig2, axes2 = plt.subplots(2, 3, figsize=(12, 6), sharey=True, sharex=True)
+    axes2[0, 1].pcolor(
+        wind_comp_SR[:, :, wind_height_index],
+        vmin=vmin_wind_field,
+        vmax=vmax_wind_field,
+        cmap="viridis", edgecolor="none"
+    )
+    axes2[0, 1].set_title(f"SR, avg error: {round(average_SR_error,3)} m/s")
+    axes2[0, 0].pcolor(
+        wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
+        vmin=vmin_error,
+        vmax=vmax_error,
+        cmap="coolwarm",
+    )
+    axes2[0, 0].set_title("Error SR-HR (m/s)")
+    axes2[0, 2].pcolor(
+        abs(
+            wind_comp_HR[:, :, wind_height_index]
+            - wind_comp_SR[:, :, wind_height_index]
+        ),
+        vmin=vmin_abs_error,
+        vmax=vmax_abs_error,
+        cmap="jet", edgecolor="none"
+    )
+    axes2[0, 2].set_title("SR Absolute Error (m/s)")
+    fig2.colorbar(sm, ax=axes2[0, 1])
+    fig2.colorbar(
+        sm_error,
+        ax=axes2[0, 0],
+    )
+
+    fig2.colorbar(
+        sm_abs_error,
+        ax=axes2[0, 2],
+    )
+    axes2[1, 1].pcolor(wind_comp_TL[:, :, wind_height_index])
+    axes2[1, 1].set_title(
+        f"TL, avg error: {round(average_TL_error,3)} m/s"
+    )
+    axes2[1, 0].pcolor(
+        wind_comp_TL[:, :, wind_height_index]
+        - wind_comp_HR[:, :, wind_height_index],
+        cmap="coolwarm",
+    )
+    axes2[1, 0].set_title("Error TL-HR (m/s)")
+    axes2[1, 2].pcolor(
+        abs(
+            wind_comp_HR[:, :, wind_height_index]
+            - wind_comp_TL[:, :, wind_height_index]
+        ),
+        cmap="jet", edgecolor="none"
+    )
+    axes2[1, 2].set_title("TL Absolute Error (m/s)")
+    fig2.colorbar(sm, ax=axes2[1, 1])
+    fig2.colorbar(
+        sm_error,
+        ax=axes2[1, 0],
+    )
+
+    fig2.colorbar(
+        sm_abs_error,
+        ax=axes2[1, 2],
+    )
+    fig2.subplots_adjust(hspace=0.2)
+    return fig2
+
+
+def create_comparison_figure(
+    wind_height_index,
+    wind_comp_LR,
+    wind_comp_HR,
+    wind_comp_SR,
+    wind_comp_TL,
+):
+    fig, axes = plt.subplots(2, 2, figsize=(8, 7))
+    vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
+        wind_comp_HR[:, :, wind_height_index]
+    )
+    axes[0, 0].pcolor(
+        wind_comp_LR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+    )
+    axes[0, 0].set_title("LR")
+    axes[0, 1].pcolor(
+        wind_comp_HR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+    )
+    axes[0, 1].set_title("HR")
+    axes[1, 1].pcolor(
+        wind_comp_SR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+    )
+    axes[1, 1].set_title("SR")
+    axes[1, 0].pcolor(
+        wind_comp_TL[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis", edgecolor="none"
+    )
+    axes[1, 0].set_title("TL")
+    fig.subplots_adjust(hspace=0.3)
+
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("viridis"))
+    sm.set_clim(vmin=vmin, vmax=vmax)
+    fig.colorbar(sm, ax=axes)
+    return fig
