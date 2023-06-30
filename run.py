@@ -57,6 +57,17 @@ def main():
         cfg.load_model_from_save = True
         cfg.env.generator_load_path = "./runs/8best_model_search_pix4_pretrained_no_adv/G_100000.pth"
         cfg.env.discriminator_load_path = ""
+    
+    if cfg.slurm_array_id == 2:
+        run_name = "8best_model_search_pix4_pretrained_no_adv"
+        cfg = Config("./runs/"+run_name+"/config.ini")
+        cfg.env.generator_load_path = "./runs/"+run_name+"/G_120000.pth"
+        cfg.is_train = False
+        cfg.is_download = False
+        cfg.is_param_search = False
+        cfg.is_test = True
+        cfg.is_use = False
+        cfg.log_period = 200
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
