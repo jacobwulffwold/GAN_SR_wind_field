@@ -68,6 +68,29 @@ def main():
         cfg.is_test = True
         cfg.is_use = False
         cfg.training.log_period = 200
+    
+    if cfg.slurm_array_id == 3:
+        cfg.name = cfg.name + "_pix4_no_adv_no_slicing"
+        cfg.training.adversarial_loss_weight = 0.0
+        cfg.training.d_g_train_ratio = 0
+        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
+        cfg.gan_config.enable_slicing = False
+        cfg.dataset_train.batch_size = 8
+        cfg.dataset_val.batch_size = 8
+        cfg.load_model_from_save = True
+        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
+        cfg.env.discriminator_load_path = ""
+
+    if cfg.slurm_array_id == 0:
+        run_name = "8best_model_search_pix4_pretrained_no_adv"
+        cfg = Config("./pretrained_models/"+run_name+"/config.ini")
+        cfg.env.generator_load_path = "./pretrained_models/"+run_name+"/G_100000.pth"
+        cfg.is_train = False
+        cfg.is_download = False
+        cfg.is_param_search = False
+        cfg.is_test = True
+        cfg.is_use = False
+        cfg.training.log_period = 200
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
