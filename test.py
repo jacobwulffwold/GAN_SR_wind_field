@@ -80,14 +80,20 @@ def test(cfg: config.Config, dataset_test):
     avg_PSNR_trilinear = 0
     avg_pix = 0
     avg_pix_trilinear = 0
+    avg_relative_error = 0
+    avg_relative_error_trilinear = 0
+
     if cfg.gan_config.interpolate_z:
         reverse_interpolate_metrics_file = os.path.join(
             "./test_output/" + cfg.name + "____metrics_reverse_interpolate.csv"
         )
+        open(reverse_interpolate_metrics_file, "a").write("field, PSNR, PSNR_trilinear, relative_error, pix, trilinear_pix, relative_error_trilinear\n")
         avg_PSNR_reverse_interpolate = 0
         avg_PSNR_trilinear_reverse_interpolate = 0
         avg_pix_reverse_interpolate = 0
         avg_pix_trilinear_reverse_interpolate = 0
+        avg_relative_error_reverse_interpolate = 0
+        avg_relative_error_trilinear_reverse_interpolate = 0
 
     if cfg.is_use:
         for j, (LR, HR, Z, filenames, _, _) in enumerate(dataloader_test):
@@ -114,7 +120,7 @@ def test(cfg: config.Config, dataset_test):
             niter=niter,
         )
         with open(metrics_file, "w") as write_file:
-            write_file.write("field,PSNR,pix,PSNR_trilinear, pix_trilinear\n")
+            write_file.write("field, PSNR, PSNR_trilinear, relative_error, pix, trilinear_pix, relative_error_trilinear\n")
             for j, (LR, HR, Z, filenames, HR_raw, Z_raw) in enumerate(dataloader_test):
                 # status_logger.info(f"batch {j}")
                 # names = data["hr_name"]
@@ -149,27 +155,27 @@ def test(cfg: config.Config, dataset_test):
                             ),
                             torch.index_select(Z, 0, torch.as_tensor([i]), out=None),
                         )
-                        # reverse_TL_i = reverse_interpolate_z_axis(interpolated_LR_i, torch.index_select(Z_raw, 0, torch.as_tensor([i]), out=None), torch.index_select(Z, 0, torch.as_tensor([i]), out=None))
+                        reverse_TL_i = reverse_interpolate_z_axis(interpolated_LR_i, torch.index_select(Z_raw, 0, torch.as_tensor([i]), out=None), torch.index_select(Z, 0, torch.as_tensor([i]), out=None))
+
                         (
-                            reverse_PSNR,
-                            reverse_PSNR_trilinear,
-                            reverse_pix,
-                            reverse_trilinear_pix,
+                            reverse_PSNR, reverse_PSNR_trilinear, reverse_relative_error, reverse_pix, reverse_trilinear_pix, reverse_relative_error_trilinear
                         ) = write_metrics(
                             torch.index_select(
                                 HR_raw, 0, torch.as_tensor([i]), out=None
                             )[:, :3],
                             reverse_SR_i,
-                            interpolated_LR_i,
+                            reverse_TL_i,
                             filenames[i],
                             open(reverse_interpolate_metrics_file, "a"),
                         )
                         avg_PSNR_reverse_interpolate += reverse_PSNR / niter
-                        # avg_PSNR_trilinear_reverse_interpolate += reverse_PSNR_trilinear/niter
+                        avg_PSNR_trilinear_reverse_interpolate += reverse_PSNR_trilinear/niter
                         avg_pix_reverse_interpolate += reverse_pix / niter
-                        # avg_pix_trilinear_reverse_interpolate += reverse_trilinear_pix/niter
+                        avg_pix_trilinear_reverse_interpolate += reverse_trilinear_pix/niter
+                        avg_relative_error_reverse_interpolate += reverse_relative_error/niter
+                        avg_relative_error_trilinear_reverse_interpolate += reverse_relative_error_trilinear/niter
 
-                    PSNR, PSNR_trilinear, pix, trilinear_pix = write_metrics(
+                    PSNR, PSNR_trilinear, relative_error, pix, trilinear_pix, relative_error_trilinear = write_metrics(
                         HR_i[:, :3], SR_i, interpolated_LR_i, filenames[i], write_file
                     )
 
@@ -177,6 +183,8 @@ def test(cfg: config.Config, dataset_test):
                     avg_PSNR_trilinear += PSNR_trilinear / niter
                     avg_pix += pix / niter
                     avg_pix_trilinear += trilinear_pix / niter
+                    avg_relative_error += relative_error / niter
+                    avg_relative_error_trilinear += relative_error_trilinear / niter
 
                     if j % cfg.training.log_period == 0:
                         write_fields(
@@ -200,10 +208,13 @@ def test(cfg: config.Config, dataset_test):
         print(f"Average PSNR trilinear: {avg_PSNR_trilinear}")
         print(f"Average pix: {avg_pix}")
         print(f"Average pix trilinear: {avg_pix_trilinear}")
+        print(f"Average relative error: {avg_relative_error}")
+        print(f"Average relative error trilinear: {avg_relative_error_trilinear}")
+        
         if cfg.gan_config.interpolate_z:
             with open("./test_output/averages_reverse_interpolate.csv", "a") as f:
                 f.write(
-                    f"{cfg.name},{avg_PSNR_reverse_interpolate}, {avg_PSNR_trilinear_reverse_interpolate}, {avg_pix_reverse_interpolate}, {avg_pix_trilinear_reverse_interpolate}\n"
+                    f"{cfg.name},{avg_PSNR_reverse_interpolate}, {avg_relative_error_reverse_interpolate}, {avg_PSNR_trilinear_reverse_interpolate}, {avg_pix_reverse_interpolate}, {avg_pix_trilinear_reverse_interpolate}, {avg_relative_error_trilinear_reverse_interpolate} \n"
                 )
             print(f"Average PSNR reverse interpolate: {avg_PSNR_reverse_interpolate}")
             print(
@@ -213,6 +224,8 @@ def test(cfg: config.Config, dataset_test):
             print(
                 f"Average pix trilinear reverse interpolate: {avg_pix_trilinear_reverse_interpolate}"
             )
+            print(f"Average relative error reverse interpolate: {avg_relative_error_reverse_interpolate}")
+            print(f"Average relative error trilinear reverse interpolate: {avg_relative_error_trilinear_reverse_interpolate}")
 
 
 def write_fields(
@@ -250,11 +263,14 @@ def write_metrics(HR, SR, trilinear, field_name: int, dest_file):
     pix_criterion = nn.L1Loss()
     pix = pix_criterion(HR, SR) * UVW_MAX
     trilinear_pix = pix_criterion(HR, trilinear) * UVW_MAX
+    relative_error = pix_criterion(torch.ones_like(HR), SR/HR)
+    relative_error_trilinear = pix_criterion(torch.ones_like(HR), trilinear/HR)
     dest_file.write(
-        f"{field_name},{PSNR},{pix},{PSNR_trilinear},{trilinear_pix}" + "\n"
+        f"{field_name},{PSNR},{pix},{relative_error},{PSNR_trilinear},{trilinear_pix}, {relative_error_trilinear}" + "\n"
     )
+    
 
-    return PSNR, PSNR_trilinear, pix, trilinear_pix
+    return PSNR, PSNR_trilinear, relative_error, pix, trilinear_pix, relative_error_trilinear
 
 
 # (1.0, 0.25, 1.25, 1.25, 0.15|10.0, 0.25, 2.5, 0.25, 0.25|10.0, 1.0, 0.5, 1.0, 0.2|22.627515146672238|25.805853036899766|30.63578914390694|31.348732309433014)

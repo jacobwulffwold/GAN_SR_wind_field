@@ -1,12 +1,12 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=nv-fys
-#SBATCH --time=0-01:30:00
+#SBATCH --time=0-05:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=10G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=12G
 #SBATCH --job-name=test_best
 #SBATCH --output=test_best.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
