@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=10G
 #SBATCH --array=4-6
-#SBATCH --job-name=fixed_ALN
-#SBATCH --output=%a_ficed_ALN.out
+#SBATCH --job-name=RF
+#SBATCH --output=%a_RF.out
 #SBATCH --mail-user=jawold@stud.ntnu.no
 #SBATCH --mail-type=ALL
 

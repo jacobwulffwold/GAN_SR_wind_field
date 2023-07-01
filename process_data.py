@@ -176,15 +176,29 @@ class CustomizedDataset(torch.utils.data.Dataset):
             HR = torch.rot90(HR, amount_of_rotations, [1, 2])
             Z = torch.rot90(Z, amount_of_rotations, [1, 2])
 
+            if amount_of_rotations == 1:
+                HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(1)), torch.index_select(HR, 0, torch.tensor(0))), 0)
+                LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(1)), torch.index_select(LR, 0, torch.tensor(0))), 0)
+            if amount_of_rotations == 2:
+                HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(0)), -torch.index_select(HR, 0, torch.tensor(1))), 0)
+                LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(0)), -torch.index_select(LR, 0, torch.tensor(1))), 0)
+            if amount_of_rotations == 3:
+                HR[:2] = torch.concatenate((torch.index_select(HR, 0, torch.tensor(1)), -torch.index_select(HR, 0, torch.tensor(0))), 0)
+                LR[:2] = torch.concatenate((torch.index_select(LR, 0, torch.tensor(1)), -torch.index_select(LR, 0, torch.tensor(0))), 0)
+                
         if self.data_aug_flip:
             if np.random.rand() > 0.5:
                 LR = torch.flip(LR, [1])
                 HR = torch.flip(HR, [1])
                 Z = torch.flip(Z, [1])
+                LR[0] = -LR[0]
+                HR[0] = -HR[0]
             if np.random.rand() > 0.5:
                 LR = torch.flip(LR, [2])
                 HR = torch.flip(HR, [2])
                 Z = torch.flip(Z, [2])
+                LR[1] = -LR[1]
+                HR[1] = -HR[1]
         
         if self.is_test:
             if self.interpolate_z:
