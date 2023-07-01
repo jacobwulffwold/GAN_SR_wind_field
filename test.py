@@ -210,7 +210,7 @@ def test(cfg: config.Config, dataset_test):
                         )
         with open("./test_output/averages.csv", "a") as f:
             f.write(
-                f"{cfg.name},{avg_PSNR}, {avg_PSNR_trilinear}, {avg_pix}, {avg_pix_trilinear}\n"
+                f"{cfg.name},{avg_PSNR}, {avg_PSNR_trilinear}, {avg_pix}, {avg_pix_trilinear}, {avg_relative_error}, {avg_relative_error_trilinear}, {avg_wind_speed}, {avg_old_pix}, {avg_old_pix_trilinear}\n"
             )
 
         print(f"Average PSNR: {avg_PSNR}")
@@ -282,7 +282,7 @@ def write_metrics(HR, SR, trilinear, field_name: int, dest_file, UVW_MAX):
     old_pix = pix_criterion(HR, SR)*UVW_MAX
     old_pix_trilinear = pix_criterion(HR, trilinear)*UVW_MAX    
     trilinear_pix = mean_trilinear_ERR_length*UVW_MAX
-    relative_error = mean_trilinear_ERR_length/mean_HR_length
+    relative_error = mean_ERR_length/mean_HR_length
     relative_error_trilinear = mean_trilinear_ERR_length/mean_HR_length
     dest_file.write(
         f"{field_name},{PSNR},{PSNR_trilinear},{relative_error},{pix},{trilinear_pix}, {relative_error_trilinear}, {mean_HR_length*UVW_MAX}, {old_pix}, {old_pix_trilinear}" + "\n"
