@@ -46,69 +46,28 @@ def main():
         )
         return
     
-    if cfg.slurm_array_id == 1:
-        cfg.name = cfg.name + "_PixPretrained_G_4pix_2adv_label_static"
-        cfg.discriminator.weight_init_scale = cfg.discriminator.weight_init_scale / 2
-        cfg.training.use_one_sided_label_smoothing = True
-        cfg.training.use_instance_noise = False
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
-        cfg.training.adversarial_loss_weight = cfg.training.adversarial_loss_weight * 2
-        cfg.training.d_g_train_period = 250
-        cfg.load_model_from_save = True
-        cfg.env.generator_load_path = "./runs/8best_model_search_pix4_pretrained_no_adv/G_100000.pth"
-        cfg.env.discriminator_load_path = ""
+    run_names = [
+        "8best_model_search_pix4_pretrained_no_adv",
+        "ALN_pretrained_G_pretrained_G_4pix_2adv_label",
+        "upscale8_pix4_no_adv",
+        "upscale8_pix4_no_adv_no_slicing",
+        "upscale16_pix4_no_adv",
+        "upscale16_pix4_no_adv_no_slicing",
+    ]
     
+    run_name = run_names[cfg.slurm_array_id]
+    cfg = Config("./runs/"+run_name+"/config.ini")
+    cfg.env.generator_load_path = "./runs/"+run_name+"/G_150000.pth"
     
-    if cfg.slurm_array_id == 2:
-        run_name = "8best_model_search_pix4_pretrained_no_adv"
-        cfg = Config("./runs/"+run_name+"/config.ini")
-        cfg.env.generator_load_path = "./runs/"+run_name+"/G_100000.pth"
-        cfg.is_train = False
-        cfg.is_download = False
-        cfg.is_param_search = False
-        cfg.is_test = True
-        cfg.is_use = False
-        cfg.training.log_period = 200
+    if run_name == "ALN_pretrained_G_pretrained_G_4pix_2adv_label":
+        cfg.env.generator_load_path = "./runs/"+run_name+"/G_250000.pth"
     
-    if cfg.slurm_array_id == 3:
-        cfg.name = cfg.name + "_pix4_no_adv_no_slicing"
-        cfg.training.adversarial_loss_weight = 0.0
-        cfg.training.d_g_train_ratio = 0
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
-        cfg.gan_config.enable_slicing = False
-        cfg.dataset_train.batch_size = 8
-        cfg.dataset_val.batch_size = 8
-        cfg.load_model_from_save = True
-        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
-        cfg.env.discriminator_load_path = ""
-    
-    if cfg.slurm_array_id == 4:
-        cfg.name = cfg.name + "_pix4_no_adv"
-        cfg.training.adversarial_loss_weight = 0.0
-        cfg.training.d_g_train_ratio = 0
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
-    
-    if cfg.slurm_array_id == 5:
-        cfg.name = cfg.name + "no_adv"
-        cfg.training.adversarial_loss_weight = 0.0
-        cfg.training.d_g_train_ratio = 0
-    if cfg.slurm_array_id == 6:
-        cfg.name = cfg.name + "_pix4_pretrained"
-        cfg.training.pixel_loss_weight = cfg.training.pixel_loss_weight * 4
-        cfg.load_model_from_save = True
-        cfg.env.generator_load_path = "./runs/8lr_best_model_search_no_adv_seed2/G_120000.pth"
-        cfg.env.discriminator_load_path = ""
-
-    if cfg.slurm_array_id == 0:
-        run_name = "8best_model_search_pix4_pretrained_no_adv"
-        cfg = Config("./pretrained_models/"+run_name+"/config.ini")
-        cfg.env.generator_load_path = "./pretrained_models/"+run_name+"/G_100000.pth"
-        cfg.is_train = False
-        cfg.is_download = False
-        cfg.is_param_search = False
-        cfg.is_test = True
-        cfg.is_use = False
-        cfg.training.log_period = 200
+    cfg.is_train = False
+    cfg.is_download = False
+    cfg.is_param_search = False
+    cfg.is_test = True
+    cfg.is_use = False
+    cfg.training.log_period = 100
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
