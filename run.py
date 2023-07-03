@@ -47,6 +47,9 @@ def main():
         return
     
     run_names = [
+        "ALN_PixPretrained_G_4pix_2adv_label_static",
+        "G_best_pix4_no_adv_no_slicing",
+        "RF_pix4_pretrained",
         "8best_model_search_pix4_pretrained_no_adv",
         "ALN_pretrained_G_pretrained_G_4pix_2adv_label",
         "upscale8_pix4_no_adv",
@@ -57,9 +60,9 @@ def main():
     
     run_name = run_names[cfg.slurm_array_id]
     cfg = Config("./runs/"+run_name+"/config.ini")
-    cfg.env.generator_load_path = "./runs/"+run_name+"/G_150000.pth"
+    cfg.env.generator_load_path = "./runs/"+run_name+"/G_125000.pth"
     
-    if run_name == "ALN_pretrained_G_pretrained_G_4pix_2adv_label":
+    if run_name in {"ALN_pretrained_G_pretrained_G_4pix_2adv_label", "ALN_PixPretrained_G_4pix_2adv_label_static"}:
         cfg.env.generator_load_path = "./runs/"+run_name+"/G_250000.pth"
     
     cfg.is_train = False
