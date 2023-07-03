@@ -1,6 +1,6 @@
 """
 run.py
-Written by Eirik Vesterkjær, 2019, edited by Thomas Nakken Larsen 2020 and Jacob Wulff Wold 2023
+Originally written by Eirik Vesterkjær 2019, edited by Jacob Wulff Wold 2023
 Apache License
 
 Entry point for training or testing wind_field_GAN_3D
@@ -30,10 +30,7 @@ from param_search import param_search
 
 def main():
     cfg: Config = argv_to_cfg()
-    # cfg.is_train = True
-    # cfg.slurm_array_id = 0
-    # cfg.is_download = True
-    # cfg.is_param_search = True
+    cfg.is_train = True
     if (
         not cfg.is_test
         and not cfg.is_train
@@ -42,35 +39,9 @@ def main():
         and not cfg.is_param_search
     ):
         print(
-            "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if config/wind_field_GAN_2D_config.ini isn't what you're planning on using."
+            "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if coconfig/wind_field_GAN_3D_config_local.ini isn't what you're planning on using."
         )
         return
-    
-    run_names = [
-        "ALN_PixPretrained_G_4pix_2adv_label_static",
-        "G_best_pix4_no_adv_no_slicing",
-        "RF_pix4_pretrained",
-        "8best_model_search_pix4_pretrained_no_adv",
-        "ALN_pretrained_G_pretrained_G_4pix_2adv_label",
-        "upscale8_pix4_no_adv",
-        "upscale8_pix4_no_adv_no_slicing",
-        "upscale16_pix4_no_adv",
-        "upscale16_pix4_no_adv_no_slicing",
-    ]
-    
-    run_name = run_names[cfg.slurm_array_id]
-    cfg = Config("./runs/"+run_name+"/config.ini")
-    cfg.env.generator_load_path = "./runs/"+run_name+"/G_125000.pth"
-    
-    if run_name in {"ALN_pretrained_G_pretrained_G_4pix_2adv_label", "ALN_PixPretrained_G_4pix_2adv_label_static"}:
-        cfg.env.generator_load_path = "./runs/"+run_name+"/G_250000.pth"
-    
-    cfg.is_train = False
-    cfg.is_download = False
-    cfg.is_param_search = False
-    cfg.is_test = True
-    cfg.is_use = False
-    cfg.training.log_period = 100
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -154,7 +125,6 @@ def argv_to_cfg() -> Config:
     parser.add_argument(
         "--cfg",
         type=str,
-        # default="config/wind_field_GAN_3D_config_cluster_short.ini",
         default="config/wind_field_GAN_3D_config_local.ini",
         help="path to config ini file (defaults to config/wind_field_GAN_3D_config_local.ini)",
     )
@@ -249,11 +219,10 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
             "./data/interpolated_z_data",
         ]
     ]
-    is_ok = makedirs_ensure_user_ok(cfg.env.this_runs_folder)
     makedirs(cfg.env.this_runs_folder + "/images")
     makedirs(cfg.env.this_runs_tensorboard_log_folder)
     setup_seed(cfg.env.fixed_seed)
-    return is_ok
+    return True
 
 
 def setup_logger(cfg: Config):
@@ -312,33 +281,6 @@ def makedirs(path):
         os.makedirs(path, exist_ok=True)
 
 
-def makedirs_ensure_user_ok(path) -> bool:
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-        return True
-    else:
-        print(
-            f"Folder {path} exists.\nAre you sure you want to run with the same run name? Files may be overwritten. [Y/n]"
-        )
-        return get_yes_or_no_input()
-
-
-def get_yes_or_no_input() -> bool:
-    # courtesy of https://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
-    yes = {"yes", "y", "ye", ""}
-    no = {"no", "n"}
-    #    ans = None
-    #    while True:
-    #        choice = input("> ").lower()
-    #        if choice in yes:
-    #           return True
-    #        elif choice in no:
-    #           return False
-    #        else:
-    #           print("Please respond with 'yes' or 'no'")
-    return True  # FIX
-
-
 def save_config(cfg: Config, folder: str):
     filename = folder + "/config.ini"
     if cfg.env.discriminator_load_path == None:
@@ -373,10 +315,8 @@ def prepare_data(cfg: Config):
         train_aug_flip=cfg.dataset_train.data_aug_flip,
         val_aug_rot=cfg.dataset_val.data_aug_rot,
         val_aug_flip=cfg.dataset_val.data_aug_flip,
-        test_aug_rot=cfg.dataset_test.data_aug_rot,
-        test_aug_flip=cfg.dataset_test.data_aug_flip,
         train_eval_test_ratio=cfg.training.train_eval_test_ratio,
-        COARSENESS_FACTOR=cfg.scale
+        COARSENESS_FACTOR=cfg.scale,
     )
 
 

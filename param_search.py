@@ -1,3 +1,12 @@
+"""
+param_search.py
+Written by Jacob Wulff Wold 2023
+Apache License
+
+Wraps training in a ray.tune parameter search algorithm.
+Use run.py to run.
+"""
+
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 from train import log_status_logs
@@ -15,15 +24,29 @@ import copy
 import os
 import ray
 
-def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_train, cfg_datatrain, cfg_dataval, dataset_train, dataset_validation, x, y, search_cfg:dict):
 
+def train_param_search(
+    cfg: config.Config,
+    cfg_env,
+    cfg_gan,
+    cfg_G,
+    cfg_D,
+    cfg_train,
+    cfg_datatrain,
+    cfg_dataval,
+    dataset_train,
+    dataset_validation,
+    x,
+    y,
+    search_cfg: dict,
+):
     cfg.env = cfg_env
     cfg.gan_config = cfg_gan
-    cfg.generator=cfg_G
-    cfg.discriminator=cfg_D
-    cfg.training=cfg_train
-    cfg.dataset_train=cfg_datatrain
-    cfg.dataset_val=cfg_dataval
+    cfg.generator = cfg_G
+    cfg.discriminator = cfg_D
+    cfg.training = cfg_train
+    cfg.dataset_train = cfg_datatrain
+    cfg.dataset_val = cfg_dataval
 
     # print(cfg, dataset_train, dataset_validation, x, y, search_cfg)
     cfg.training.gradient_xy_loss_weight = search_cfg["gradient_xy"]
@@ -31,17 +54,21 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
     cfg.training.xy_divergence_loss_weight = search_cfg["xy_divergence"]
     cfg.training.divergence_loss_weight = search_cfg["divergence"]
     cfg.training.pixel_loss_weight = search_cfg["pixel"]
-    cfg.name =  cfg.name+str(search_cfg.values())
+    cfg.name = cfg.name + str(search_cfg.values())
 
     if torch.cuda.is_available():
         cfg.device = torch.device(f"cuda:{cfg.gpu_id}")
-    
+
     cfg_t = cfg.training
     status_logger = logging.getLogger("status")
     if cfg.use_tensorboard_logger:
-        os.makedirs(cfg.env.this_runs_tensorboard_log_folder+"/"+str(search_cfg.values()))
+        os.makedirs(
+            cfg.env.this_runs_tensorboard_log_folder + "/" + str(search_cfg.values())
+        )
         tb_writer = tensorboardX.SummaryWriter(
-            log_dir=cfg.env.this_runs_tensorboard_log_folder+"/"+str(search_cfg.values())
+            log_dir=cfg.env.this_runs_tensorboard_log_folder
+            + "/"
+            + str(search_cfg.values())
         )
     else:
         tb_writer = None
@@ -95,14 +122,14 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
     it_per_epoch = len(dataloader_train)
     count_train_epochs = 1 + cfg_t.niter // it_per_epoch
     loaded_it = 0
-    
+
     # bar = displaybar.DisplayBar(
     #     max_value=len(dataloader_train),
     #     start_epoch=start_epoch,
     #     start_it=it,
     #     niter=cfg_t.niter,
     # )
-    
+
     status_logger.info(
         "storing LR and HR validation images in run folder, for reference"
     )
@@ -117,28 +144,31 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
     #     gan.optimizer_G.load_state_dict(checkpoint_state["G_optimizer_state_dict"])
 
     status_logger.info(f"beginning run from epoch {start_epoch}, it {it}")
-    
+
     for epoch in range(start_epoch, count_train_epochs):
         status_logger.debug("epoch {epoch}")
 
         # dataloader -> (LR, HR, HR_img_name)
         for i, (LR, HR, Z) in enumerate(dataloader_train):
-
             if it > cfg_t.niter:
                 break
-            
+
             it += 1
             # bar.update(i, epoch, it)
 
             LR = LR.to(cfg.device, non_blocking=True)
             HR = HR.to(cfg.device, non_blocking=True)
             Z = Z.to(cfg.device, non_blocking=True)
-            
+
             if it == loaded_it + 1:
                 x = x.to(cfg.device, non_blocking=True)
                 y = y.to(cfg.device, non_blocking=True)
                 gan.feed_xy_niter(
-                    x, y, torch.tensor(cfg_t.niter, device=cfg.device), cfg_t.d_g_train_ratio, cfg_t.d_g_train_period
+                    x,
+                    y,
+                    torch.tensor(cfg_t.niter, device=cfg.device),
+                    cfg_t.d_g_train_ratio,
+                    cfg_t.d_g_train_period,
                 )
 
             gan.optimize_parameters(LR, HR, Z, it)
@@ -162,22 +192,18 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
 
             if dataloader_val is None:
                 continue
-            
+
             if it % cfg_t.val_period == 0:
-                
                 status_logger.debug(f"validation epoch (it {it})")
                 G_loss_vals = dict(
-                    (val_name, 0)
-                    for (val_name) in gan.get_G_val_loss_dict_ref().keys()
+                    (val_name, 0) for (val_name) in gan.get_G_val_loss_dict_ref().keys()
                 )
                 D_loss_vals = dict(
-                    (val_name, 0)
-                    for (val_name) in gan.get_D_loss_dict_ref().keys()
+                    (val_name, 0) for (val_name) in gan.get_D_loss_dict_ref().keys()
                 )
 
                 metrics_vals = dict(
-                    (val_name, 0)
-                    for (val_name) in gan.get_metrics_dict_ref().keys()
+                    (val_name, 0) for (val_name) in gan.get_metrics_dict_ref().keys()
                 )
 
                 n = len(dataloader_val)
@@ -212,13 +238,25 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
                     tb_writer.add_scalars("D_loss/", D_loss_vals, it)
                     # for hist_name, val in hist_vals.items():
                     #    tb_writer.add_histogram(f"data/hist/{hist_name}", val, it)
-                    PSNR_metrics = dict((key, value) for key, value in metrics_vals.items() if "PSNR" in key)
-                    pix_metrics = dict((key, value) for key, value in metrics_vals.items() if "pix" in key)
+                    PSNR_metrics = dict(
+                        (key, value)
+                        for key, value in metrics_vals.items()
+                        if "PSNR" in key
+                    )
+                    pix_metrics = dict(
+                        (key, value)
+                        for key, value in metrics_vals.items()
+                        if "pix" in key
+                    )
                     tb_writer.add_scalars("metrics/PSNR", PSNR_metrics, it)
                     tb_writer.add_scalars("metrics/pix", pix_metrics, it)
 
                 session.report(
-                    {"it":it, "PSNR": metrics_vals["val_PSNR"], "pix": metrics_vals["pix_loss_unscaled"]}
+                    {
+                        "it": it,
+                        "PSNR": metrics_vals["val_PSNR"],
+                        "pix": metrics_vals["pix_loss_unscaled"],
+                    }
                 )
                 stat_log_str = f"it: {it} "
                 for k, v in G_loss_vals.items():
@@ -229,18 +267,34 @@ def train_param_search(cfg:config.Config, cfg_env, cfg_gan, cfg_G, cfg_D, cfg_tr
     return
 
 
-def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, dataset_train=None, dataset_validation=None, x=None, y=None):
-    
-    ray.init(num_cpus=cfg.dataset_train.num_workers*(number_of_GPUs+1), num_gpus=number_of_GPUs if torch.cuda.is_available() else 0)
+def param_search(
+    num_samples=10,
+    number_of_GPUs=1,
+    cfg: config.Config = None,
+    dataset_train=None,
+    dataset_validation=None,
+    x=None,
+    y=None,
+):
+    ray.init(
+        num_cpus=cfg.dataset_train.num_workers * (number_of_GPUs + 1),
+        num_gpus=number_of_GPUs if torch.cuda.is_available() else 0,
+    )
 
     search_space = {
-        "gradient_xy": tune.loguniform(0.5, 32.0, 2),  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z": tune.loguniform(0.25, 16.0, 2), #0.2
-        "xy_divergence": tune.loguniform(0.25, 16.0, 2), #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence": tune.loguniform(0.25, 16.0, 2), #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
-        "pixel": tune.uniform(0.0, 1.0), #0.5
+        "gradient_xy": tune.loguniform(
+            0.5, 32.0, 2
+        ),  # tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+        "gradient_z": tune.loguniform(0.25, 16.0, 2),  # 0.2
+        "xy_divergence": tune.loguniform(
+            0.25, 16.0, 2
+        ),  # tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+        "divergence": tune.loguniform(
+            0.25, 16.0, 2
+        ),  # tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+        "pixel": tune.uniform(0.0, 1.0),  # 0.5
     }
-    
+
     scheduler = ASHAScheduler(
         time_attr="it",
         max_t=cfg.training.niter,
@@ -249,88 +303,110 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
     )
 
     initial_search_config = [
-    {
-        "gradient_xy": 5.0,  
-        "gradient_z": 0.25,
-        "xy_divergence": 1.25, 
-        "divergence": 0.25, 
-        "pixel": 0.15,
-    },
-    {
-        "gradient_xy": 1.0,  
-        "gradient_z": 0.25,
-        "xy_divergence": 1.25, 
-        "divergence": 1.25, 
-        "pixel": 0.15,
-    },
-    {
-        "gradient_xy": 10.0,  
-        "gradient_z": 0.25,
-        "xy_divergence": 2.5, 
-        "divergence": 0.25, 
-        "pixel": 0.25,
-    },
-    {
-        "gradient_xy": 1.0,  
-        "gradient_z": 0.25,
-        "xy_divergence": 2.5, 
-        "divergence": 2.5, 
-        "pixel": 0.25,
-    },
-    {
-        "gradient_xy": 5.0,  #tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
-        "gradient_z": 0.25, #0.2
-        "xy_divergence": 1.25, #tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
-        "divergence": 2.5, #tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
-        "pixel": 0.2, #0.5
-    },
-    {
-        "gradient_xy": 2.5,  
-        "gradient_z": 1.0,
-        "xy_divergence": 0.5, 
-        "divergence": 1.0, 
-        "pixel": 0.15,
-    },
-    {
-        "gradient_xy": 10.0,  
-        "gradient_z": 1.0,
-        "xy_divergence": 0.5, 
-        "divergence": 1.0, 
-        "pixel": 0.2,
-    },
-    {
-        "gradient_xy": 2.5,  
-        "gradient_z": 5.0,
-        "xy_divergence": 0.5, 
-        "divergence": 1.0, 
-        "pixel": 0.2,
-    },
-    {
-        "gradient_xy": 2.5,  
-        "gradient_z": 1.0,
-        "xy_divergence": 2.5, 
-        "divergence": 1.0, 
-        "pixel": 0.2,
-    },
-    {
-        "gradient_xy": 2.5,  
-        "gradient_z": 1.0,
-        "xy_divergence": 0.5, 
-        "divergence": 5.0, 
-        "pixel": 0.2,
-    },
+        {
+            "gradient_xy": 5.0,
+            "gradient_z": 0.25,
+            "xy_divergence": 1.25,
+            "divergence": 0.25,
+            "pixel": 0.15,
+        },
+        {
+            "gradient_xy": 1.0,
+            "gradient_z": 0.25,
+            "xy_divergence": 1.25,
+            "divergence": 1.25,
+            "pixel": 0.15,
+        },
+        {
+            "gradient_xy": 10.0,
+            "gradient_z": 0.25,
+            "xy_divergence": 2.5,
+            "divergence": 0.25,
+            "pixel": 0.25,
+        },
+        {
+            "gradient_xy": 1.0,
+            "gradient_z": 0.25,
+            "xy_divergence": 2.5,
+            "divergence": 2.5,
+            "pixel": 0.25,
+        },
+        {
+            "gradient_xy": 5.0,  # tune.choice([0.0, 1.0, 5.0, 10.0, 20.0, 50.0]) #1.0
+            "gradient_z": 0.25,  # 0.2
+            "xy_divergence": 1.25,  # tune.choice([[0.0, 0.4, 2.0, 4.0, 7.0, 20 ]]) #0.25
+            "divergence": 2.5,  # tune.choice([[0.0, 0.8, 4.0, 8.0, 15.0, 40.0 ]]) #0.25
+            "pixel": 0.2,  # 0.5
+        },
+        {
+            "gradient_xy": 2.5,
+            "gradient_z": 1.0,
+            "xy_divergence": 0.5,
+            "divergence": 1.0,
+            "pixel": 0.15,
+        },
+        {
+            "gradient_xy": 10.0,
+            "gradient_z": 1.0,
+            "xy_divergence": 0.5,
+            "divergence": 1.0,
+            "pixel": 0.2,
+        },
+        {
+            "gradient_xy": 2.5,
+            "gradient_z": 5.0,
+            "xy_divergence": 0.5,
+            "divergence": 1.0,
+            "pixel": 0.2,
+        },
+        {
+            "gradient_xy": 2.5,
+            "gradient_z": 1.0,
+            "xy_divergence": 2.5,
+            "divergence": 1.0,
+            "pixel": 0.2,
+        },
+        {
+            "gradient_xy": 2.5,
+            "gradient_z": 1.0,
+            "xy_divergence": 0.5,
+            "divergence": 5.0,
+            "pixel": 0.2,
+        },
     ]
 
-    search_algorithm = OptunaSearch(points_to_evaluate=initial_search_config) #points_to_evaluate=initial_search_config
-    search_algorithm = ConcurrencyLimiter(search_algorithm, max_concurrent=number_of_GPUs)
-    reporter = tune.CLIReporter(max_report_frequency=200, max_column_length=5, print_intermediate_tables=True)
+    search_algorithm = OptunaSearch(
+        points_to_evaluate=initial_search_config
+    )  # points_to_evaluate=initial_search_config
+    search_algorithm = ConcurrencyLimiter(
+        search_algorithm, max_concurrent=number_of_GPUs
+    )
+    reporter = tune.CLIReporter(
+        max_report_frequency=200, max_column_length=5, print_intermediate_tables=True
+    )
 
     # train_param_search(initial_search_config, cfg, dataset_train, dataset_validation, x, y)
 
-
     result = tune.run(
-        partial(train_param_search, cfg, cfg.env, cfg.gan_config, cfg.generator, cfg.discriminator, cfg.training, cfg.dataset_train, cfg.dataset_val, copy.deepcopy(dataset_train), copy.deepcopy(dataset_validation), x, y),
-        resources_per_trial={"cpu": cfg.dataset_train.num_workers, "gpu": 1 if torch.cuda.is_available() else 0},
+        partial(
+            train_param_search,
+            cfg,
+            cfg.env,
+            cfg.gan_config,
+            cfg.generator,
+            cfg.discriminator,
+            cfg.training,
+            cfg.dataset_train,
+            cfg.dataset_val,
+            copy.deepcopy(dataset_train),
+            copy.deepcopy(dataset_validation),
+            x,
+            y,
+        ),
+        resources_per_trial={
+            "cpu": cfg.dataset_train.num_workers,
+            "gpu": 1 if torch.cuda.is_available() else 0,
+        },
         config=search_space,
         progress_reporter=reporter,
         num_samples=num_samples,
@@ -340,13 +416,9 @@ def param_search(num_samples=10, number_of_GPUs=1, cfg:config.Config=None, datas
         search_alg=search_algorithm,
         local_dir=cfg.env.this_runs_folder,
         chdir_to_trial_dir=False,
-        sync_config=tune.SyncConfig(
-            syncer=None
-        ),
+        sync_config=tune.SyncConfig(syncer=None),
         fail_fast=True,
     )
 
     best_trial = result.get_best_trial("PSNR", "max", "last")
     print(f"Best trial config: {best_trial.config}")
-
-

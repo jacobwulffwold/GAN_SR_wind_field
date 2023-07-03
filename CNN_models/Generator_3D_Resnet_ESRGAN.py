@@ -3,7 +3,7 @@ generator.py
 based on Eirik Vesterkjær, 2019, modified by Thomas Nakken Larsen 2020 and Jacob Wulff Wold 2023
 Apache License
 
-Implements the ESRDnet nn.Module
+Implements the ESRDnet nn.Module modified to 3D, and with dropout and terrain feature extraction
 """
 
 import math

@@ -1,3 +1,11 @@
+"""
+plot_data.py
+Written by Jacob Wulff Wold 2023
+Apache License
+
+Plotting functions employed in the master thesis
+"""
+
 from mayavi import mlab
 from mayavi.mlab import pipeline as pipe
 from tvtk.api import tvtk
@@ -10,11 +18,11 @@ from download_data import slice_only_dim_dicts, reverse_interpolate_z_axis
 from GAN_models.wind_field_GAN_3D import compute_PSNR_for_SR_and_trilinear
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-# from tbparse import SummaryReader
+from tbparse import SummaryReader
 import os
 from cycler import cycler
 from CNN_models.Generator_3D_Resnet_ESRGAN import Generator_3D
-# import pandas as pd
+import pandas as pd
 import pickle as pkl
 import torch
 from config.config import Config
@@ -131,19 +139,23 @@ def plot_field(
                 )
         except:
             mlab.surf(X, Y, z_plot_scale * terrain, colormap="black-white", opacity=0.5)
-    
-    
+
     if max_value is not None:
         lut_manager = field.module_manager.vector_lut_manager
         lut_manager.data_range = (0, max_value)
-    
+
     if title:
-        mlab.title(title)
-        mlab.vectorbar(field, title=title+" [m/s]", orientation='vertical', nb_labels=5)
+        # mlab.title(title, color=(0.2, 0.2, 0.2))
+        mlab.vectorbar(
+            field, title=title + " [m/s]", orientation="vertical", nb_labels=5
+        )
     else:
-        mlab.vectorbar(field, title="Wind speed [m/s]", orientation='vertical', nb_labels=5)
-    
+        mlab.vectorbar(
+            field, title="Wind speed [m/s]", orientation="vertical", nb_labels=5
+        )
+
     mlab.show()
+
 
 def create_error_figure(
     wind_height_index,
@@ -152,6 +164,8 @@ def create_error_figure(
     wind_comp_TL,
     average_SR_error,
     average_TL_error,
+    average_SR_error_relative,
+    average_TL_error_relative,
 ):
     sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap("viridis"))
     vmin, vmax = np.min(wind_comp_HR[:, :, wind_height_index]), np.max(
@@ -207,9 +221,12 @@ def create_error_figure(
         wind_comp_SR[:, :, wind_height_index],
         vmin=vmin_wind_field,
         vmax=vmax_wind_field,
-        cmap="viridis", edgecolor="none"
+        cmap="viridis",
+        edgecolor="none",
     )
-    axes2[0, 1].set_title(f"SR, avg error: {round(average_SR_error,3)} m/s")
+    axes2[0, 1].set_title(
+        f"SR, avg error: {round(average_SR_error,3)} m/s ({round(100*average_SR_error_relative,1)}% of average)"
+    )
     axes2[0, 0].pcolor(
         wind_comp_SR[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         vmin=vmin_error,
@@ -224,7 +241,8 @@ def create_error_figure(
         ),
         vmin=vmin_abs_error,
         vmax=vmax_abs_error,
-        cmap="jet", edgecolor="none"
+        cmap="jet",
+        edgecolor="none",
     )
     axes2[0, 2].set_title("SR Absolute Error (m/s)")
     fig2.colorbar(sm, ax=axes2[0, 1])
@@ -239,11 +257,10 @@ def create_error_figure(
     )
     axes2[1, 1].pcolor(wind_comp_TL[:, :, wind_height_index])
     axes2[1, 1].set_title(
-        f"TL, avg error: {round(average_TL_error,3)} m/s"
+        f"TL, avg error: {round(average_TL_error,3)} m/s ({round(100*average_TL_error_relative,1)}% of average)"
     )
     axes2[1, 0].pcolor(
-        wind_comp_TL[:, :, wind_height_index]
-        - wind_comp_HR[:, :, wind_height_index],
+        wind_comp_TL[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         cmap="coolwarm",
     )
     axes2[1, 0].set_title("Error TL-HR (m/s)")
@@ -252,7 +269,8 @@ def create_error_figure(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_TL[:, :, wind_height_index]
         ),
-        cmap="jet", edgecolor="none"
+        cmap="jet",
+        edgecolor="none",
     )
     axes2[1, 2].set_title("TL Absolute Error (m/s)")
     fig2.colorbar(sm, ax=axes2[1, 1])
@@ -281,22 +299,35 @@ def create_comparison_figure(
         wind_comp_HR[:, :, wind_height_index]
     )
     axes[0, 0].pcolor(
-        wind_comp_LR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+        wind_comp_LR[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[0, 0].set_title("LR")
     axes[0, 1].pcolor(
-        wind_comp_HR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+        wind_comp_HR[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[0, 1].set_title("HR")
     axes[1, 1].pcolor(
-        wind_comp_SR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+        wind_comp_SR[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[1, 1].set_title("SR")
     axes[1, 0].pcolor(
         wind_comp_TL[:, :, wind_height_index],
         vmin=vmin,
         vmax=vmax,
-        cmap="viridis", edgecolor="none"
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[1, 0].set_title("TL")
     fig.subplots_adjust(hspace=0.3)
@@ -305,6 +336,7 @@ def create_comparison_figure(
     sm.set_clim(vmin=vmin, vmax=vmax)
     fig.colorbar(sm, ax=axes)
     return fig
+
 
 def plot_metrics1(
     tb_folder,
@@ -485,6 +517,7 @@ def create_best_exp25_plot():
     ax.set_ylim(0.0, 0.06)
     fig.savefig("./figures/exp25Best.pdf", format="pdf", bbox_inches="tight")
 
+
 def create_norm_plot():
     plt.style.use("ggplot")
     plt.rcParams.update({"font.family": "Helvetica"})
@@ -494,11 +527,9 @@ def create_norm_plot():
     norm = [float(x) for x in norm]
     ax.set_xlabel("Training iteration")
     ax.set_ylabel("Norm")
-    fig.suptitle(
-        r"Norm during training with $L_G^*$", fontweight="bold", fontsize=20
-    )
+    fig.suptitle(r"Norm during training with $L_G^*$", fontweight="bold", fontsize=20)
     ax.set_ylim(0.0, 5.0)
-    ax.plot(2*range(len(norm)), norm)
+    ax.plot(2 * range(len(norm)), norm)
     fig.savefig("./figures/norm.pdf", format="pdf", bbox_inches="tight")
 
 
@@ -802,6 +833,7 @@ def plot_scalar(
 
     mlab.show()
 
+
 def generate_plots(X, Y, Z, u, v, w, terrain, colormap="viridis"):
     X1, Y1, Z1, u1, v1, w1, terrain1 = slice_only_dim_dicts(
         X,
@@ -940,11 +972,35 @@ def plot_vectors_on_grid(sgrid, vectors, name="vectors", colormap="jet"):
     mlab.pipeline.glyph(sgrid, colormap=colormap, opacity=0.5)
 
 
-def plot_feature_map(feature_map, fig=1):
-    mlab.pipeline.volume(mlab.pipeline.scalar_field(feature_map), figure=fig)
+def plot_feature_map(feature_map, x=0, y=0, z=0, fig=1, vmin=None, vmax=None):
+    mlab.figure(fig, bgcolor=(1, 1, 1))
+    if x:
+        field = mlab.pipeline.scalar_field(x, y, z, feature_map)
+    else:
+        field = mlab.pipeline.scalar_field(feature_map)
+    if vmin and vmax:
+        mlab.pipeline.volume(field, vmin=vmin, vmax=vmax)
+    else:
+        mlab.pipeline.volume(field)
     mlab.show()
 
-def create_2D_plots(z1, z2, u_LR, u_HR, u_SR, u_TL, w_LR, w_HR, w_SR, w_TL, x_dict={"start": 64, "max": 128, "step": 1}, y_dict={"start": 64, "max": 128, "step": 1},z_dict={"start": 0, "max": 10, "step": 1}):
+
+def create_2D_plots(
+    z1,
+    z2,
+    u_LR,
+    u_HR,
+    u_SR,
+    u_TL,
+    w_LR,
+    w_HR,
+    w_SR,
+    w_TL,
+    scale=4,
+    x_dict={"start": 64, "max": 128, "step": 1},
+    y_dict={"start": 64, "max": 128, "step": 1},
+    z_dict={"start": 0, "max": 10, "step": 1},
+):
     # plt.style.use("ggplot")
     plt.rcParams.update({"font.family": "Helvetica"})
     pix_criterion = nn.L1Loss()
@@ -981,24 +1037,85 @@ def create_2D_plots(z1, z2, u_LR, u_HR, u_SR, u_TL, w_LR, w_HR, w_SR, w_TL, x_di
         torch.from_numpy(w_HR[:, :, z2]),
         torch.from_numpy(w_TL[:, :, z2]),
     ).item()
-    
+    u_SR_loss_z1_relative = u_SR_loss_z1 / np.average(np.abs(u_HR[:, :, z1]))
+    u_TL_loss_z1_relative = u_TL_loss_z1 / np.average(np.abs(u_HR[:, :, z1]))
+    u_SR_loss_z2_relative = u_SR_loss_z2 / np.average(np.abs(u_HR[:, :, z2]))
+    u_TL_loss_z2_relative = u_TL_loss_z2 / np.average(np.abs(u_HR[:, :, z2]))
+    w_SR_loss_z1_relative = w_SR_loss_z1 / np.average(np.abs(w_HR[:, :, z1]))
+    w_TL_loss_z1_relative = w_TL_loss_z1 / np.average(np.abs(w_HR[:, :, z1]))
+    w_SR_loss_z2_relative = w_SR_loss_z2 / np.average(np.abs(w_HR[:, :, z2]))
+    w_TL_loss_z2_relative = w_TL_loss_z2 / np.average(np.abs(w_HR[:, :, z2]))
+
     fig1 = create_comparison_figure(z1, u_LR, u_HR, u_SR, u_TL)
     fig2 = create_comparison_figure(z1, w_LR, w_HR, w_SR, w_TL)
-    fig5 = create_error_figure(z1, u_HR, u_SR, u_TL, u_SR_loss_z1, u_TL_loss_z1)
-    fig6 = create_error_figure(z1, w_HR, w_SR, w_TL, w_SR_loss_z1, w_TL_loss_z1)
-    fig1.savefig(f"./figures/u_{z1}.png", bbox_inches="tight", dpi=fig1.dpi)
-    fig2.savefig(f"./figures/w_{z1}.png", bbox_inches="tight",  dpi=fig2.dpi)
-    fig5.savefig(f"./figures/u_{z1}_error.png", bbox_inches="tight",  dpi=fig5.dpi)
-    fig6.savefig(f"./figures/w_{z1}_error.png", bbox_inches="tight",  dpi=fig6.dpi)
+    fig5 = create_error_figure(
+        z1,
+        u_HR,
+        u_SR,
+        u_TL,
+        u_SR_loss_z1,
+        u_TL_loss_z1,
+        u_SR_loss_z1_relative,
+        u_TL_loss_z1_relative,
+    )
+    fig6 = create_error_figure(
+        z1,
+        w_HR,
+        w_SR,
+        w_TL,
+        w_SR_loss_z1,
+        w_TL_loss_z1,
+        w_SR_loss_z1_relative,
+        w_TL_loss_z1_relative,
+    )
+    fig1.savefig(
+        f"./figures/u_{z1}_scale{scale}.png", bbox_inches="tight", dpi=fig1.dpi
+    )
+    fig2.savefig(
+        f"./figures/w_{z1}_scale{scale}.png", bbox_inches="tight", dpi=fig2.dpi
+    )
+    fig5.savefig(
+        f"./figures/u_{z1}_scale{scale}_error.png", bbox_inches="tight", dpi=fig5.dpi
+    )
+    fig6.savefig(
+        f"./figures/w_{z1}_scale{scale}_error.png", bbox_inches="tight", dpi=fig6.dpi
+    )
     fig3 = create_comparison_figure(z2, u_LR, u_HR, u_SR, u_TL)
     fig4 = create_comparison_figure(z2, w_LR, w_HR, w_SR, w_TL)
-    fig7 = create_error_figure(z2, u_HR, u_SR, u_TL, u_SR_loss_z2, u_TL_loss_z2)
-    fig8 = create_error_figure(z2, w_HR, w_SR, w_TL, w_SR_loss_z2, w_TL_loss_z2)
-    fig3.savefig(f"./figures/u_{z2}.png", bbox_inches="tight",  dpi=fig3.dpi)
-    fig4.savefig(f"./figures/w_{z2}.png", bbox_inches="tight",  dpi=fig4.dpi)
-    fig7.savefig(f"./figures/u_{z2}_error.png", bbox_inches="tight",  dpi=fig7.dpi)
-    fig8.savefig(f"./figures/w_{z2}_error.png", bbox_inches="tight",  dpi=fig8.dpi)
+    fig7 = create_error_figure(
+        z2,
+        u_HR,
+        u_SR,
+        u_TL,
+        u_SR_loss_z2,
+        u_TL_loss_z2,
+        u_SR_loss_z2_relative,
+        u_TL_loss_z2_relative,
+    )
+    fig8 = create_error_figure(
+        z2,
+        w_HR,
+        w_SR,
+        w_TL,
+        w_SR_loss_z2,
+        w_TL_loss_z2,
+        w_SR_loss_z2_relative,
+        w_TL_loss_z2_relative,
+    )
+    fig3.savefig(
+        f"./figures/u_{z2}_scale{scale}.png", bbox_inches="tight", dpi=fig3.dpi
+    )
+    fig4.savefig(
+        f"./figures/w_{z2}_scale{scale}.png", bbox_inches="tight", dpi=fig4.dpi
+    )
+    fig7.savefig(
+        f"./figures/u_{z2}_scale{scale}_error.png", bbox_inches="tight", dpi=fig7.dpi
+    )
+    fig8.savefig(
+        f"./figures/w_{z2}_scale{scale}_error.png", bbox_inches="tight", dpi=fig8.dpi
+    )
     plt.show()
+
 
 if __name__ == "__main__":
     # plot_metrics("./tensorboard_log_cluster/Z_handling_no/seed1", "val_PSNR", "metrics/PSNR")
@@ -1012,14 +1129,17 @@ if __name__ == "__main__":
     #     "metrics/PSNR",
     #     "G_loss/validation",
     # )
+    # folder = "./pretrained_models/8best_model_search_pix4_pretrained_no_adv/"
+    folder = "./pretrained_models/upscale16_pix4_no_adv_no_slicing/"
+    # folder = "./pretrained_models/upscale8_pix4_no_adv_no_slicing/upscale8_pix4_no_adv_no_slicing/"
     # create_norm_plot()
-    cfg = Config("./pretrained_models/8lr_best_model_search_no_adv_seed1/config.ini")
+    cfg = Config(folder + "config.ini")
     cfg.is_train = False
     cfg.is_download = False
     cfg.is_param_search = False
     cfg.is_test = True
     cfg.device = torch.device("cpu")
-    cfg.env.generator_load_path = "./pretrained_models/8lr_best_model_search_no_adv_seed1/G_100000.pth"
+    cfg.env.generator_load_path = folder + "/G_150000.pth"
 
     gan = wind_field_GAN_3D(cfg)
     # (
@@ -1038,25 +1158,25 @@ if __name__ == "__main__":
     #     include_pressure=True,
     #     include_z_channel=False,
     #     interpolate_z=False,
-    #     enable_slicing=True,
+    #     enable_slicing=False,
     #     slice_size=64,
     #     include_above_ground_channel=False,
     #     COARSENESS_FACTOR=4,
-    #     train_aug_rot=False,
+    #     train_aug_rot=True,
     #     val_aug_rot=False,
     #     test_aug_rot=False,
-    #     train_aug_flip=False,
+    #     train_aug_flip=True,
     #     val_aug_flip=False,
     #     test_aug_flip=False,
     # )
 
     # # dataloader_normal = torch.utils.data.DataLoader(dataset_train, batch_size=32, shuffle=False)
 
-    # LR, HR, Z, = dataset_train[0]
+    # LR, HR, Z, = dataset_train[1]
 
-    folder = "./pretrained_models/8lr_best_model_search_no_adv_seed1/"
     filename = "test_fields_2020-03-01-14.pkl"
-    full_filename = folder + filename
+    # filename = "test_fields_2020-06-01-18.pkl"
+    full_filename = folder + "fields/" + filename
     fields = pkl.load(open(full_filename, "rb"))
     HR = fields["HR"]
     SR = fields["SR"]
@@ -1066,6 +1186,46 @@ if __name__ == "__main__":
     HR_orig = fields.get("HR_orig", None)
     SR_orig = fields.get("SR_orig", None)
     Z_orig = fields.get("Z_orig", None)
+    try:
+        with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = pkl.load(f)
+    except:
+        get_static_data()
+        with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
+            terrain, x, y = pkl.load(f)
+
+    amount_of_rotations = 1
+    LR = torch.rot90(torch.from_numpy(LR), amount_of_rotations, [1, 2])
+    HR = torch.rot90(torch.from_numpy(HR), amount_of_rotations, [1, 2])
+    Z = torch.rot90(torch.from_numpy(Z)[None, :, :, :], amount_of_rotations, [1, 2])
+    terrain = torch.rot90(torch.from_numpy(terrain), amount_of_rotations, [0, 1])
+    # if amount_of_rotations == 1:
+    #     HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(1)), torch.index_select(HR, 0, torch.tensor(0))), 0)
+    #     LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(1)), torch.index_select(LR, 0, torch.tensor(0))), 0)
+    # if amount_of_rotations == 2:
+    #     HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(0)), -torch.index_select(HR, 0, torch.tensor(1))), 0)
+    #     LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(0)), -torch.index_select(LR, 0, torch.tensor(1))), 0)
+    # if amount_of_rotations == 3:
+    #     HR[:2] = torch.concatenate((torch.index_select(HR, 0, torch.tensor(1)), -torch.index_select(HR, 0, torch.tensor(0))), 0)
+    #     LR[:2] = torch.concatenate((torch.index_select(LR, 0, torch.tensor(1)), -torch.index_select(LR, 0, torch.tensor(0))), 0)
+
+    # flip_index = 2
+    # LR = torch.flip(LR, [flip_index])
+    # HR = torch.flip(HR, [flip_index])
+    # Z = torch.flip(Z, [flip_index])
+    # terrain = torch.flip(terrain, [flip_index-1])
+    # if flip_index == 1:
+    #     LR[0] = -LR[0]
+    #     HR[0] = -HR[0]
+    # if flip_index == 2:
+    #     LR[1] = -LR[1]
+    #     HR[1] = -HR[1]
+
+    LR, HR, Z = (
+        LR.squeeze().numpy(),
+        HR.squeeze().numpy(),
+        Z.squeeze().numpy(),
+    )
 
     _, _ = gan.load_model(
         generator_load_path=cfg.env.generator_load_path,
@@ -1081,52 +1241,39 @@ if __name__ == "__main__":
         sum_last_features_after_activation,
         sum_last_features_before_activation,
         sum_LR_features,
-        SR_new,
+        SR,
     ) = get_feature_maps(
         gan.G,
-        torch.from_numpy(LR)[None,:,:,:],
-        torch.from_numpy(Z)[None,None,:,:,:],
+        torch.from_numpy(LR)[None, :, :, :],
+        torch.from_numpy(Z)[None, None, :, :, :],
     )
 
     X_DICT = {"start": 0, "max": 128, "step": 1}
     Y_DICT = {"start": 0, "max": 128, "step": 1}
 
-    try:
-        with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
-            terrain, x, y = pkl.load(f)
-    except:
-        get_static_data()
-        with open("./data/full_dataset_files/static_terrain_x_y.pkl", "rb") as f:
-            terrain, x, y = pkl.load(f)
-
     TL = nn.functional.interpolate(
-                    torch.from_numpy(LR)[None, :3, :, :, :],
-                    scale_factor=(4, 4, 1),
-                    align_corners=True,
-                    mode="trilinear",
-                ) 
-    pix_criterion = nn.L1Loss()
-    SR_L1_loss = pix_criterion(
-        torch.from_numpy(HR)[None, :3, :, :, :],
-        torch.from_numpy(SR)[None, :3, :, :, :]
-    ).item()
-    TL_L1_loss = pix_criterion(
-        torch.from_numpy(HR)[None, :3, :, :, :],
-        TL,
-    ).item()
-    
-    print("SR_L1_loss: ", SR_L1_loss)
-    print("TL_L1_loss: ", TL_L1_loss)
-
+        torch.from_numpy(LR)[None, :3, :, :, :],
+        scale_factor=(cfg.scale, cfg.scale, 1),
+        align_corners=True,
+        mode="trilinear",
+    )
 
     # LR, HR, Z, TL, SR = LR.squeeze().numpy(), HR.squeeze().numpy(), Z.squeeze().numpy(), TL.squeeze().numpy(), SR.squeeze().numpy()
-    TL=TL.squeeze().numpy()
-    
-    u_norm, v_norm, w_norm, = HR[0], HR[1], HR[2],
+    TL = TL.squeeze().numpy()
+
+    (
+        u_norm,
+        v_norm,
+        w_norm,
+    ) = (
+        HR[0],
+        HR[1],
+        HR[2],
+    )
     u_LR_norm, v_LR_norm, w_LR_norm = LR[0], LR[1], LR[2]
     u_SR_norm, v_SR_norm, w_SR_norm = SR[0], SR[1], SR[2]
     u_TL_norm, v_TL_norm, w_TL_norm = TL[0], TL[1], TL[2]
-    
+
     u_HR, v_HR, w_HR, u_SR, v_SR, w_SR, u_TL, v_TL, w_TL, u_LR, v_LR, w_LR = (
         u_norm * UVW_MAX,
         v_norm * UVW_MAX,
@@ -1142,43 +1289,212 @@ if __name__ == "__main__":
         v_LR_norm * UVW_MAX,
         w_LR_norm * UVW_MAX,
     )
+    SR_ERR_vec_length = np.sqrt(
+        (u_HR - u_SR) ** 2 + (v_HR - v_SR) ** 2 + (w_HR - w_SR) ** 2
+    )
+    SR_ERR_vec_length_mean = np.average(SR_ERR_vec_length)
+    TL_ERR_vec_length_mean = np.average(
+        np.sqrt((u_HR - u_TL) ** 2 + (v_HR - v_TL) ** 2 + (w_HR - w_TL) ** 2)
+    )
+    HR_vec_length = np.sqrt(u_HR**2 + v_HR**2 + w_HR**2)
 
-    X, Y, _ = np.mgrid[
+    print("SR_L1_loss: ", SR_ERR_vec_length_mean)
+    print("TL_L1_loss: ", TL_ERR_vec_length_mean)
+    print("SR_L1_loss_relative: ", SR_ERR_vec_length_mean / np.mean(HR_vec_length))
+    print("TL_L1_loss_relative: ", TL_ERR_vec_length_mean / np.mean(HR_vec_length))
+
+    X, Y, z_reg_max = np.mgrid[
         np.min(x) : np.max(x) : x.size * 1j,
         np.min(y) : np.max(y) : y.size * 1j,
-        np.min(Z[0, 0]) : np.max(Z[0, 0]) : Z[0, 0].size * 1j,
+        np.min(Z) : np.max(Z) : Z[0, 0].size * 1j,
     ]
-    # create_2D_plots(0, 9, u_LR, u_HR, u_SR, u_TL, w_LR, w_HR, w_SR, w_TL, x_dict={"start": 64, "max": 128, "step": 1}, y_dict={"start": 64, "max": 128, "step": 1},z_dict={"start": 0, "max": 10, "step": 1})
-    
+    create_2D_plots(
+        1,
+        8,
+        u_LR,
+        u_HR,
+        u_SR,
+        u_TL,
+        w_LR,
+        w_HR,
+        w_SR,
+        w_TL,
+        scale=cfg.scale,
+        x_dict={"start": 64, "max": 128, "step": 1},
+        y_dict={"start": 64, "max": 128, "step": 1},
+        z_dict={"start": 0, "max": 10, "step": 1},
+    )
 
     full_grid = create_structured_grid(X, Y, Z)
     LR_grid = create_structured_grid(X[::4, ::4, :], Y[::4, ::4, :], Z[::4, ::4, :])
 
-    # x_dict={"start": 64, "max": 128, "step": 1} 
+    # x_dict={"start": 64, "max": 128, "step": 1}
     # y_dict={"start": 48, "max": 112, "step": 1}
     # z_dict={"start": 0, "max": 10, "step": 1}
-    x_dict={"start": 0, "max": 128, "step": 1} 
-    y_dict={"start": 0, "max": 128, "step": 1}
-    z_dict={"start": 0, "max": 10, "step": 1}
+    x_dict = {"start": 0, "max": 128, "step": 1}
+    y_dict = {"start": 0, "max": 128, "step": 1}
+    z_dict = {"start": 0, "max": 10, "step": 1}
 
-    x2_dict={"start": x_dict["start"]//4, "max": x_dict["max"]//4, "step": x_dict["step"]//4+1}
-    y2_dict={"start": y_dict["start"]//4, "max": y_dict["max"]//4, "step": y_dict["step"]//4+1}
+    x2_dict = {
+        "start": x_dict["start"] // 4,
+        "max": x_dict["max"] // 4,
+        "step": x_dict["step"] // 4 + 1,
+    }
+    y2_dict = {
+        "start": y_dict["start"] // 4,
+        "max": y_dict["max"] // 4,
+        "step": y_dict["step"] // 4 + 1,
+    }
 
-    max_wind = np.max(np.sqrt(u_HR**2 + v_HR**2+w_HR**2))-1
-    max_error = np.max(np.sqrt((u_HR-u_SR)**2 + (v_HR-v_SR)**2+(w_HR-w_SR)**2))-1
+    max_wind = np.max(HR_vec_length)
+    print(
+        "Average Wind speed: ", np.average(np.sqrt(u_HR**2 + v_HR**2 + w_HR**2))
+    )
+
+    max_error = np.max(SR_ERR_vec_length)
     # lut_manager_wind_field = mlab.colorbar(orientation='vertical', title="Wind speed (m/s)")
     # lut_manager_wind_field.data_range = (0, np.max(wind_vectors_length))
 
-    X1, Y1, Z1, u1, v1, w1, terrain1, u_SR1, v_SR1, w_SR1, u_TL1, v_TL1, w_TL1   = slice_only_dim_dicts(X, Y, Z, u_HR, v_HR, w_HR, terrain, u_SR, v_SR, w_SR, u_TL, v_TL, w_TL, x_dict=x_dict, y_dict=y_dict,z_dict=z_dict,)
-    X_LR1, Y_LR1,Z_LR1, u_LR, v_LR, w_LR = slice_only_dim_dicts(X[::4,::4,:], Y[::4,::4,:], Z[::4,::4,:], u_LR, v_LR, w_LR, x_dict=x2_dict, y_dict=y2_dict, z_dict=z_dict,)
-    plot_field(X1,Y1,Z1,u1,v1,w1, terrain=terrain1, z_plot_scale=1, fig=1, colormap="viridis", max_value=max_wind)
-    plot_field(X_LR1,Y_LR1,Z_LR1,u_LR,v_LR,w_LR, terrain=terrain1, terrainX=X1[:,:,0], terrainY=Y1[:,:,0], z_plot_scale=1, fig=2, colormap="viridis", max_value=max_wind)
-    plot_field(X1,Y1,Z1,u_SR1,v_SR1,w_SR1, terrain=terrain1, z_plot_scale=1, fig=3, colormap="viridis", max_value=max_wind)
-    plot_field(X1,Y1,Z1,u_TL1,v_TL1,w_TL1, terrain=terrain1, z_plot_scale=1, fig=4, colormap="viridis", max_value=max_wind)
-    plot_field(X1,Y1,Z1,u1-u_SR1,v1-v_SR1,w1-w_SR1, terrain=terrain1, z_plot_scale=1, fig=5, colormap="coolwarm", max_value=max_error)
-    plot_field(X1,Y1,Z1,u1-u_TL1,v1-v_TL1,w1-w_TL1, terrain=terrain1, z_plot_scale=1, fig=6, colormap="coolwarm", max_value=max_error)
-    
+    (
+        X1,
+        Y1,
+        Z1,
+        u1,
+        v1,
+        w1,
+        terrain1,
+        u_SR1,
+        v_SR1,
+        w_SR1,
+        u_TL1,
+        v_TL1,
+        w_TL1,
+    ) = slice_only_dim_dicts(
+        X,
+        Y,
+        Z,
+        u_HR,
+        v_HR,
+        w_HR,
+        terrain,
+        u_SR,
+        v_SR,
+        w_SR,
+        u_TL,
+        v_TL,
+        w_TL,
+        x_dict=x_dict,
+        y_dict=y_dict,
+        z_dict=z_dict,
+    )
+    X_LR1, Y_LR1, Z_LR1, u_LR, v_LR, w_LR = slice_only_dim_dicts(
+        X[::4, ::4, :],
+        Y[::4, ::4, :],
+        Z[::4, ::4, :],
+        u_LR,
+        v_LR,
+        w_LR,
+        x_dict=x2_dict,
+        y_dict=y2_dict,
+        z_dict=z_dict,
+    )
+    plot_field(
+        X1,
+        Y1,
+        Z1,
+        u1,
+        v1,
+        w1,
+        terrain=terrain1,
+        z_plot_scale=1,
+        fig=1,
+        colormap="viridis",
+        max_value=max_wind,
+        title="HR wind field",
+    )
+    plot_field(
+        X_LR1,
+        Y_LR1,
+        Z_LR1,
+        u_LR,
+        v_LR,
+        w_LR,
+        terrain=terrain1,
+        terrainX=X1[:, :, 0],
+        terrainY=Y1[:, :, 0],
+        z_plot_scale=1,
+        fig=2,
+        colormap="viridis",
+        max_value=max_wind,
+        title="LR wind field",
+    )
+    plot_field(
+        X1,
+        Y1,
+        Z1,
+        u_SR1,
+        v_SR1,
+        w_SR1,
+        terrain=terrain1,
+        z_plot_scale=1,
+        fig=3,
+        colormap="viridis",
+        max_value=max_wind,
+        title="SR wind field",
+    )
+    plot_field(
+        X1,
+        Y1,
+        Z1,
+        u_TL1,
+        v_TL1,
+        w_TL1,
+        terrain=terrain1,
+        z_plot_scale=1,
+        fig=4,
+        colormap="viridis",
+        max_value=max_wind,
+        title="TL wind field",
+    )
+    plot_field(
+        X1,
+        Y1,
+        Z1,
+        u1 - u_SR1,
+        v1 - v_SR1,
+        w1 - w_SR1,
+        terrain=terrain1,
+        z_plot_scale=1,
+        fig=5,
+        colormap="coolwarm",
+        max_value=max_error,
+        title="HR-SR wind field error",
+    )
+    plot_field(
+        X1,
+        Y1,
+        Z1,
+        u1 - u_TL1,
+        v1 - v_TL1,
+        w1 - w_TL1,
+        terrain=terrain1,
+        z_plot_scale=1,
+        fig=6,
+        colormap="coolwarm",
+        max_value=max_error,
+        title="HR-TL wind field error",
+    )
 
+    plot_feature_map(sum_last_features_after_activation, vmin=-3.05, vmax=1, fig=1)
+    plot_feature_map(sum_last_features_before_activation, vmin=-3.05, vmax=1, fig=2)
+    plot_feature_map(last_features_before_activation[2], fig=3)
+    plot_feature_map(last_features_before_activation[3], fig=4)
+    plot_feature_map(last_features_before_activation[4], fig=5)
+    plot_feature_map(last_features_before_activation[5], fig=6)
+    plot_feature_map(last_features_activation[2], fig=7)
+    plot_feature_map(last_features_activation[3], fig=8)
+    plot_feature_map(last_features_activation[4], fig=9)
+    plot_feature_map(last_features_activation[5], fig=10)
 
     # plot_vectors_on_grid(full_grid, HR, name="HR", colormap="Blues")
 

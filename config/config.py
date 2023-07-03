@@ -2,11 +2,9 @@ from configparser import ConfigParser
 import ast
 
 """
-options.py
-Written by Eirik Vesterkjær, 2019
+process_data.py
+Originally written by Eirik Vesterkjær 2019, edited by Jacob Wulff Wold 2023
 Apache License
-
-Implements a basic config structure and functionality for initializing from a config file (.ini)
 
 to use, pass a filepath to the Config class initializer.
     cfg = Config(path_to_ini)
@@ -170,7 +168,6 @@ class DatasetConfig(IniConfig):
     dataroot_lr: str = "default_lr_path"
     num_workers: int = 0
     batch_size: int = 16
-    hr_img_size: int = 192
     data_aug_flip: bool = True
     data_aug_rot: bool = True
 
@@ -181,7 +178,6 @@ class DatasetConfig(IniConfig):
         self.dataroot_lr = data_config.get("dataroot_lr")
         self.num_workers = data_config.getint("num_workers")
         self.batch_size = data_config.getint("batch_size")
-        self.hr_img_size = data_config.getint("hr_img_size")
         self.data_aug_flip = data_config.getboolean("data_aug_flip")
         self.data_aug_rot = data_config.getboolean("data_aug_rot")
 

@@ -1,6 +1,6 @@
 """
 basegan.py
-Written by Eirik Vesterkjær, 2019, modified by Thomas Nakken Larsen 2020 and Jacob Wulff Wold 2023
+Written by Eirik Vesterkjær, 2019, edited by Jacob Wulff Wold 2023
 Apache License
 
 Implements the skeleton of a GAN model

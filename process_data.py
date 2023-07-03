@@ -1,3 +1,11 @@
+"""
+process_data.py
+Written by Jacob Wulff Wold 2023
+Apache License
+
+Downloads, preprocesses and saves the data. Creates customized dataloaders with data augmentation functionality.
+"""
+
 import torch
 import numpy as np
 import torch.nn.parallel
@@ -41,16 +49,6 @@ class CustomizedDataset(torch.utils.data.Dataset):
         for_plotting=False,
         is_test=False,
     ):
-        try:
-            invalid_filenames = set(
-                line.strip() for line in open("./data/invalid_files.txt")
-            )
-            self.filenames = [
-                filename for filename in filenames if filename not in invalid_filenames
-            ]
-        except FileNotFoundError:
-            self.filenames = filenames
-
         self.subfolder_name = subfolder_name
         self.include_pressure = include_pressure
         self.include_z_channel = include_z_channel
@@ -73,13 +71,21 @@ class CustomizedDataset(torch.utils.data.Dataset):
         self.for_plotting = for_plotting
         self.is_test = is_test
         self.slice_index = 0
+        self.filenames = filenames
 
-        if not os.path.exists("./data/full_dataset_files/" + self.subfolder_name+"/max/"):
-            os.makedirs("./data/full_dataset_files/" + self.subfolder_name+"/max/")
+        if not os.path.exists(
+            "./data/full_dataset_files/" + self.subfolder_name + "/max/"
+        ):
+            os.makedirs("./data/full_dataset_files/" + self.subfolder_name + "/max/")
         if not os.path.exists("./data/interpolated_z_data/" + self.subfolder_name):
             os.makedirs("./data/interpolated_z_data/" + self.subfolder_name)
 
-        if not os.path.isfile("./data/full_dataset_files/" + self.subfolder_name+"/"+"norm_factors.pkl"):
+        if not os.path.isfile(
+            "./data/full_dataset_files/"
+            + self.subfolder_name
+            + "/"
+            + "norm_factors.pkl"
+        ):
             pickle.dump(
                 [
                     Z_MIN,
@@ -89,8 +95,15 @@ class CustomizedDataset(torch.utils.data.Dataset):
                     P_MIN,
                     P_MAX,
                 ],
-                open("./data/full_dataset_files/" + self.subfolder_name+"/"+"norm_factors.pkl", "wb"),
+                open(
+                    "./data/full_dataset_files/"
+                    + self.subfolder_name
+                    + "/"
+                    + "norm_factors.pkl",
+                    "wb",
+                ),
             )
+
     def __len__(self):
         "Denotes the total number of samples"
         return len(self.filenames)
@@ -128,16 +141,28 @@ class CustomizedDataset(torch.utils.data.Dataset):
                     include_above_ground_channel=self.include_above_ground_channel,
                     for_plotting=self.for_plotting,
                 )
-                
+
             z, z_above_ground, u, v, w, pressure = get_interpolated_z_data(
-                "./data/interpolated_z_data/"+self.subfolder_name+self.filenames[index], self.x, self.y, z_above_ground, u, v, w, pressure, self.terrain
+                "./data/interpolated_z_data/"
+                + self.subfolder_name
+                + self.filenames[index],
+                self.x,
+                self.y,
+                z_above_ground,
+                u,
+                v,
+                w,
+                pressure,
+                self.terrain,
             )
 
         if self.enable_slicing:
-                # x_start = np.random.randint(0, self.x.size - self.slice_size)
-                # y_start = np.random.randint(0, self.y.size - self.slice_size)           
-            x_start = round(np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size))
-            y_start = round(np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size))
+            x_start = round(
+                np.random.beta(0.25, 0.25) * (self.x.size - self.slice_size)
+            )
+            y_start = round(
+                np.random.beta(0.25, 0.25) * (self.y.size - self.slice_size)
+            )
             z, z_above_ground, u, v, w, pressure = slice_only_dim_dicts(
                 z,
                 z_above_ground,
@@ -177,15 +202,51 @@ class CustomizedDataset(torch.utils.data.Dataset):
             Z = torch.rot90(Z, amount_of_rotations, [1, 2])
 
             if amount_of_rotations == 1:
-                HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(1)), torch.index_select(HR, 0, torch.tensor(0))), 0)
-                LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(1)), torch.index_select(LR, 0, torch.tensor(0))), 0)
+                HR[:2] = torch.concatenate(
+                    (
+                        -torch.index_select(HR, 0, torch.tensor(1)),
+                        torch.index_select(HR, 0, torch.tensor(0)),
+                    ),
+                    0,
+                )
+                LR[:2] = torch.concatenate(
+                    (
+                        -torch.index_select(LR, 0, torch.tensor(1)),
+                        torch.index_select(LR, 0, torch.tensor(0)),
+                    ),
+                    0,
+                )
             if amount_of_rotations == 2:
-                HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(0)), -torch.index_select(HR, 0, torch.tensor(1))), 0)
-                LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(0)), -torch.index_select(LR, 0, torch.tensor(1))), 0)
+                HR[:2] = torch.concatenate(
+                    (
+                        -torch.index_select(HR, 0, torch.tensor(0)),
+                        -torch.index_select(HR, 0, torch.tensor(1)),
+                    ),
+                    0,
+                )
+                LR[:2] = torch.concatenate(
+                    (
+                        -torch.index_select(LR, 0, torch.tensor(0)),
+                        -torch.index_select(LR, 0, torch.tensor(1)),
+                    ),
+                    0,
+                )
             if amount_of_rotations == 3:
-                HR[:2] = torch.concatenate((torch.index_select(HR, 0, torch.tensor(1)), -torch.index_select(HR, 0, torch.tensor(0))), 0)
-                LR[:2] = torch.concatenate((torch.index_select(LR, 0, torch.tensor(1)), -torch.index_select(LR, 0, torch.tensor(0))), 0)
-                
+                HR[:2] = torch.concatenate(
+                    (
+                        torch.index_select(HR, 0, torch.tensor(1)),
+                        -torch.index_select(HR, 0, torch.tensor(0)),
+                    ),
+                    0,
+                )
+                LR[:2] = torch.concatenate(
+                    (
+                        torch.index_select(LR, 0, torch.tensor(1)),
+                        -torch.index_select(LR, 0, torch.tensor(0)),
+                    ),
+                    0,
+                )
+
         if self.data_aug_flip:
             if np.random.rand() > 0.5:
                 LR = torch.flip(LR, [1])
@@ -199,7 +260,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 Z = torch.flip(Z, [2])
                 LR[1] = -LR[1]
                 HR[1] = -HR[1]
-        
+
         if self.is_test:
             if self.interpolate_z:
                 return LR, HR, Z, self.filenames[index][:-4], HR_raw, Z_raw
@@ -207,6 +268,7 @@ class CustomizedDataset(torch.utils.data.Dataset):
                 return LR, HR, Z, self.filenames[index][:-4], 0, 0
 
         return LR, HR, Z
+
 
 def calculate_div_z(HR_data: torch.Tensor, Z: torch.Tensor):
     dZ = torch.tile(
@@ -234,6 +296,7 @@ def calculate_div_z(HR_data: torch.Tensor, Z: torch.Tensor):
     ]
 
     return derivatives
+
 
 @torch.jit.script
 def calculate_gradient_of_wind_field(HR_data, x, y, Z):
@@ -268,13 +331,14 @@ def download_all_files_and_prepare(
     subfolder = slice_dict_folder_name(x_dict, y_dict, z_dict)
     if os.path.exists("./data/downloaded_raw_bessaker_data/invalid_files.txt"):
         invalid_urls = set(
-                line.strip() for line in open("./data/downloaded_raw_bessaker_data/invalid_files.txt")
-            )
+            line.strip()
+            for line in open("./data/downloaded_raw_bessaker_data/invalid_files.txt")
+        )
     else:
         invalid_urls = set()
 
     if not os.path.exists(folder + subfolder):
-        os.makedirs(folder + subfolder+"/max/")
+        os.makedirs(folder + subfolder + "/max/")
 
     invalid_samples = set()
 
@@ -282,10 +346,17 @@ def download_all_files_and_prepare(
         for i in range(len(filenames)):
             if filenames[i] not in invalid_samples:
                 try:
-                    with open(folder + subfolder + "max/max_" + filenames[i], "rb") as f:
-                        z_min, z_max, z_above_ground_max, uvw_max, p_min, p_max = pickle.load(
-                            f
-                        )
+                    with open(
+                        folder + subfolder + "max/max_" + filenames[i], "rb"
+                    ) as f:
+                        (
+                            z_min,
+                            z_max,
+                            z_above_ground_max,
+                            uvw_max,
+                            p_min,
+                            p_max,
+                        ) = pickle.load(f)
                     if i < train_eval_test_ratio * len(filenames):
                         Z_MIN = min(Z_MIN, z_min)
                         Z_MAX = max(Z_MAX, z_max)
@@ -346,7 +417,6 @@ def download_all_files_and_prepare(
     return filenames, subfolder, Z_MIN, Z_MAX, Z_ABOVE_GROUND_MAX, UVW_MAX, P_MIN, P_MAX
 
 
-# Creating coarse simulation by skipping every alternate grid
 def reformat_to_torch(
     u,
     v,
@@ -366,38 +436,52 @@ def reformat_to_torch(
     include_above_ground_channel=False,
     for_plotting=False,
 ):
-    HR_arr = np.concatenate(
-        (u[np.newaxis, :, :, :], v[np.newaxis, :, :, :], w[np.newaxis, :, :, :]), axis=0
-    ) / UVW_MAX
+    HR_arr = (
+        np.concatenate(
+            (u[np.newaxis, :, :, :], v[np.newaxis, :, :, :], w[np.newaxis, :, :, :]),
+            axis=0,
+        )
+        / UVW_MAX
+    )
     del u, v, w
 
     if include_pressure:
         arr_norm_LR = np.concatenate(
-            (HR_arr, (p[np.newaxis, :, :, :]-P_MIN)/(P_MAX-P_MIN)), axis=0
+            (HR_arr, (p[np.newaxis, :, :, :] - P_MIN) / (P_MAX - P_MIN)), axis=0
         )[:, ::coarseness_factor, ::coarseness_factor, :]
         if for_plotting:
             HR_arr = np.concatenate(
-                (HR_arr, (p[np.newaxis, :, :, :]-P_MIN)/(P_MAX-P_MIN)), axis=0
+                (HR_arr, (p[np.newaxis, :, :, :] - P_MIN) / (P_MAX - P_MIN)), axis=0
             )
     else:
         arr_norm_LR = HR_arr[:, ::coarseness_factor, ::coarseness_factor, :]
-        
+
     if include_z_channel:
         if include_above_ground_channel:
             arr_norm_LR = np.concatenate(
                 (
                     arr_norm_LR,
-                    z_above_ground[np.newaxis, ::coarseness_factor, ::coarseness_factor, :]
+                    z_above_ground[
+                        np.newaxis, ::coarseness_factor, ::coarseness_factor, :
+                    ]
                     / Z_ABOVE_GROUND_MAX,
-                    (z - z_above_ground-Z_MIN)[np.newaxis, ::coarseness_factor, ::coarseness_factor, :]/(Z_MAX-Z_MIN-Z_ABOVE_GROUND_MAX)
+                    (z - z_above_ground - Z_MIN)[
+                        np.newaxis, ::coarseness_factor, ::coarseness_factor, :
+                    ]
+                    / (Z_MAX - Z_MIN - Z_ABOVE_GROUND_MAX),
                 ),
                 axis=0,
             )
             del z_above_ground
         else:
             arr_norm_LR = np.concatenate(
-            (arr_norm_LR, (z[np.newaxis, ::coarseness_factor, ::coarseness_factor, :] - Z_MIN) / (Z_MAX - Z_MIN)), axis=0
-        )
+                (
+                    arr_norm_LR,
+                    (z[np.newaxis, ::coarseness_factor, ::coarseness_factor, :] - Z_MIN)
+                    / (Z_MAX - Z_MIN),
+                ),
+                axis=0,
+            )
 
     HR_data = torch.from_numpy(HR_arr).float()
     LR_data = torch.from_numpy(arr_norm_LR).float()
@@ -572,5 +656,3 @@ def preprosess(
 
 if __name__ == "__main__":
     preprosess(include_above_ground_channel=True)
-
-

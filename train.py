@@ -1,6 +1,6 @@
 """
 train.py
-Written by Eirik Vesterkjær, 2019, edited by Thomas Nakken Larsen 2020 and Jacob Wulff Wold 2023
+Originally written by Eirik Vesterkjær 2019, edited by Jacob Wulff Wold 2023
 Apache License
 
 Implements a GAN training loop
@@ -408,28 +408,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     for k, v in metrics_vals.items():
                         stat_log_str += f"{k}: {v} "
                     status_logger.debug(stat_log_str)
-
-            if torch.cuda.is_available() and epoch == start_epoch + 1:
-                prev = 0
-                for key, value in gan.memory_dict.items():
-                    diff = value - prev
-                    status_logger.debug(
-                        key
-                        + " memory usage (MB) "
-                        + str(value)
-                        + ", diff from previous: "
-                        + str(diff)
-                    )
-                    prev = value
-                status_logger.info(
-                    "max memory allocated: "
-                    + str(torch.cuda.max_memory_allocated(cfg.device) / 1024**2)
-                )
-                status_logger.info("devices D_forward: " + gan.device_check)
     return
-
-
-
 
 
 def save_validation_images(
@@ -532,6 +511,8 @@ def store_current_visuals(cfg: config.Config, it, gan, dataloader):
 
             # filename_HR_generated = os.path.join(it_folder_path, f"{img_name}_{it}.png")
             # cv2.imwrite(filename_HR_generated, sr_np)
+
+
 def create_error_figure(
     wind_height_index,
     wind_comp_HR,
@@ -594,7 +575,8 @@ def create_error_figure(
         wind_comp_SR[:, :, wind_height_index],
         vmin=vmin_wind_field,
         vmax=vmax_wind_field,
-        cmap="viridis", edgecolor="none"
+        cmap="viridis",
+        edgecolor="none",
     )
     axes2[0, 1].set_title(f"SR, avg error: {round(average_SR_error,3)} m/s")
     axes2[0, 0].pcolor(
@@ -611,7 +593,8 @@ def create_error_figure(
         ),
         vmin=vmin_abs_error,
         vmax=vmax_abs_error,
-        cmap="jet", edgecolor="none"
+        cmap="jet",
+        edgecolor="none",
     )
     axes2[0, 2].set_title("SR Absolute Error (m/s)")
     fig2.colorbar(sm, ax=axes2[0, 1])
@@ -625,12 +608,9 @@ def create_error_figure(
         ax=axes2[0, 2],
     )
     axes2[1, 1].pcolor(wind_comp_TL[:, :, wind_height_index])
-    axes2[1, 1].set_title(
-        f"TL, avg error: {round(average_TL_error,3)} m/s"
-    )
+    axes2[1, 1].set_title(f"TL, avg error: {round(average_TL_error,3)} m/s")
     axes2[1, 0].pcolor(
-        wind_comp_TL[:, :, wind_height_index]
-        - wind_comp_HR[:, :, wind_height_index],
+        wind_comp_TL[:, :, wind_height_index] - wind_comp_HR[:, :, wind_height_index],
         cmap="coolwarm",
     )
     axes2[1, 0].set_title("Error TL-HR (m/s)")
@@ -639,7 +619,8 @@ def create_error_figure(
             wind_comp_HR[:, :, wind_height_index]
             - wind_comp_TL[:, :, wind_height_index]
         ),
-        cmap="jet", edgecolor="none"
+        cmap="jet",
+        edgecolor="none",
     )
     axes2[1, 2].set_title("TL Absolute Error (m/s)")
     fig2.colorbar(sm, ax=axes2[1, 1])
@@ -668,22 +649,35 @@ def create_comparison_figure(
         wind_comp_HR[:, :, wind_height_index]
     )
     axes[0, 0].pcolor(
-        wind_comp_LR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+        wind_comp_LR[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[0, 0].set_title("LR")
     axes[0, 1].pcolor(
-        wind_comp_HR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+        wind_comp_HR[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[0, 1].set_title("HR")
     axes[1, 1].pcolor(
-        wind_comp_SR[:, :, wind_height_index], vmin=vmin, vmax=vmax, cmap="viridis", edgecolor="none"
+        wind_comp_SR[:, :, wind_height_index],
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[1, 1].set_title("SR")
     axes[1, 0].pcolor(
         wind_comp_TL[:, :, wind_height_index],
         vmin=vmin,
         vmax=vmax,
-        cmap="viridis", edgecolor="none"
+        cmap="viridis",
+        edgecolor="none",
     )
     axes[1, 0].set_title("TL")
     fig.subplots_adjust(hspace=0.3)

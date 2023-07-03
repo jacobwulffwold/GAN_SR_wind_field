@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Spyder Editor
+download_data.py
+Written by Jacob Wulff Wold 2023
+Apache License
 
-This is a temporary script file.
+Downloads, preprocesses and saves the data.
 """
 
 
@@ -14,60 +15,6 @@ import netCDF4
 from netCDF4 import Dataset
 import numpy as np
 import torch
-
-def plot_images(
-    filename,
-    terrain,
-    X,
-    Y,
-    Z,
-    x_dict={"start": 0, "max": -1, "step": 1},
-    z_dict={"start": 0, "max": -1, "step": 5},
-    z_plot_scale=1,
-):
-    with open(filename, "rb") as f:
-        images = pickle.load(f)
-
-    i = 0
-    for key, value in images.items():
-        print(key)
-        this_x_dict = x_dict.copy()
-        if key == "LR":
-            for dict_key, dict_value in x_dict.items():
-                this_x_dict[dict_key] = dict_value // 4
-                if dict_key == "step" and dict_value // 4 == 0:
-                    this_x_dict[dict_key] = 1
-
-            this_X, this_Y, this_Z, this_terrain, u, v, w = slice_only_dim_dicts(
-                this_x_dict,
-                z_dict,
-                X[::4, ::4, :],
-                Y[::4, ::4, :],
-                Z[::4, ::4, :],
-                terrain[::4, ::4],
-                value[0],
-                value[1],
-                value[2],
-            )
-
-        else:
-            this_X, this_Y, this_Z, this_terrain, u, v, w = slice_only_dim_dicts(
-                x_dict, z_dict, X, Y, Z, terrain, value[0], value[1], value[2]
-            )
-
-        plot_field(
-            np.squeeze(this_X),
-            np.squeeze(this_Y),
-            np.squeeze(this_Z),
-            u,
-            v,
-            w,
-            z_plot_scale=z_plot_scale,
-            fig=i,
-            terrain=this_terrain,
-        )
-
-        i += 1
 
 
 def check(url):
@@ -131,11 +78,17 @@ def download_Bessaker_data(start_date, end_date, destination_folder, invalid_url
                             print("Downloaded file", filename)
                             counter = counter + 1
                             print(
-                                "Number of files downloaded ", counter, "/", no_data_points
+                                "Number of files downloaded ",
+                                counter,
+                                "/",
+                                no_data_points,
                             )
                         else:
                             print("File not found")
-                            with open("./data/downloaded_raw_bessaker_data/invalid_files.txt", "a") as f:
+                            with open(
+                                "./data/downloaded_raw_bessaker_data/invalid_files.txt",
+                                "a",
+                            ) as f:
                                 f.write(filename + "\n")
 
                     except TypeError as e:
@@ -177,62 +130,6 @@ def combine_files(data_code, start_date, end_date, outfilename):
         outfile,
     )
     outfile.close()
-
-
-def extract_XY_plane(data_code, start_date, end_date, iz):
-    data_code = data_code
-    start_date = start_date
-    end_date = end_date
-    delta = end_date - start_date
-    sim_times = ["T00Z.nc", "T12Z.nc"]
-    index = 0
-    for i in range(delta.days + 1):
-        for sim_time in sim_times:
-            temp = start_date + timedelta(days=i)
-            filename = data_code + ((str(temp)).replace("-", ""))
-            filename = "./data/downloaded_raw_bessaker_data/" + filename + sim_time
-            if index == 0:
-                nc_fid = Dataset(filename, mode="r")
-                time = nc_fid["time"][:]
-                latitude = nc_fid["longitude"][:]
-                longitude = nc_fid["latitude"][:]
-                x = nc_fid["x"][:]
-                y = nc_fid["y"][:]
-                z = nc_fid["geopotential_height_ml"][:][1, iz, :, :]
-                terrain = nc_fid["surface_altitude"][:]
-                theta = nc_fid["air_potential_temperature_ml"][:][:, iz, :, :]
-                u = nc_fid["x_wind_ml"][:][:, iz, :, :]
-                v = nc_fid["y_wind_ml"][:][:, iz, :, :]
-                w = nc_fid["upward_air_velocity_ml"][:][:, iz, :, :]
-                # u10 = nc_fid['x_wind_10m'][:]
-                # v10 = nc_fid['y_wind_10m'][:]
-                tke = nc_fid["turbulence_index_ml"][:][:, iz, :, :]
-                td = nc_fid["turbulence_dissipation_ml"][:][:, iz, :, :]
-                index = index + 1
-                nc_fid.close()
-            else:
-                nc_fid = Dataset(filename, mode="r")
-                time = np.ma.append(time, nc_fid["time"][:][1:13], axis=0)
-                u = np.ma.append(u, nc_fid["x_wind_ml"][1:13, iz, :, :], axis=0)
-                v = np.ma.append(v, nc_fid["y_wind_ml"][:][1:13, iz, :, :], axis=0)
-                w = np.ma.append(
-                    w, nc_fid["upward_air_velocity_ml"][:][1:13, iz, :, :], axis=0
-                )
-                theta = np.ma.append(
-                    theta,
-                    nc_fid["air_potential_temperature_ml"][:][1:13, iz, :, :],
-                    axis=0,
-                )
-                tke = np.ma.append(
-                    tke, nc_fid["turbulence_index_ml"][:][1:13, iz, :, :], axis=0
-                )
-                td = np.ma.append(
-                    td,
-                    nc_fid["turbulence_dissipation_ml"][:][:][1:13, iz, :, :],
-                    axis=0,
-                )
-                nc_fid.close()
-    return time, latitude, longitude, terrain, x, y, z, u, v, w, theta, tke, td
 
 
 def quick_append(var, key, nc_fid, transpose_indices=[0, 2, 3, 1]):
@@ -401,59 +298,6 @@ def slice_only_dim_dicts(
     return value_list
 
 
-def slice_data(
-    terrain,
-    x,
-    y,
-    z,
-    u,
-    v,
-    w,
-    pressure,
-    x_dict={"start": 4, "max": -3, "step": 1},
-    z_dict={"start": 1, "max": 41, "step": 1},
-):
-    X, Y, _ = np.meshgrid(x, y, z[0, 0, :])
-    X, Y = (
-        X[
-            x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-            x_dict["start"] : x_dict["max"] : x_dict["step"],
-            z_dict["start"] : z_dict["max"] : z_dict["step"],
-        ],
-        Y[
-            x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-            x_dict["start"] : x_dict["max"] : x_dict["step"],
-            z_dict["start"] : z_dict["max"] : z_dict["step"],
-        ],
-    )
-    u, v, w, pressure, z = [
-        wind_field[
-            :,
-            x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-            x_dict["start"] : x_dict["max"] : x_dict["step"],
-            z_dict["start"] : z_dict["max"] : z_dict["step"],
-        ]
-        for wind_field in [u, v, w, pressure, z]
-    ]
-
-    terrain = terrain[
-        x_dict["start"] : x_dict["max"] - 1 : x_dict["step"],
-        x_dict["start"] : x_dict["max"] : x_dict["step"],
-    ]
-
-    return (
-        terrain,
-        x[x_dict["start"] : x_dict["max"] : x_dict["step"]],
-        y[x_dict["start"] : x_dict["max"] - 1 : x_dict["step"]],
-        X,
-        Y,
-        z,
-        u,
-        v,
-        w,
-        pressure,
-    )
-
 def reverse_interpolate_z_axis(
     HR_interp,
     Z_raw,
@@ -465,10 +309,13 @@ def reverse_interpolate_z_axis(
             for i in range(HR_interp.shape[2]):
                 for j in range(HR_interp.shape[3]):
                     HR_no_interp[x, z, i, j, :] = np.interp(
-                        Z_raw[x,0,i,j,:], Z_interp[x, 0, i, j, :], HR_interp[x, z, i, j, :]
+                        Z_raw[x, 0, i, j, :],
+                        Z_interp[x, 0, i, j, :],
+                        HR_interp[x, z, i, j, :],
                     )
 
-    return torch.from_numpy(HR_no_interp)    
+    return torch.from_numpy(HR_no_interp)
+
 
 def interpolate_z_axis(
     x,
@@ -508,6 +355,7 @@ def interpolate_z_axis(
     )
 
     return z, new_3D_z_above_ground, u, v, w, pressure
+
 
 def get_interpolated_z_data(
     filename,
@@ -569,7 +417,7 @@ def split_into_separate_files(
     index = 0
     for i in range(len(filenames)):
         if filenames[i] not in invalid_samples:
-            if os.path.isfile(folder +"max/max_" + filenames[i]):
+            if os.path.isfile(folder + "max/max_" + filenames[i]):
                 continue
 
             if (
@@ -617,7 +465,7 @@ def split_into_separate_files(
                     ],
                     f,
                 )
-            with open(folder +"max/max_" + filenames[i], "wb") as f:
+            with open(folder + "max/max_" + filenames[i], "wb") as f:
                 pickle.dump(
                     [
                         np.min(z),
@@ -634,7 +482,13 @@ def split_into_separate_files(
 
 
 def download_and_split(
-    filenames, terrain, x_dict, y_dict, z_dict, invalid_urls, folder="./data/full_dataset_files/"
+    filenames,
+    terrain,
+    x_dict,
+    y_dict,
+    z_dict,
+    invalid_urls,
+    folder="./data/full_dataset_files/",
 ):
     data_code = "simra_BESSAKER_"
     start_time = datetime.strptime(filenames[0][:-7], "%Y-%m-%d")
@@ -649,7 +503,10 @@ def download_and_split(
         end_date = (start_time + timedelta(days=end - 1)).date()
 
         download_Bessaker_data(
-            start_date, end_date, "./data/downloaded_raw_bessaker_data/", invalid_urls,
+            start_date,
+            end_date,
+            "./data/downloaded_raw_bessaker_data/",
+            invalid_urls,
         )
 
         z, u, v, w, pressure, invalid_download_files = extract_slice_and_filter_3D(
@@ -705,5 +562,3 @@ def slice_dict_folder_name(x_dict, y_dict, z_dict):
         + str(z_dict["step"])
         + "/"
     )
-
-

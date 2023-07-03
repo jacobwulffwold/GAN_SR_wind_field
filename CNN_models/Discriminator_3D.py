@@ -3,7 +3,7 @@ discriminator.py
 based on Eirik Vesterkjær, 2019, modified by Thomas Nakken Larsen 2020 and Jacob Wulff Wold 2023
 Apache License
 
-Implements VGG-style discriminators for different input resolutions.
+Implements VGG-style discriminator for 3D data
 """
 
 import torch.nn as nn

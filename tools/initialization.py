@@ -1,6 +1,6 @@
 """
 initialization.py
-Written by Eirik Vesterkjær, 2019
+Written by Eirik Vesterkjær, 2019, edited by Jacob Wulff Wold 2023
 Apache License
 
 Implements a weight init for nn.Module subclasses
