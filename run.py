@@ -30,7 +30,7 @@ from param_search import param_search
 
 def main():
     cfg: Config = argv_to_cfg()
-    cfg.is_train = True
+    # cfg.is_train = True
     if (
         not cfg.is_test
         and not cfg.is_train
@@ -44,8 +44,10 @@ def main():
         return
     
     if cfg.slurm_array_id == 0:
+        cfg.name = "RF_G_best"
         cfg.env.generator_load_path = "./runs/RFno_adv/G_125000.pth"
         cfg.env.discriminator_load_path = ""
+        cfg.load_model_from_save = True
         cfg.training.d_g_train_ratio = 0
         cfg.training.adversarial_loss_weight = 0.0
 
