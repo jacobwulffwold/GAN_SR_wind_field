@@ -42,6 +42,13 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if coconfig/wind_field_GAN_3D_config_local.ini isn't what you're planning on using."
         )
         return
+    
+    if cfg.slurm_array_id == 0:
+        cfg.env.generator_load_path = "./runs/RFno_adv/G_125000.pth"
+        cfg.env.discriminator_load_path = ""
+        cfg.training.d_g_train_ratio = 0
+        cfg.training.adversarial_loss_weight = 0.0
+
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
