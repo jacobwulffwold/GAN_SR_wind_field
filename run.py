@@ -14,23 +14,21 @@ import argparse
 import logging
 import os
 import time
-
 import torch
-import torch.cuda
+import random
+import numpy as np
+from datetime import date
 
 from config.config import Config
-import train
-import test
-from datetime import date
+from train import train
+from test import test
 from process_data import preprosess
-import numpy as np
-import random
 from param_search import param_search
 
 
 def main():
     cfg: Config = argv_to_cfg()
-    # cfg.is_train = True
+    cfg.is_train = True
     if (
         not cfg.is_test
         and not cfg.is_train
@@ -42,15 +40,6 @@ def main():
             "pass either --test, --download, --use or --train as args, and optionally --cfg path/to/config.ini if coconfig/wind_field_GAN_3D_config_local.ini isn't what you're planning on using."
         )
         return
-    
-    if cfg.slurm_array_id == 0:
-        cfg.name = "RF_G_best"
-        cfg.env.generator_load_path = "./runs/RFno_adv/G_125000.pth"
-        cfg.env.discriminator_load_path = ""
-        cfg.load_model_from_save = True
-        cfg.training.d_g_train_ratio = 0
-        cfg.training.adversarial_loss_weight = 0.0
-
 
     setup_ok: bool = safe_setup_env_and_cfg(cfg)
     if not setup_ok:
@@ -113,13 +102,13 @@ def main():
         status_logger.info(
             "run.py: starting training" + ("" if not cfg.is_test else " before testing")
         )
-        train.train(cfg, dataset_train, dataset_validation, x, y)
+        train(cfg, dataset_train, dataset_validation, x, y)
         status_logger.info("run.py: finished training")
         cfg.is_train = False
 
     if cfg.is_test:
         status_logger.info("run.py: starting testing")
-        test.test(cfg, dataset_test)
+        test(cfg, dataset_test)
         status_logger.info("run.py: finished testing")
 
     status_logger.info(
@@ -207,7 +196,6 @@ def argv_to_cfg() -> Config:
 
 
 def safe_setup_env_and_cfg(cfg: Config) -> bool:
-    # store some useful paths in the cfg
     cfg.env.log_folder = cfg.env.root_path + cfg.env.log_subpath
     cfg.env.tensorboard_log_folder = cfg.env.root_path + cfg.env.tensorboard_subpath
     cfg.env.status_log_file = cfg.env.log_folder + "/" + cfg.name + ".log"
@@ -217,7 +205,6 @@ def safe_setup_env_and_cfg(cfg: Config) -> bool:
     )
     cfg.env.train_log_file = cfg.env.this_runs_folder + "/" + cfg.name + ".train"
 
-    # make necessary paths, but warn user if the run folder overlaps with existing folder.
     makedirs(cfg.env.log_folder)
     makedirs(cfg.env.tensorboard_log_folder)
     [

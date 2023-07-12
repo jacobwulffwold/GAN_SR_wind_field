@@ -510,10 +510,8 @@ def preprosess(
     COARSENESS_FACTOR=4,
     train_aug_rot=False,
     val_aug_rot=False,
-    test_aug_rot=False,
     train_aug_flip=False,
     val_aug_flip=False,
-    test_aug_flip=False,
     for_plotting=False,
 ):
     try:
@@ -623,20 +621,7 @@ def preprosess(
         slice_size=slice_size,
     )
 
-    # LR_test, HR_test, Z_test = dataset_train[:8]
-    # Z = HR_test[:, -1, :, :, :]
-
-    # grad_tensor, divergence = calculate_gradient_of_wind_field(HR_test[:,:-1,:,:,:], torch.from_numpy(x), torch.from_numpy(y), Z)
-
-    # # plot_pressure(X[1:-1,1:-1,1:3], Y[1:-1,1:-1,1:3], z[0,1:-1,1:-1,1:3], 3, HR_data_test[0,0,1:-1,1:-1,1:3], terrain, fig=1)
-
-    # plot_pressure(X[1:-1,1:-1,1:3], Y[1:-1,1:-1,1:3], z[0,1:-1,1:-1,1:3], 3, divergence[0,:,:,:2], terrain, fig=2)
-
-    # plot_field(X[1:-1,1:-1,1], Y[1:-1,1:-1,1], z[0,1:-1,1:-1,1], HR_test[0,0,1:-1,1:-1,1], HR_test[0,1,1:-1,1:-1,1], HR_test[0,2,1:-1,1:-1,1], terrain[1:-1,1:-1], z_plot_scale=3, fig=3)
-    # plot_field(X, Y, z[time_index], HR_data_train[time_index, 0, :, :, :], HR_data_train[time_index, 1, :,:,:], HR_data_train[time_index, 2, :,:,:], terrain, fig=2)
-    # plot_field(X[::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], Y[::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], z[time_index, ::COARSENESS_FACTOR, ::COARSENESS_FACTOR,:], LR_data_train[time_index, 0, :, :, :], LR_data_train[time_index, 1, :, :, :], LR_data_train[time_index, 2, :, :, :], terrain[::COARSENESS_FACTOR, ::COARSENESS_FACTOR], fig=3)
-
-    if enable_slicing:
+    if enable_slicing: #regular spacing so values are irrelevant
         (
             x,
             y,

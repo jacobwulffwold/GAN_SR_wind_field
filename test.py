@@ -9,16 +9,14 @@ Use run.py to run.
 
 import logging
 import os
-import pickle as pkl
 import torch
-import torch.cuda
+import pickle as pkl
 import torch.nn as nn
+
 import config.config as config
 from GAN_models.wind_field_GAN_3D import wind_field_GAN_3D, calculate_PSNR
 import iocomponents.displaybar as displaybar
 from download_data import reverse_interpolate_z_axis
-
-# UVW_MAX = 32.32976150
 
 
 def test(cfg: config.Config, dataset_test):
@@ -373,6 +371,3 @@ def write_metrics(HR, SR, trilinear, field_name: int, dest_file, UVW_MAX):
         old_pix,
         old_pix_trilinear,
     )
-
-
-# (1.0, 0.25, 1.25, 1.25, 0.15|10.0, 0.25, 2.5, 0.25, 0.25|10.0, 1.0, 0.5, 1.0, 0.2|22.627515146672238|25.805853036899766|30.63578914390694|31.348732309433014)

@@ -1118,21 +1118,9 @@ def create_2D_plots(
 
 
 if __name__ == "__main__":
-    # plot_metrics("./tensorboard_log_cluster/Z_handling_no/seed1", "val_PSNR", "metrics/PSNR")
-    # create_exp1_plot()
-    # create_exp2_plot()
-    # create_best_exp25_plot()
-    # plot_metrics25(
-    #     "/Volumes/jawold/GAN_SR_wind_field/tensorboard_log/35kGAN_cost_param_search/",
-    #     "val_PSNR",
-    #     "total",
-    #     "metrics/PSNR",
-    #     "G_loss/validation",
-    # )
-    # folder = "./pretrained_models/8best_model_search_pix4_pretrained_no_adv/"
+    
     folder = "./pretrained_models/upscale16_pix4_no_adv_no_slicing/"
-    # folder = "./pretrained_models/upscale8_pix4_no_adv_no_slicing/upscale8_pix4_no_adv_no_slicing/"
-    # create_norm_plot()
+
     cfg = Config(folder + "config.ini")
     cfg.is_train = False
     cfg.is_download = False
@@ -1169,13 +1157,11 @@ if __name__ == "__main__":
     #     val_aug_flip=False,
     #     test_aug_flip=False,
     # )
-
-    # # dataloader_normal = torch.utils.data.DataLoader(dataset_train, batch_size=32, shuffle=False)
-
+    
     # LR, HR, Z, = dataset_train[1]
 
     filename = "test_fields_2020-03-01-14.pkl"
-    # filename = "test_fields_2020-06-01-18.pkl"
+
     full_filename = folder + "fields/" + filename
     fields = pkl.load(open(full_filename, "rb"))
     HR = fields["HR"]
@@ -1199,27 +1185,27 @@ if __name__ == "__main__":
     HR = torch.rot90(torch.from_numpy(HR), amount_of_rotations, [1, 2])
     Z = torch.rot90(torch.from_numpy(Z)[None, :, :, :], amount_of_rotations, [1, 2])
     terrain = torch.rot90(torch.from_numpy(terrain), amount_of_rotations, [0, 1])
-    # if amount_of_rotations == 1:
-    #     HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(1)), torch.index_select(HR, 0, torch.tensor(0))), 0)
-    #     LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(1)), torch.index_select(LR, 0, torch.tensor(0))), 0)
-    # if amount_of_rotations == 2:
-    #     HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(0)), -torch.index_select(HR, 0, torch.tensor(1))), 0)
-    #     LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(0)), -torch.index_select(LR, 0, torch.tensor(1))), 0)
-    # if amount_of_rotations == 3:
-    #     HR[:2] = torch.concatenate((torch.index_select(HR, 0, torch.tensor(1)), -torch.index_select(HR, 0, torch.tensor(0))), 0)
-    #     LR[:2] = torch.concatenate((torch.index_select(LR, 0, torch.tensor(1)), -torch.index_select(LR, 0, torch.tensor(0))), 0)
+    if amount_of_rotations == 1:
+        HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(1)), torch.index_select(HR, 0, torch.tensor(0))), 0)
+        LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(1)), torch.index_select(LR, 0, torch.tensor(0))), 0)
+    if amount_of_rotations == 2:
+        HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(0)), -torch.index_select(HR, 0, torch.tensor(1))), 0)
+        LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(0)), -torch.index_select(LR, 0, torch.tensor(1))), 0)
+    if amount_of_rotations == 3:
+        HR[:2] = torch.concatenate((torch.index_select(HR, 0, torch.tensor(1)), -torch.index_select(HR, 0, torch.tensor(0))), 0)
+        LR[:2] = torch.concatenate((torch.index_select(LR, 0, torch.tensor(1)), -torch.index_select(LR, 0, torch.tensor(0))), 0)
 
-    # flip_index = 2
-    # LR = torch.flip(LR, [flip_index])
-    # HR = torch.flip(HR, [flip_index])
-    # Z = torch.flip(Z, [flip_index])
-    # terrain = torch.flip(terrain, [flip_index-1])
-    # if flip_index == 1:
-    #     LR[0] = -LR[0]
-    #     HR[0] = -HR[0]
-    # if flip_index == 2:
-    #     LR[1] = -LR[1]
-    #     HR[1] = -HR[1]
+    flip_index = 1
+    LR = torch.flip(LR, [flip_index])
+    HR = torch.flip(HR, [flip_index])
+    Z = torch.flip(Z, [flip_index])
+    terrain = torch.flip(terrain, [flip_index-1])
+    if flip_index == 1:
+        LR[0] = -LR[0]
+        HR[0] = -HR[0]
+    if flip_index == 2:
+        LR[1] = -LR[1]
+        HR[1] = -HR[1]
 
     LR, HR, Z = (
         LR.squeeze().numpy(),
@@ -1495,24 +1481,3 @@ if __name__ == "__main__":
     plot_feature_map(last_features_activation[3], fig=8)
     plot_feature_map(last_features_activation[4], fig=9)
     plot_feature_map(last_features_activation[5], fig=10)
-
-    # plot_vectors_on_grid(full_grid, HR, name="HR", colormap="Blues")
-
-    # plot_scalar_on_grid(LR_grid, LR_features[2], name="LR_feature")
-    # plot_field(X[::4,::4,:],Y[::4,::4,:],Z[::4,::4,:],LR[0],LR[1],LR[2],colormap="viridis")
-    # plot_feature_map_on_grid(sum_last_features_after_activation, X, Y, Z)
-    # plot_field(X, Y, Z, HR[0], HR[1], HR[2], colormap="viridis", fig=1)
-    # plot_field(X, Y, Z, SR[0], SR[1], SR[2], colormap="viridis", fig=2)
-
-    # plot_feature_map_on_grid(last_features_before_activation[1], X, Y, Z)
-    # plot_field(X, Y, Z, HR[0]-SR[0], HR[1]-SR[1], HR[2]-SR[2], colormap="coolwarm", fig=3)
-    # plot_field(X, Y, Z, HR[0]-TL[0], HR[1]-TL[1], HR[2]-SR[2], colormap="coolwarm", fig=4)
-
-    # generate_plots(X, Y, Z, u, v, w, pressure, dataset_train.terrain, colormap="viridis")
-    # X1, Y1, Z1, u1, v1, w1, pressure1, terrain1  = slice_only_dim_dicts(X, Y, Z, u, v, w, pressure, dataset_train.terrain, x_dict={"start": 5, "max": 37, "step": 1}, y_dict={"start": 10, "max": 42, "step": 1},z_dict={"start": 0, "max": 11, "step": 1},)
-    # # X1, Y1, Z1, u1, v1, w1, pressure1, terrain1 = slice_only_dim_dicts(X, Y, Z, u, v, w, pressure, dataset_train.terrain, x_dict={"start": 0, "max": 128, "step": 1}, y_dict={"start": 0, "max": 128, "step": 1},z_dict={"start": 0, "max": 10, "step": 10},)
-    # # plot_field(X1,Y1,Z1,u1,v1,w1, terrain1, z_plot_scale=2, fig=1)
-    # # X1, Y1, Z1, u1, v1, w1, pressure1, terrain1 = slice_only_dim_dicts(X, Y, Z, u, v, w, pressure, dataset_train.terrain, x_dict={"start": 0, "max": 64, "step": 1}, y_dict={"start": 0, "max": 128, "step": 1},z_dict={"start": 0, "max": 10, "step": 10},)
-    # # plot_field(X1,Y1,Z1,u1,v1,w1, terrain1, z_plot_scale=2, fig=2)
-    # # X1, Y1, Z1, u1, v1, w1, pressure1, terrain1 = slice_only_dim_dicts(X, Y, Z, u, v, w, pressure, dataset_train.terrain, x_dict={"start": 64, "max": 128, "step": 1}, y_dict={"start": 0, "max": 128, "step": 1},z_dict={"start": 0, "max": 10, "step": 10},)
-    # plot_field(X1,Y1,Z1,u1,v1,w1, terrain1, z_plot_scale=1, fig=1)
