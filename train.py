@@ -207,34 +207,38 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                     )[0]
 
                     LR_i = torch.index_select(LR, 0, batch_quiver, out=None)
-                    
-                    TL_i = dataset_train.UVW_MAX * nn.functional.interpolate(
-                        LR_i[:,:3],
-                        scale_factor=(cfg.scale, cfg.scale, 1),
-                        mode="trilinear",
-                        align_corners=True,
-                    ).squeeze()
-                    
+
+                    TL_i = (
+                        dataset_train.UVW_MAX
+                        * nn.functional.interpolate(
+                            LR_i[:, :3],
+                            scale_factor=(cfg.scale, cfg.scale, 1),
+                            mode="trilinear",
+                            align_corners=True,
+                        ).squeeze()
+                    )
+
                     with torch.no_grad():
                         SR_i = (
-                            dataset_train.UVW_MAX * gan.G(
+                            dataset_train.UVW_MAX
+                            * gan.G(
                                 LR_i,
-                                torch.index_select(
-                                    Z, 0, batch_quiver, out=None
-                                ),
+                                torch.index_select(Z, 0, batch_quiver, out=None),
                             )
                         ).squeeze()
 
-                    LR_i = dataset_train.UVW_MAX * LR_i[0,:3]
-                    HR_i = dataset_train.UVW_MAX * torch.index_select(HR, 0, batch_quiver, out=None).squeeze()
-
+                    LR_i = dataset_train.UVW_MAX * LR_i[0, :3]
+                    HR_i = (
+                        dataset_train.UVW_MAX
+                        * torch.index_select(HR, 0, batch_quiver, out=None).squeeze()
+                    )
 
                     if cfg.use_tensorboard_logger:
                         rand_wind_comp = np.random.randint(0, 3)
                         rand_z_index = np.random.randint(0, HR_i.shape[-1])
 
                         pix_criterion = nn.L1Loss()
-                        
+
                         std_slice_SR_error = pix_criterion(
                             HR_i[0][:, :, 3],
                             SR_i[0][:, :, 3],
@@ -248,7 +252,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                             HR_i[rand_wind_comp][:, :, rand_z_index],
                             SR_i[rand_wind_comp][:, :, rand_z_index],
                         ).item()
-                        
+
                         rand_slice_TL_error = pix_criterion(
                             HR_i[rand_wind_comp][:, :, rand_z_index],
                             TL_i[rand_wind_comp][:, :, rand_z_index],
@@ -284,7 +288,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                             round(rand_slice_SR_error, 3),
                             round(rand_slice_TL_error, 3),
                         )
-                        
+
                         tb_writer.add_scalars("G_loss/validation", G_loss_vals, it)
                         tb_writer.add_scalars("D_loss/", D_loss_vals, it)
                         # for hist_name, val in hist_vals.items():
@@ -307,7 +311,7 @@ def train(cfg: config.Config, dataset_train, dataset_validation, x, y):
                         imgs["SR"] = SR_i
                         imgs["BC"] = TL_i
                         imgs["LR"] = LR_i
-                    
+
                     else:
                         imgs = dict()
                         imgs["HR"] = HR_i.cpu().numpy()
@@ -374,6 +378,7 @@ def save_validation_images_to_tb(
 def log_status_logs(status_logger: logging.Logger, logs: list):
     for log in logs:
         status_logger.info(log)
+
 
 def create_error_figure(
     wind_height_index,

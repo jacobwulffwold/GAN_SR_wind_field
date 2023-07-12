@@ -621,7 +621,7 @@ def preprosess(
         slice_size=slice_size,
     )
 
-    if enable_slicing: #regular spacing so values are irrelevant
+    if enable_slicing:  # regular spacing so values are irrelevant
         (
             x,
             y,

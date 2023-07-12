@@ -1118,7 +1118,6 @@ def create_2D_plots(
 
 
 if __name__ == "__main__":
-    
     folder = "./pretrained_models/upscale16_pix4_no_adv_no_slicing/"
 
     cfg = Config(folder + "config.ini")
@@ -1157,7 +1156,7 @@ if __name__ == "__main__":
     #     val_aug_flip=False,
     #     test_aug_flip=False,
     # )
-    
+
     # LR, HR, Z, = dataset_train[1]
 
     filename = "test_fields_2020-03-01-14.pkl"
@@ -1186,20 +1185,56 @@ if __name__ == "__main__":
     Z = torch.rot90(torch.from_numpy(Z)[None, :, :, :], amount_of_rotations, [1, 2])
     terrain = torch.rot90(torch.from_numpy(terrain), amount_of_rotations, [0, 1])
     if amount_of_rotations == 1:
-        HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(1)), torch.index_select(HR, 0, torch.tensor(0))), 0)
-        LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(1)), torch.index_select(LR, 0, torch.tensor(0))), 0)
+        HR[:2] = torch.concatenate(
+            (
+                -torch.index_select(HR, 0, torch.tensor(1)),
+                torch.index_select(HR, 0, torch.tensor(0)),
+            ),
+            0,
+        )
+        LR[:2] = torch.concatenate(
+            (
+                -torch.index_select(LR, 0, torch.tensor(1)),
+                torch.index_select(LR, 0, torch.tensor(0)),
+            ),
+            0,
+        )
     if amount_of_rotations == 2:
-        HR[:2] = torch.concatenate((-torch.index_select(HR, 0, torch.tensor(0)), -torch.index_select(HR, 0, torch.tensor(1))), 0)
-        LR[:2] = torch.concatenate((-torch.index_select(LR, 0, torch.tensor(0)), -torch.index_select(LR, 0, torch.tensor(1))), 0)
+        HR[:2] = torch.concatenate(
+            (
+                -torch.index_select(HR, 0, torch.tensor(0)),
+                -torch.index_select(HR, 0, torch.tensor(1)),
+            ),
+            0,
+        )
+        LR[:2] = torch.concatenate(
+            (
+                -torch.index_select(LR, 0, torch.tensor(0)),
+                -torch.index_select(LR, 0, torch.tensor(1)),
+            ),
+            0,
+        )
     if amount_of_rotations == 3:
-        HR[:2] = torch.concatenate((torch.index_select(HR, 0, torch.tensor(1)), -torch.index_select(HR, 0, torch.tensor(0))), 0)
-        LR[:2] = torch.concatenate((torch.index_select(LR, 0, torch.tensor(1)), -torch.index_select(LR, 0, torch.tensor(0))), 0)
+        HR[:2] = torch.concatenate(
+            (
+                torch.index_select(HR, 0, torch.tensor(1)),
+                -torch.index_select(HR, 0, torch.tensor(0)),
+            ),
+            0,
+        )
+        LR[:2] = torch.concatenate(
+            (
+                torch.index_select(LR, 0, torch.tensor(1)),
+                -torch.index_select(LR, 0, torch.tensor(0)),
+            ),
+            0,
+        )
 
     flip_index = 1
     LR = torch.flip(LR, [flip_index])
     HR = torch.flip(HR, [flip_index])
     Z = torch.flip(Z, [flip_index])
-    terrain = torch.flip(terrain, [flip_index-1])
+    terrain = torch.flip(terrain, [flip_index - 1])
     if flip_index == 1:
         LR[0] = -LR[0]
         HR[0] = -HR[0]
