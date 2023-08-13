@@ -19,7 +19,7 @@ import iocomponents.displaybar as displaybar
 from download_data import reverse_interpolate_z_axis
 
 
-def test(cfg: config.Config, dataset_test):
+def test(cfg: config.Config, dataset_test, reverse_interpolate=False):
     status_logger = logging.getLogger("status")
     niter = len(dataset_test)
     dataloader_test = None
@@ -53,7 +53,8 @@ def test(cfg: config.Config, dataset_test):
         state_load_path=None,
     )
 
-    gan.G.eval()
+    if reverse_interpolate == False:
+        cfg.gan_config.interpolate_z = False
 
     status_logger.info(f"beginning test")
 

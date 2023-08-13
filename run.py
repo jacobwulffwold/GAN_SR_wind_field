@@ -28,7 +28,6 @@ from param_search import param_search
 
 def main():
     cfg: Config = argv_to_cfg()
-    cfg.is_train = True
     if (
         not cfg.is_test
         and not cfg.is_train
