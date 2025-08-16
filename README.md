@@ -5,6 +5,6 @@ Dependencies for the python 3.9 environment are listed in requirements.txt.
 
 The model is trained, tested or used in a parameter seach by running the run.py file. Hyperparameters are set in the Config folder.
 
-The model and test results, are thoroughly described in the following master thesis: [INSERT LINK WHEN AVAILABLE]
+The model and test results, are thoroughly described in the following master thesis: https://ntnuopen.ntnu.no/ntnu-xmlui/handle/11250/3096537. The work was later adapted into a paper: https://www.sciencedirect.com/science/article/pii/S0952197624013253
 
-This work is besed on Vesterkjær 2019's implementation of ESRGAN, https://github.com/eirikeve/esrdgan/tree/master. It is therefore subject to APACHE licence, described in the LICENSE.txt file
+This work is besed on Vesterkjær 2019's implementation of ESRGAN, https://github.com/eirikeve/esrdgan/tree/master. It is therefore subject to APACHE licence, described in the LICENSE.txt file.
